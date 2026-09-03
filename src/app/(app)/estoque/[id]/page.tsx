@@ -1,0 +1,265 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { all, one } from "@/lib/db";
+import { requireUser } from "@/lib/auth";
+import { availabilityFor, holdsForProduct } from "@/lib/stock";
+import { logsFor } from "@/lib/audit";
+import { UNIT_STATUS } from "@/lib/domain";
+import { addDays, dateBR, money, today } from "@/lib/format";
+import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, Stat, StatusBadge } from "@/components/ui";
+import { SubmitButton } from "@/components/SubmitButton";
+import { addUnits, closeMaintenance, deleteProduct, deleteUnit, openMaintenance, setUnitStatus, toggleProduct } from "../actions";
+
+export const dynamic = "force-dynamic";
+
+export default async function ProdutoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ aviso?: string }>;
+}) {
+  const user = await requireUser();
+  const { id } = await params;
+  const { aviso } = await searchParams;
+  const p = one<any>(
+    `SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
+    [Number(id)],
+  );
+  if (!p) notFound();
+
+  const d0 = today();
+  const hoje = availabilityFor(p.id, `${d0}T00:00`, `${d0}T23:59`);
+  const proximos = Array.from({ length: 14 }, (_, i) => {
+    const d = addDays(d0, i);
+    return { date: d, ...availabilityFor(p.id, `${d}T00:00`, `${d}T23:59`) };
+  });
+  const holds = holdsForProduct(p.id, `${d0}T00:00`, `${addDays(d0, 60)}T23:59`);
+  const units = all<any>(`SELECT * FROM product_units WHERE product_id = ? ORDER BY code`, [p.id]);
+  const maint = all<any>(`SELECT * FROM maintenance WHERE product_id = ? ORDER BY status, id DESC LIMIT 20`, [p.id]);
+  const historico = logsFor("produto", p.id).slice(0, 10);
+
+  const usos = all<any>(
+    `SELECT COUNT(*) AS reservas, COALESCE(SUM(i.qty),0) AS unidades, COALESCE(SUM(i.subtotal_cents),0) AS receita
+       FROM reservation_items i JOIN reservations r ON r.id = i.reservation_id
+      WHERE i.product_id = ? AND r.status <> 'cancelada'`,
+    [p.id],
+  )[0];
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title={p.name}
+        subtitle={`${p.code} - ${p.category ?? "sem categoria"}`}
+        action={
+          <>
+            <LinkButton href={`/estoque/${p.id}/editar`}>Editar</LinkButton>
+            <LinkButton href="/disponibilidade" variant="secundario">Consultar data</LinkButton>
+          </>
+        }
+      />
+
+      {aviso === "inativado" && (
+        <Alerta tone="ambar" title="Produto inativado">
+          O produto ja foi usado em reservas, por isso foi inativado em vez de excluido.
+        </Alerta>
+      )}
+      {!p.active && <Alerta tone="ambar">Produto inativo: nao aparece em novas reservas.</Alerta>}
+      {hoje.low && <Alerta tone="vermelho">Disponibilidade abaixo do minimo configurado ({p.min_qty}).</Alerta>}
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <Stat label="Total" value={p.total_qty} />
+        <Stat label="Reservado hoje" value={hoje.reserved} />
+        <Stat label="Disponivel hoje" value={Math.max(0, hoje.available)} tone={hoje.available <= 0 ? "vermelho" : "verde"} />
+        <Stat label="Em manutencao" value={p.maintenance_qty} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Section title="Dados do produto">
+          <Row label="Codigo" value={p.code} />
+          <Row label="Categoria" value={p.category ?? "-"} />
+          <Row label="Valor de locacao" value={money(p.rent_price_cents)} />
+          <Row label="Valor de reposicao" value={money(p.replace_cents)} />
+          <Row label="Estoque minimo" value={p.min_qty} />
+          <Row label="Reservas ja feitas" value={`${usos.reservas} (${usos.unidades} un.)`} />
+          <Row label="Receita acumulada" value={money(usos.receita)} />
+          {p.description && <Row label="Descricao" value={p.description} />}
+          {p.photo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.photo} alt={p.name} className="mt-3 max-h-48 rounded-xl object-contain" />
+          )}
+        </Section>
+
+        <Section title="Disponibilidade dos proximos 14 dias">
+          <div className="grid grid-cols-7 gap-1.5">
+            {proximos.map((d) => (
+              <div
+                key={d.date}
+                className={`rounded-lg p-1.5 text-center ${
+                  d.available <= 0 ? "bg-red-100 text-red-800" : d.low ? "bg-amber-100 text-amber-800" : "bg-emerald-50 text-emerald-800"
+                }`}
+                title={`${dateBR(d.date)}: ${d.available} disponivel`}
+              >
+                <p className="text-[0.6rem] font-semibold">{d.date.slice(8, 10)}/{d.date.slice(5, 7)}</p>
+                <p className="text-sm font-bold leading-tight">{Math.max(0, d.available)}</p>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="mb-1.5 mt-4 text-xs font-bold uppercase text-stone-500">Reservas que ocupam este item</h3>
+          {holds.length === 0 ? (
+            <Empty>Nenhuma reserva futura ocupa este produto.</Empty>
+          ) : (
+            <ul className="divide-y divide-areia-200">
+              {holds.slice(0, 15).map((h, i) => (
+                <li key={`${h.reservation_id}-${i}`} className="flex items-center justify-between py-2 text-sm">
+                  <Link href={`/reservas/${h.reservation_id}`} className="min-w-0">
+                    <span className="block truncate font-semibold text-terra-600">{h.number} - {h.customer}</span>
+                    <span className="block text-xs text-stone-500">
+                      {dateBR(h.hold_start)} ate {dateBR(h.hold_end)}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-bold">{h.qty} un.</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Section title={`Unidades individuais (${units.length})`}>
+          <form action={addUnits} className="mb-3 flex flex-wrap gap-2">
+            <input type="hidden" name="product_id" value={p.id} />
+            <input name="qty" type="number" min={1} max={200} defaultValue={1} className="campo w-24" />
+            <input name="value" placeholder="Valor un. (R$)" inputMode="decimal" className="campo w-40" />
+            <SubmitButton variant="secundario">Gerar codigos</SubmitButton>
+          </form>
+
+          {units.length === 0 ? (
+            <Empty>
+              Nenhuma unidade individual. Gere codigos ({p.code}-001, {p.code}-002...) para controlar item a item.
+            </Empty>
+          ) : (
+            <div className="max-h-96 space-y-1.5 overflow-y-auto">
+              {units.map((u) => (
+                <div key={u.id} className="flex items-center gap-2 rounded-xl border border-areia-300 bg-white p-2">
+                  <span className="w-24 shrink-0 font-mono text-xs font-bold">{u.code}</span>
+                  <StatusBadge defs={UNIT_STATUS} value={u.status} />
+                  <form action={setUnitStatus} className="ml-auto flex items-center gap-1">
+                    <input type="hidden" name="unit_id" value={u.id} />
+                    <select name="status" defaultValue={u.status} className="rounded-lg border border-areia-300 px-2 py-1 text-xs">
+                      {UNIT_STATUS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                    <SubmitButton variant="secundario" className="px-2 py-1 text-xs">
+                      Ok
+                    </SubmitButton>
+                  </form>
+                  {user.role === "admin" && (
+                    <form action={deleteUnit}>
+                      <input type="hidden" name="unit_id" value={u.id} />
+                      <SubmitButton variant="perigo" confirm={`Remover ${u.code}?`} className="px-2 py-1 text-xs">
+                        x
+                      </SubmitButton>
+                    </form>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-xs text-stone-400">
+            Os codigos ficam prontos para etiquetas com QR Code no futuro.
+          </p>
+        </Section>
+
+        <Section title="Manutencao">
+          <form action={openMaintenance} className="grid grid-cols-2 gap-2">
+            <input type="hidden" name="product_id" value={p.id} />
+            <input name="qty" type="number" min={1} defaultValue={1} placeholder="Qtd" className="campo" />
+            <input name="started_at" type="date" defaultValue={d0} className="campo" />
+            <input name="reason" placeholder="Motivo" className="campo col-span-2" />
+            <input name="cost" placeholder="Custo (R$)" inputMode="decimal" className="campo" />
+            <select name="product_unit_id" className="campo">
+              <option value="">Sem unidade especifica</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.code}
+                </option>
+              ))}
+            </select>
+            <div className="col-span-2">
+              <SubmitButton className="w-full">Enviar para manutencao</SubmitButton>
+            </div>
+          </form>
+
+          <div className="mt-3">
+            {maint.length === 0 ? (
+              <Empty>Nenhuma manutencao registrada.</Empty>
+            ) : (
+              <ul className="divide-y divide-areia-200">
+                {maint.map((mt) => (
+                  <li key={mt.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">
+                        {mt.qty} un. - {mt.reason || "sem motivo"}
+                      </span>
+                      <span className="block text-xs text-stone-500">
+                        {dateBR(mt.started_at)}
+                        {mt.ended_at ? ` ate ${dateBR(mt.ended_at)}` : ""} - {money(mt.cost_cents)}
+                      </span>
+                    </span>
+                    {mt.status === "aberta" ? (
+                      <form action={closeMaintenance}>
+                        <input type="hidden" name="id" value={mt.id} />
+                        <SubmitButton variant="sucesso" className="px-3 py-1.5 text-xs">
+                          Concluir
+                        </SubmitButton>
+                      </form>
+                    ) : (
+                      <Badge tone="cinza">Concluida</Badge>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Section>
+      </div>
+
+      {historico.length > 0 && (
+        <Section title="Historico">
+          <ul className="space-y-1.5 text-sm">
+            {historico.map((h: any) => (
+              <li key={h.id} className="flex gap-2 text-stone-600">
+                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span>{h.summary}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {user.role === "admin" && (
+        <Card className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-carvao-900">Area do administrador</p>
+          <div className="flex gap-2">
+            <form action={toggleProduct}>
+              <input type="hidden" name="id" value={p.id} />
+              <SubmitButton variant="secundario">{p.active ? "Inativar" : "Reativar"}</SubmitButton>
+            </form>
+            <form action={deleteProduct}>
+              <input type="hidden" name="id" value={p.id} />
+              <SubmitButton variant="perigo" confirm={`Excluir o produto ${p.name}?`}>
+                Excluir
+              </SubmitButton>
+            </form>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}

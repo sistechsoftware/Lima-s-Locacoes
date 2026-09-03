@@ -1,0 +1,84 @@
+"use client";
+import { useActionState } from "react";
+import { Field, Grid } from "@/components/ui";
+import { SubmitButton } from "@/components/SubmitButton";
+import { OPERATION_KINDS, OPERATION_STATUS } from "@/lib/domain";
+
+type Action = (prev: string | null, fd: FormData) => Promise<string | null>;
+
+export default function OperationForm({
+  action,
+  reservations,
+  vehicles,
+  defaultReservation,
+  defaultKind,
+}: {
+  action: Action;
+  reservations: { id: number; number: string; customer_name: string; event_date: string }[];
+  vehicles: { id: number; name: string }[];
+  defaultReservation?: number;
+  defaultKind?: string;
+}) {
+  const [error, formAction] = useActionState(action, null);
+  return (
+    <form action={formAction} className="space-y-4">
+      <Field label="Tipo de operacao">
+        <select name="kind" defaultValue={defaultKind ?? "entrega"} className="campo">
+          {OPERATION_KINDS.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.icon} {k.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Reserva *">
+        <select name="reservation_id" defaultValue={defaultReservation ?? ""} className="campo" required>
+          <option value="">Selecione...</option>
+          {reservations.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.number} - {r.customer_name} ({r.event_date})
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Grid>
+        <Field label="Data e horario *">
+          <input name="scheduled_at" type="datetime-local" className="campo" required />
+        </Field>
+        <Field label="Status">
+          <select name="status" defaultValue="pendente" className="campo">
+            {OPERATION_STATUS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Responsavel">
+          <input name="assignee" className="campo" placeholder="Quem vai executar" />
+        </Field>
+        <Field label="Veiculo">
+          <select name="vehicle_id" className="campo">
+            <option value="">Sem veiculo</option>
+            {vehicles.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </Grid>
+
+      <Field label="Observacoes">
+        <textarea name="notes" rows={3} className="campo" />
+      </Field>
+
+      {error && (
+        <p className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p>
+      )}
+      <SubmitButton className="w-full sm:w-auto">Agendar operacao</SubmitButton>
+    </form>
+  );
+}

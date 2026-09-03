@@ -1,0 +1,31 @@
+import { notFound } from "next/navigation";
+import { all, one } from "@/lib/db";
+import { requireUser } from "@/lib/auth";
+import { Card, PageHeader } from "@/components/ui";
+import FreightForm from "../../FreightForm";
+import { updateFreight } from "../../actions";
+
+export const dynamic = "force-dynamic";
+
+export default async function EditarFretePage({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser();
+  const { id } = await params;
+  const freight = one<any>(`SELECT * FROM freights WHERE id = ?`, [Number(id)]);
+  if (!freight) notFound();
+  const customers = all<any>(`SELECT id, name, phone FROM customers WHERE active = 1 ORDER BY name`);
+  const vehicles = all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
+  return (
+    <div className="mx-auto max-w-2xl space-y-4">
+      <PageHeader title={`Editar ${freight.number}`} />
+      <Card>
+        <FreightForm
+          action={updateFreight}
+          customers={customers}
+          vehicles={vehicles}
+          freight={freight}
+          submitLabel="Salvar alteracoes"
+        />
+      </Card>
+    </div>
+  );
+}

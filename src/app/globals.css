@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@theme {
+  --color-terra-50: #FBF4F0;
+  --color-terra-100: #F4E3DB;
+  --color-terra-200: #E7C6B8;
+  --color-terra-300: #D5A28D;
+  --color-terra-400: #C07C62;
+  --color-terra-500: #A85C42;
+  --color-terra-600: #8E4A34;
+  --color-terra-700: #723A29;
+  --color-terra-800: #562C1F;
+  --color-terra-900: #3A1E15;
+
+  --color-areia-50: #FDFBF7;
+  --color-areia-100: #F7F2E9;
+  --color-areia-200: #EEE6D9;
+  --color-areia-300: #E0D4C0;
+  --color-areia-400: #CBBBA0;
+
+  --color-carvao-700: #3A3733;
+  --color-carvao-800: #26231F;
+  --color-carvao-900: #1A1816;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-areia-100);
+  color: var(--color-carvao-900);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Rolagem horizontal suave em abas e tabelas no celular */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* Campos de formulario padronizados */
+.campo {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-areia-300);
+  background: #fff;
+  padding: 0.7rem 0.85rem;
+  font-size: 1rem;
+  color: var(--color-carvao-900);
+  outline: none;
+}
+.campo:focus {
+  border-color: var(--color-terra-400);
+  box-shadow: 0 0 0 3px rgba(168, 92, 66, 0.15);
+}
+.campo:disabled {
+  background: var(--color-areia-100);
+  color: #78716c;
+}
+label.rotulo {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #78716c;
+  margin-bottom: 0.3rem;
+}
+
+.cartao {
+  background: #fff;
+  border: 1px solid var(--color-areia-300);
+  border-radius: 1rem;
+}
+
+/* Impressao de contratos e orcamentos */
+@media print {
+  .nao-imprimir {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .imprimivel {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  @page {
+    margin: 16mm;
+  }
+}
+
+@media (max-width: 767px) {
+  /* espaco para a barra inferior de navegacao */
+  .com-barra-inferior {
+    padding-bottom: 5.5rem;
+  }
+}
