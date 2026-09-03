@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function FretePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const f = one<any>(
+  const f = await one<any>(
     `SELECT f.*, c.name AS customer_name, c.whatsapp, v.name AS vehicle_name
        FROM freights f LEFT JOIN customers c ON c.id = f.customer_id LEFT JOIN vehicles v ON v.id = f.vehicle_id
       WHERE f.id = ?`,
@@ -23,9 +23,9 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
   );
   if (!f) notFound();
 
-  const pagamentos = all<any>(`SELECT * FROM payments WHERE freight_id = ? ORDER BY id DESC`, [f.id]);
-  const pago = scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE freight_id = ?`, [f.id]);
-  const historico = logsFor("frete", f.id);
+  const pagamentos = await all<any>(`SELECT * FROM payments WHERE freight_id = ? ORDER BY id DESC`, [f.id]);
+  const pago = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE freight_id = ?`, [f.id]);
+  const historico = await logsFor("frete", f.id);
   const maps = mapsLink(f.destination);
   const wa = waLink(f.whatsapp || f.phone, `Ola! Sobre o frete ${f.number} do dia ${dateBR(f.date)}.`);
 

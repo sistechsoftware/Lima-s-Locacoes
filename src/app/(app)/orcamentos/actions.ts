@@ -56,9 +56,9 @@ export async function createQuote(_prev: string | null, fd: FormData): Promise<s
   if (!items.length) return "Adicione ao menos um item.";
 
   let id = 0;
-  tx(() => {
-    const number = nextNumber("quotes", "ORC");
-    id = insert(
+  await tx(async () => {
+    const number = await nextNumber("quotes", "ORC");
+    id = await insert(
       `INSERT INTO quotes (number, customer_id, status, event_date, event_time, address, district, city,
         delivery_at, pickup_at, valid_until, freight_cents, assembly_cents, disassembly_cents, other_cents,
         discount_cents, notes, created_by)
@@ -85,7 +85,7 @@ export async function createQuote(_prev: string | null, fd: FormData): Promise<s
       ],
     );
     for (const i of items) {
-      insert(`INSERT INTO quote_items (quote_id, product_id, qty, unit_price_cents, discount_cents) VALUES (?,?,?,?,?)`, [
+      await insert(`INSERT INTO quote_items (quote_id, product_id, qty, unit_price_cents, discount_cents) VALUES (?,?,?,?,?)`, [
         id,
         i.product_id,
         i.qty,
@@ -93,8 +93,8 @@ export async function createQuote(_prev: string | null, fd: FormData): Promise<s
         i.discount_cents,
       ]);
     }
-    recalcQuote(id);
-    logAction(user, "criar", "orcamento", id, `${user.name} criou o orcamento ${number}`);
+    await recalcQuote(id);
+    await logAction(user, "criar", "orcamento", id, `${user.name} criou o orcamento ${number}`);
   });
 
   revalidatePath("/orcamentos");
@@ -106,13 +106,13 @@ export async function updateQuote(_prev: string | null, fd: FormData): Promise<s
   const id = Number(fd.get("id"));
   const h = readHeader(fd);
   const items = readItems(fd);
-  const q = one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
+  const q = await one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
   if (!q) return "Orcamento nao encontrado.";
   if (q.status === "convertido") return "Orcamento ja convertido em reserva nao pode ser alterado.";
   if (!items.length) return "Adicione ao menos um item.";
 
-  tx(() => {
-    run(
+  await tx(async () => {
+    await run(
       `UPDATE quotes SET customer_id=?, status=?, event_date=?, event_time=?, address=?, district=?, city=?,
               delivery_at=?, pickup_at=?, valid_until=?, freight_cents=?, assembly_cents=?, disassembly_cents=?,
               other_cents=?, discount_cents=?, notes=?, updated_at=datetime('now','localtime')
@@ -137,9 +137,9 @@ export async function updateQuote(_prev: string | null, fd: FormData): Promise<s
         id,
       ],
     );
-    run(`DELETE FROM quote_items WHERE quote_id = ?`, [id]);
+    await run(`DELETE FROM quote_items WHERE quote_id = ?`, [id]);
     for (const i of items) {
-      insert(`INSERT INTO quote_items (quote_id, product_id, qty, unit_price_cents, discount_cents) VALUES (?,?,?,?,?)`, [
+      await insert(`INSERT INTO quote_items (quote_id, product_id, qty, unit_price_cents, discount_cents) VALUES (?,?,?,?,?)`, [
         id,
         i.product_id,
         i.qty,
@@ -147,8 +147,8 @@ export async function updateQuote(_prev: string | null, fd: FormData): Promise<s
         i.discount_cents,
       ]);
     }
-    recalcQuote(id);
-    logAction(user, "editar", "orcamento", id, `${user.name} alterou o orcamento ${q.number}`);
+    await recalcQuote(id);
+    await logAction(user, "editar", "orcamento", id, `${user.name} alterou o orcamento ${q.number}`);
   });
 
   revalidatePath(`/orcamentos/${id}`);
@@ -159,10 +159,10 @@ export async function setQuoteStatus(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("id"));
   const status = String(fd.get("status"));
-  const q = one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
+  const q = await one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
   if (!q || q.status === "convertido") return;
-  run(`UPDATE quotes SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`, [status, id]);
-  logAction(user, "status", "orcamento", id, `${user.name} marcou o orcamento ${q.number} como ${status}`);
+  await run(`UPDATE quotes SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`, [status, id]);
+  await logAction(user, "status", "orcamento", id, `${user.name} marcou o orcamento ${q.number} como ${status}`);
   revalidatePath(`/orcamentos/${id}`);
 }
 
@@ -171,14 +171,14 @@ export async function convertQuote(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("id"));
   const force = fd.get("override") === "1";
-  const q = one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
+  const q = await one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
   if (!q) return;
   if (q.reservation_id) redirect(`/reservas/${q.reservation_id}`);
 
-  const items = all<any>(`SELECT * FROM quote_items WHERE quote_id = ?`, [id]);
+  const items = await all<any>(`SELECT * FROM quote_items WHERE quote_id = ?`, [id]);
   if (!items.length) redirect(`/orcamentos/${id}?erro=${encodeURIComponent("Orcamento sem itens.")}`);
 
-  const conflicts = checkConflicts(
+  const conflicts = await checkConflicts(
     items.map((i) => ({ product_id: i.product_id, qty: i.qty })),
     q.delivery_at,
     q.pickup_at,
@@ -191,9 +191,9 @@ export async function convertQuote(fd: FormData) {
   }
 
   let reservationId = 0;
-  tx(() => {
-    const number = nextNumber("reservations", "LIMA");
-    reservationId = insert(
+  await tx(async () => {
+    const number = await nextNumber("reservations", "LIMA");
+    reservationId = await insert(
       `INSERT INTO reservations
         (number, customer_id, status, event_date, event_time, address, district, city, delivery_at, pickup_at,
          needs_delivery, needs_pickup, freight_cents, assembly_cents, disassembly_cents, other_cents, discount_cents,
@@ -221,20 +221,20 @@ export async function convertQuote(fd: FormData) {
       ],
     );
     for (const i of items) {
-      insert(
+      await insert(
         `INSERT INTO reservation_items (reservation_id, product_id, qty, unit_price_cents, discount_cents)
          VALUES (?,?,?,?,?)`,
         [reservationId, i.product_id, i.qty, i.unit_price_cents, i.discount_cents],
       );
     }
-    insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,0,'nao_recebida')`, [reservationId]);
-    run(`UPDATE reservations SET needs_assembly = ? WHERE id = ?`, [q.assembly_cents > 0 ? 1 : 0, reservationId]);
-    run(`UPDATE reservations SET needs_disassembly = ? WHERE id = ?`, [q.disassembly_cents > 0 ? 1 : 0, reservationId]);
-    recalcReservation(reservationId);
-    syncOperations(reservationId);
-    run(`UPDATE quotes SET status = 'convertido', reservation_id = ? WHERE id = ?`, [reservationId, id]);
-    logAction(user, "converter", "orcamento", id, `${user.name} converteu o orcamento ${q.number} na reserva ${number}`);
-    logAction(user, "criar", "reserva", reservationId, `Reserva ${number} criada a partir do orcamento ${q.number}`);
+    await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,0,'nao_recebida')`, [reservationId]);
+    await run(`UPDATE reservations SET needs_assembly = ? WHERE id = ?`, [q.assembly_cents > 0 ? 1 : 0, reservationId]);
+    await run(`UPDATE reservations SET needs_disassembly = ? WHERE id = ?`, [q.disassembly_cents > 0 ? 1 : 0, reservationId]);
+    await recalcReservation(reservationId);
+    await syncOperations(reservationId);
+    await run(`UPDATE quotes SET status = 'convertido', reservation_id = ? WHERE id = ?`, [reservationId, id]);
+    await logAction(user, "converter", "orcamento", id, `${user.name} converteu o orcamento ${q.number} na reserva ${number}`);
+    await logAction(user, "criar", "reserva", reservationId, `Reserva ${number} criada a partir do orcamento ${q.number}`);
   });
 
   revalidatePath("/orcamentos");
@@ -245,8 +245,8 @@ export async function convertQuote(fd: FormData) {
 export async function deleteQuote(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const q = one<any>(`SELECT number FROM quotes WHERE id = ?`, [id]);
-  run(`DELETE FROM quotes WHERE id = ?`, [id]);
-  logAction(user, "excluir", "orcamento", id, `${user.name} excluiu o orcamento ${q?.number}`);
+  const q = await one<any>(`SELECT number FROM quotes WHERE id = ?`, [id]);
+  await run(`DELETE FROM quotes WHERE id = ?`, [id]);
+  await logAction(user, "excluir", "orcamento", id, `${user.name} excluiu o orcamento ${q?.number}`);
   redirect("/orcamentos");
 }

@@ -11,24 +11,24 @@ function hash(password: string) {
 }
 
 /** Cria usuarios, categorias e dados de demonstracao na primeira execucao. */
-export function ensureSeed() {
-  if (scalar<number>("SELECT COUNT(*) FROM users") > 0) return;
+export async function ensureSeed() {
+  if (await scalar<number>("SELECT COUNT(*) FROM users") > 0) return;
 
-  tx(() => {
-    const admin = insert(
+  await tx(async () => {
+    const admin = await insert(
       `INSERT INTO users (name, username, password_hash, role) VALUES (?,?,?,'admin')`,
       ["Administrador", "admin", hash("admin123")],
     );
-    insert(`INSERT INTO users (name, username, password_hash, role) VALUES (?,?,?,'operador')`, [
+    await insert(`INSERT INTO users (name, username, password_hash, role) VALUES (?,?,?,'operador')`, [
       "Operador",
       "operador",
       hash("operador123"),
     ]);
 
-    for (const c of DEFAULT_CATEGORIES) run(`INSERT OR IGNORE INTO categories (name) VALUES (?)`, [c]);
-    const cat = (name: string) => scalar<number>(`SELECT id FROM categories WHERE name = ?`, [name]);
+    for (const c of DEFAULT_CATEGORIES) await run(`INSERT OR IGNORE INTO categories (name) VALUES (?)`, [c]);
+    const cat = async (name: string) => await scalar<number>(`SELECT id FROM categories WHERE name = ?`, [name]);
 
-    insert(`INSERT INTO vehicles (name, plate, model, capacity, notes) VALUES (?,?,?,?,?)`, [
+    await insert(`INSERT INTO vehicles (name, plate, model, capacity, notes) VALUES (?,?,?,?,?)`, [
       "Carro + carretinha",
       "",
       "",
@@ -47,20 +47,20 @@ export function ensureSeed() {
     ];
     const productId: Record<string, number> = {};
     for (const [code, name, category, total, min, rent, replace] of products) {
-      productId[code] = insert(
+      productId[code] = await insert(
         `INSERT INTO products (code, name, category_id, total_qty, min_qty, rent_price_cents, replace_cents, is_demo)
          VALUES (?,?,?,?,?,?,?,1)`,
-        [code, name, cat(category), total, min, rent, replace],
+        [code, name, await cat(category), total, min, rent, replace],
       );
     }
 
     // unidades individuais de exemplo para os brinquedos
-    insert(
+    await insert(
       `INSERT INTO product_units (product_id, code, status, value_cents, condition, notes)
        VALUES (?,?,?,?,?,?)`,
       [productId.PULA, "PULA-001", "disponivel", 350000, "bom", "Unidade de demonstracao"],
     );
-    insert(
+    await insert(
       `INSERT INTO product_units (product_id, code, status, value_cents, condition, notes)
        VALUES (?,?,?,?,?,?)`,
       [productId.PISC, "PISC-001", "disponivel", 180000, "bom", "Unidade de demonstracao"],
@@ -75,7 +75,7 @@ export function ensureSeed() {
     const customerId: number[] = [];
     for (const [name, phone, address, district, city] of customers) {
       customerId.push(
-        insert(
+        await insert(
           `INSERT INTO customers (name, phone, whatsapp, address, district, city, is_demo, notes)
            VALUES (?,?,?,?,?,?,1,'Cliente de demonstracao')`,
           [name, phone, phone, address, district, city],
@@ -154,8 +154,8 @@ export function ensureSeed() {
     ];
 
     for (const r of demo as any[]) {
-      const cust = one<any>(`SELECT * FROM customers WHERE id = ?`, [r.customer])!;
-      const id = insert(
+      const cust = await one<any>(`SELECT * FROM customers WHERE id = ?`, [r.customer])!;
+      const id = await insert(
         `INSERT INTO reservations
           (number, customer_id, status, event_date, event_time, address, district, city,
            delivery_at, pickup_at, needs_delivery, needs_pickup, needs_assembly,
@@ -180,22 +180,22 @@ export function ensureSeed() {
         ],
       );
       for (const [pid, qty] of r.items) {
-        const price = scalar<number>(`SELECT rent_price_cents FROM products WHERE id = ?`, [pid]);
-        insert(
+        const price = await scalar<number>(`SELECT rent_price_cents FROM products WHERE id = ?`, [pid]);
+        await insert(
           `INSERT INTO reservation_items (reservation_id, product_id, qty, unit_price_cents) VALUES (?,?,?,?)`,
           [id, pid, qty, price],
         );
       }
-      recalcReservation(id);
-      syncOperations(id);
-      insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,?,?)`, [
+      await recalcReservation(id);
+      await syncOperations(id);
+      await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,?,?)`, [
         id,
         r.deposit ?? 0,
         r.deposit ? "recebida" : "nao_recebida",
       ]);
-      if (r.deposit) run(`UPDATE deposits SET received_at = ?, method = 'pix' WHERE reservation_id = ?`, [d, id]);
+      if (r.deposit) await run(`UPDATE deposits SET received_at = ?, method = 'pix' WHERE reservation_id = ?`, [d, id]);
       if (r.paid) {
-        insert(
+        await insert(
           `INSERT INTO payments (reservation_id, amount_cents, method, paid_at, notes, created_by)
            VALUES (?,?,?,?,?,?)`,
           [id, r.paid, "pix", d, "Sinal (demonstracao)", admin],
@@ -203,7 +203,7 @@ export function ensureSeed() {
       }
     }
 
-    insert(
+    await insert(
       `INSERT INTO freights (number, customer_id, contact_name, phone, date, time, origin, destination, cargo,
                              amount_cents, status, notes, is_demo, created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)`,
@@ -230,14 +230,14 @@ export function ensureSeed() {
       ["Manutencao", "Reparo em 3 cadeiras", 4500],
     ];
     for (const [category, description, amount] of expenses) {
-      insert(
+      await insert(
         `INSERT INTO expenses (date, category, description, amount_cents, method, is_demo, created_by)
          VALUES (?,?,?,?,?,1,?)`,
         [d, category, description, amount, "dinheiro", admin],
       );
     }
 
-    insert(
+    await insert(
       `INSERT INTO audit_logs (user_id, user_name, action, entity, entity_id, summary)
        VALUES (?,?,?,?,?,?)`,
       [admin, "Sistema", "seed", "sistema", null, "Base criada com dados de demonstracao"],
@@ -246,23 +246,23 @@ export function ensureSeed() {
 }
 
 /** Remove todos os registros marcados como demonstracao. */
-export function purgeDemoData() {
-  tx(() => {
-    const resIds = all<{ id: number }>(`SELECT id FROM reservations WHERE is_demo = 1`).map((r) => r.id);
+export async function purgeDemoData() {
+  await tx(async () => {
+    const resIds = (await all<{ id: number }>(`SELECT id FROM reservations WHERE is_demo = 1`)).map((r) => r.id);
     for (const id of resIds) {
-      run(`DELETE FROM contracts WHERE reservation_id = ?`, [id]);
-      run(`DELETE FROM payments WHERE reservation_id = ?`, [id]);
-      run(`DELETE FROM deposits WHERE reservation_id = ?`, [id]);
-      run(`DELETE FROM operations WHERE reservation_id = ?`, [id]);
-      run(`DELETE FROM reservation_items WHERE reservation_id = ?`, [id]);
-      run(`DELETE FROM reservations WHERE id = ?`, [id]);
+      await run(`DELETE FROM contracts WHERE reservation_id = ?`, [id]);
+      await run(`DELETE FROM payments WHERE reservation_id = ?`, [id]);
+      await run(`DELETE FROM deposits WHERE reservation_id = ?`, [id]);
+      await run(`DELETE FROM operations WHERE reservation_id = ?`, [id]);
+      await run(`DELETE FROM reservation_items WHERE reservation_id = ?`, [id]);
+      await run(`DELETE FROM reservations WHERE id = ?`, [id]);
     }
-    run(`DELETE FROM quotes WHERE is_demo = 1`);
-    run(`DELETE FROM freights WHERE is_demo = 1`);
-    run(`DELETE FROM expenses WHERE is_demo = 1`);
-    run(`DELETE FROM product_units WHERE product_id IN (SELECT id FROM products WHERE is_demo = 1)`);
-    run(`DELETE FROM products WHERE is_demo = 1 AND id NOT IN (SELECT product_id FROM reservation_items)`);
-    run(`DELETE FROM customers WHERE is_demo = 1 AND id NOT IN (SELECT customer_id FROM reservations)`);
-    run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL`);
+    await run(`DELETE FROM quotes WHERE is_demo = 1`);
+    await run(`DELETE FROM freights WHERE is_demo = 1`);
+    await run(`DELETE FROM expenses WHERE is_demo = 1`);
+    await run(`DELETE FROM product_units WHERE product_id IN (SELECT id FROM products WHERE is_demo = 1)`);
+    await run(`DELETE FROM products WHERE is_demo = 1 AND id NOT IN (SELECT product_id FROM reservation_items)`);
+    await run(`DELETE FROM customers WHERE is_demo = 1 AND id NOT IN (SELECT customer_id FROM reservations)`);
+    await run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL`);
   });
 }

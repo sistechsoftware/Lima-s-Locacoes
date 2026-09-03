@@ -34,8 +34,8 @@ export default async function HistoricoPage({
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const total = scalar<number>(`SELECT COUNT(*) FROM audit_logs ${clause}`, params);
-  const rows = all<any>(`SELECT * FROM audit_logs ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`, [
+  const total = await scalar<number>(`SELECT COUNT(*) FROM audit_logs ${clause}`, params);
+  const rows = await all<any>(`SELECT * FROM audit_logs ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`, [
     ...params,
     PER_PAGE,
     (page - 1) * PER_PAGE,

@@ -31,15 +31,15 @@ export async function saveCompanySettings(fd: FormData): Promise<void> {
   };
   if (logoPath) values.company_logo = logoPath;
 
-  setSettings(values);
-  logAction(user, "editar", "configuracao", null, `${user.name} atualizou os dados da empresa`);
+  await setSettings(values);
+  await logAction(user, "editar", "configuracao", null, `${user.name} atualizou os dados da empresa`);
   revalidatePath("/configuracoes");
   revalidatePath("/dashboard", "layout");
 }
 
 export async function saveTemplates(fd: FormData) {
   const user = await assertAdmin();
-  setSettings({
+  await setSettings({
     contract_template: String(fd.get("contract_template") ?? ""),
     wa_confirm: String(fd.get("wa_confirm") ?? ""),
     wa_delivery: String(fd.get("wa_delivery") ?? ""),
@@ -47,7 +47,7 @@ export async function saveTemplates(fd: FormData) {
     wa_payment: String(fd.get("wa_payment") ?? ""),
     wa_quote: String(fd.get("wa_quote") ?? ""),
   });
-  logAction(user, "editar", "configuracao", null, `${user.name} atualizou os modelos de contrato e WhatsApp`);
+  await logAction(user, "editar", "configuracao", null, `${user.name} atualizou os modelos de contrato e WhatsApp`);
   revalidatePath("/configuracoes");
 }
 
@@ -61,9 +61,9 @@ export async function createUser(_prev: string | null, fd: FormData): Promise<st
   const role = String(fd.get("role") ?? "operador");
   if (!name || !username) return "Informe nome e usuario.";
   if (password.length < 6) return "A senha deve ter ao menos 6 caracteres.";
-  if (scalar<number>(`SELECT COUNT(*) FROM users WHERE username = ?`, [username]) > 0) return "Usuario ja existe.";
+  if (await scalar<number>(`SELECT COUNT(*) FROM users WHERE username = ?`, [username]) > 0) return "Usuario ja existe.";
 
-  const id = insert(`INSERT INTO users (name, username, email, phone, password_hash, role) VALUES (?,?,?,?,?,?)`, [
+  const id = await insert(`INSERT INTO users (name, username, email, phone, password_hash, role) VALUES (?,?,?,?,?,?)`, [
     name,
     username,
     String(fd.get("email") ?? ""),
@@ -71,7 +71,7 @@ export async function createUser(_prev: string | null, fd: FormData): Promise<st
     hashPassword(password),
     role === "admin" ? "admin" : "operador",
   ]);
-  logAction(user, "criar", "usuario", id, `${user.name} criou o usuario ${name} (${role})`);
+  await logAction(user, "criar", "usuario", id, `${user.name} criou o usuario ${name} (${role})`);
   revalidatePath("/configuracoes");
   return null;
 }
@@ -80,10 +80,10 @@ export async function toggleUser(fd: FormData) {
   const admin = await assertAdmin();
   const id = Number(fd.get("id"));
   if (id === admin.id) return; // nao permite se autodesativar
-  const u = one<any>(`SELECT * FROM users WHERE id = ?`, [id]);
+  const u = await one<any>(`SELECT * FROM users WHERE id = ?`, [id]);
   if (!u) return;
-  run(`UPDATE users SET active = ? WHERE id = ?`, [u.active ? 0 : 1, id]);
-  logAction(admin, u.active ? "inativar" : "reativar", "usuario", id, `${admin.name} ${u.active ? "inativou" : "reativou"} ${u.name}`);
+  await run(`UPDATE users SET active = ? WHERE id = ?`, [u.active ? 0 : 1, id]);
+  await logAction(admin, u.active ? "inativar" : "reativar", "usuario", id, `${admin.name} ${u.active ? "inativou" : "reativou"} ${u.name}`);
   revalidatePath("/configuracoes");
 }
 
@@ -94,9 +94,9 @@ export async function resetPassword(fd: FormData): Promise<void> {
   if (password.length < 6) {
     redirect(`/configuracoes?aba=usuarios&erro=${encodeURIComponent("A senha deve ter ao menos 6 caracteres.")}`);
   }
-  const u = one<any>(`SELECT name FROM users WHERE id = ?`, [id]);
-  run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hashPassword(password), id]);
-  logAction(admin, "editar", "usuario", id, `${admin.name} redefiniu a senha de ${u?.name}`);
+  const u = await one<any>(`SELECT name FROM users WHERE id = ?`, [id]);
+  await run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hashPassword(password), id]);
+  await logAction(admin, "editar", "usuario", id, `${admin.name} redefiniu a senha de ${u?.name}`);
   revalidatePath("/configuracoes");
 }
 
@@ -105,10 +105,10 @@ export async function changeOwnPassword(_prev: string | null, fd: FormData): Pro
   const current = String(fd.get("current") ?? "");
   const next = String(fd.get("next") ?? "");
   if (next.length < 6) return "A nova senha deve ter ao menos 6 caracteres.";
-  const row = one<any>(`SELECT password_hash FROM users WHERE id = ?`, [user.id]);
+  const row = await one<any>(`SELECT password_hash FROM users WHERE id = ?`, [user.id]);
   if (!row || !verifyPassword(current, row.password_hash)) return "Senha atual incorreta.";
-  run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hashPassword(next), user.id]);
-  logAction(user, "editar", "usuario", user.id, `${user.name} alterou a propria senha`);
+  await run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hashPassword(next), user.id]);
+  await logAction(user, "editar", "usuario", user.id, `${user.name} alterou a propria senha`);
   return null;
 }
 
@@ -118,20 +118,20 @@ export async function addCategory(fd: FormData) {
   const user = await requireUser();
   const name = String(fd.get("name") ?? "").trim();
   if (!name) return;
-  run(`INSERT OR IGNORE INTO categories (name) VALUES (?)`, [name]);
-  logAction(user, "criar", "categoria", null, `${user.name} criou a categoria ${name}`);
+  await run(`INSERT OR IGNORE INTO categories (name) VALUES (?)`, [name]);
+  await logAction(user, "criar", "categoria", null, `${user.name} criou a categoria ${name}`);
   revalidatePath("/configuracoes");
 }
 
 export async function removeCategory(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const usados = scalar<number>(`SELECT COUNT(*) FROM products WHERE category_id = ?`, [id]);
+  const usados = await scalar<number>(`SELECT COUNT(*) FROM products WHERE category_id = ?`, [id]);
   if (usados > 0) {
     redirect(`/configuracoes?erro=${encodeURIComponent("Categoria em uso por produtos, nao pode ser removida.")}`);
   }
-  const c = one<any>(`SELECT name FROM categories WHERE id = ?`, [id]);
-  run(`DELETE FROM categories WHERE id = ?`, [id]);
-  logAction(user, "excluir", "categoria", id, `${user.name} removeu a categoria ${c?.name}`);
+  const c = await one<any>(`SELECT name FROM categories WHERE id = ?`, [id]);
+  await run(`DELETE FROM categories WHERE id = ?`, [id]);
+  await logAction(user, "excluir", "categoria", id, `${user.name} removeu a categoria ${c?.name}`);
   revalidatePath("/configuracoes");
 }

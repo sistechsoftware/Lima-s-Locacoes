@@ -9,8 +9,8 @@ export type WaMessage = { key: string; label: string; href: string | null; text:
  * A arquitetura isola a geracao da mensagem do meio de envio, de modo que a
  * troca do wa.me pela API oficial do WhatsApp Business exija mudar so aqui.
  */
-export function messagesForReservation(reservation: any, itemsSummary: string, balanceCents: number): WaMessage[] {
-  const s = getSettings();
+export async function messagesForReservation(reservation: any, itemsSummary: string, balanceCents: number): Promise<WaMessage[]> {
+  const s = await getSettings();
   const phone = reservation.customer_whatsapp || reservation.customer_phone;
   const vars = {
     cliente: (reservation.customer_name ?? "").split(" ")[0],
@@ -40,8 +40,8 @@ export function messagesForReservation(reservation: any, itemsSummary: string, b
   ];
 }
 
-export function messageForQuote(quote: any, itemsSummary: string): WaMessage {
-  const s = getSettings();
+export async function messageForQuote(quote: any, itemsSummary: string): Promise<WaMessage> {
+  const s = await getSettings();
   const phone = quote.customer_whatsapp || quote.customer_phone;
   const text = renderTemplate(s.wa_quote, {
     cliente: (quote.customer_name ?? "").split(" ")[0],

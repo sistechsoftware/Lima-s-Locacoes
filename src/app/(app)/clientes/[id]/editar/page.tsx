@@ -8,7 +8,7 @@ import { updateCustomer } from "../../actions";
 export default async function EditarClientePage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
-  const customer = one<any>(`SELECT * FROM customers WHERE id = ?`, [Number(id)]);
+  const customer = await one<any>(`SELECT * FROM customers WHERE id = ?`, [Number(id)]);
   if (!customer) notFound();
   return (
     <div className="mx-auto max-w-2xl space-y-4">

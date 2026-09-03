@@ -24,9 +24,9 @@ export const OPERATION_SELECT = `
     LEFT JOIN customers c ON c.id = r.customer_id
     LEFT JOIN vehicles v ON v.id = o.vehicle_id`;
 
-export function operationsBetween(from: string, to: string, kinds?: string[]) {
+export async function operationsBetween(from: string, to: string, kinds?: string[]) {
   const kindFilter = kinds?.length ? `AND o.kind IN (${kinds.map((k) => `'${k}'`).join(",")})` : "";
-  return all<any>(
+  return await all<any>(
     `${OPERATION_SELECT}
       WHERE substr(o.scheduled_at,1,10) BETWEEN ? AND ?
         AND o.status <> 'cancelada' ${kindFilter}
@@ -39,9 +39,9 @@ export function operationsOn(date: string, kinds?: string[]) {
   return operationsBetween(date, date, kinds);
 }
 
-export function lateOperations(kind?: string) {
+export async function lateOperations(kind?: string) {
   const k = kind ? `AND o.kind = '${kind}'` : "";
-  return all<any>(
+  return await all<any>(
     `${OPERATION_SELECT}
       WHERE substr(o.scheduled_at,1,10) < ? AND o.status IN (${OPEN_OPS}) ${k}
       ORDER BY o.scheduled_at`,
@@ -49,8 +49,8 @@ export function lateOperations(kind?: string) {
   );
 }
 
-export function getOperation(id: number) {
-  return one<any>(`${OPERATION_SELECT} WHERE o.id = ?`, [id]);
+export async function getOperation(id: number) {
+  return await one<any>(`${OPERATION_SELECT} WHERE o.id = ?`, [id]);
 }
 
 /* ------------------------------ eventos da agenda ---------------------------- */
@@ -68,8 +68,8 @@ export type AgendaEvent = {
 };
 
 /** Une operacoes, fretes e eventos de reserva numa linha do tempo unica. */
-export function agendaEvents(from: string, to: string): AgendaEvent[] {
-  const ops = operationsBetween(from, to).map<AgendaEvent>((o) => ({
+export async function agendaEvents(from: string, to: string): Promise<AgendaEvent[]> {
+  const ops = (await operationsBetween(from, to)).map<AgendaEvent>((o) => ({
     id: `op-${o.id}`,
     kind: o.kind,
     label: o.kind[0].toUpperCase() + o.kind.slice(1),
@@ -81,11 +81,11 @@ export function agendaEvents(from: string, to: string): AgendaEvent[] {
     status: o.status,
   }));
 
-  const freights = all<any>(
+  const freights = (await all<any>(
     `SELECT f.*, c.name AS customer_name FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
       WHERE f.date BETWEEN ? AND ? AND f.status <> 'cancelado' ORDER BY f.date, f.time`,
     [from, to],
-  ).map<AgendaEvent>((f) => ({
+  )).map<AgendaEvent>((f) => ({
     id: `frt-${f.id}`,
     kind: "frete",
     label: "Frete",
@@ -97,11 +97,11 @@ export function agendaEvents(from: string, to: string): AgendaEvent[] {
     status: f.status,
   }));
 
-  const events = all<any>(
+  const events = (await all<any>(
     `SELECT r.*, c.name AS customer_name FROM reservations r JOIN customers c ON c.id = r.customer_id
       WHERE r.event_date BETWEEN ? AND ? AND r.status <> 'cancelada' ORDER BY r.event_date`,
     [from, to],
-  ).map<AgendaEvent>((r) => ({
+  )).map<AgendaEvent>((r) => ({
     id: `evt-${r.id}`,
     kind: "evento",
     label: "Evento",
@@ -120,29 +120,29 @@ export function agendaEvents(from: string, to: string): AgendaEvent[] {
 
 /* -------------------------------- indicadores -------------------------------- */
 
-export function dashboardStats() {
+export async function dashboardStats() {
   const d0 = today();
   const weekStart = startOfWeek(d0);
   const weekEnd = addDays(weekStart, 6);
   const mStart = startOfMonth(d0);
   const mEnd = endOfMonth(d0);
 
-  const count = (sql: string, p: any[] = []) => scalar<number>(sql, p);
+  const count = async (sql: string, p: any[] = []) => await scalar<number>(sql, p);
 
-  const reservasHoje = count(
+  const reservasHoje = await count(
     `SELECT COUNT(*) FROM reservations WHERE event_date = ? AND status <> 'cancelada'`,
     [d0],
   );
-  const reservasSemana = count(
+  const reservasSemana = await count(
     `SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status <> 'cancelada'`,
     [weekStart, weekEnd],
   );
-  const proximas = count(
+  const proximas = await count(
     `SELECT COUNT(*) FROM reservations WHERE event_date > ? AND status IN (${HOLD})`,
     [d0],
   );
-  const confirmadas = count(`SELECT COUNT(*) FROM reservations WHERE status = 'confirmada'`);
-  const orcamentosPendentes = count(
+  const confirmadas = await count(`SELECT COUNT(*) FROM reservations WHERE status = 'confirmada'`);
+  const orcamentosPendentes = await count(
     `SELECT COUNT(*) FROM quotes WHERE status IN ('rascunho','enviado','aguardando')`,
   );
 
@@ -157,47 +157,47 @@ export function dashboardStats() {
       [kind, d0],
     );
 
-  const recebidoMes = count(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ? AND ?`, [
+  const recebidoMes = await count(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ? AND ?`, [
     mStart,
     mEnd,
   ]);
-  const faturamentoMes = count(
+  const faturamentoMes = await count(
     `SELECT COALESCE(SUM(total_cents),0) FROM reservations WHERE event_date BETWEEN ? AND ? AND status IN (${ACTIVE})`,
     [mStart, mEnd],
   );
-  const fretesMes = count(
+  const fretesMes = await count(
     `SELECT COALESCE(SUM(amount_cents),0) FROM freights WHERE date BETWEEN ? AND ? AND status = 'concluido'`,
     [mStart, mEnd],
   );
-  const aReceber = count(
+  const aReceber = await count(
     `SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)),0)
        FROM reservations r WHERE r.status IN (${ACTIVE})`,
   );
-  const despesasMes = count(`SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ? AND ?`, [
+  const despesasMes = await count(`SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ? AND ?`, [
     mStart,
     mEnd,
   ]);
 
-  const stock = availabilityAll(`${d0}T00:00`, `${d0}T23:59`);
+  const stock = await availabilityAll(`${d0}T00:00`, `${d0}T23:59`);
   const disponiveis = stock.reduce((s, p) => s + Math.max(0, p.available), 0);
   const reservados = stock.reduce((s, p) => s + p.reserved, 0);
   const manutencao = stock.reduce((s, p) => s + p.maintenance, 0);
   const baixos = stock.filter((p) => p.low).length;
 
-  const conflitos = count(`SELECT COUNT(*) FROM notifications WHERE type = 'conflito'`);
-  const pagamentosPendentes = count(`SELECT COUNT(*) FROM notifications WHERE type = 'pagamento'`);
-  const contratosPendentes = count(`SELECT COUNT(*) FROM notifications WHERE type = 'contrato'`);
+  const conflitos = await count(`SELECT COUNT(*) FROM notifications WHERE type = 'conflito'`);
+  const pagamentosPendentes = await count(`SELECT COUNT(*) FROM notifications WHERE type = 'pagamento'`);
+  const contratosPendentes = await count(`SELECT COUNT(*) FROM notifications WHERE type = 'contrato'`);
 
   return {
     hoje: d0,
     reservas: { hoje: reservasHoje, semana: reservasSemana, proximas, confirmadas, orcamentosPendentes, conflitos },
     operacao: {
-      entregas: opCount("entrega"),
-      retiradas: opCount("retirada"),
-      montagens: opCount("montagem"),
-      desmontagens: opCount("desmontagem"),
-      entregasAtrasadas: opLate("entrega"),
-      retiradasAtrasadas: opLate("retirada"),
+      entregas: await opCount("entrega"),
+      retiradas: await opCount("retirada"),
+      montagens: await opCount("montagem"),
+      desmontagens: await opCount("desmontagem"),
+      entregasAtrasadas: await opLate("entrega"),
+      retiradasAtrasadas: await opLate("retirada"),
     },
     financeiro: {
       faturamentoMes: faturamentoMes + fretesMes,
@@ -224,51 +224,51 @@ export const CUSTOMER_SELECT = `
             FROM reservations r WHERE r.customer_id = c.id AND r.status IN (${ACTIVE})) AS saldo_cents
     FROM customers c`;
 
-export function getCustomer(id: number) {
-  return one<any>(`${CUSTOMER_SELECT} WHERE c.id = ?`, [id]);
+export async function getCustomer(id: number) {
+  return await one<any>(`${CUSTOMER_SELECT} WHERE c.id = ?`, [id]);
 }
 
 /* ------------------------------- busca global -------------------------------- */
 
-export function globalSearch(q: string) {
+export async function globalSearch(q: string) {
   const like = `%${q}%`;
   const digits = q.replace(/\D/g, "");
   const phoneLike = digits ? `%${digits}%` : "% %";
 
   return {
-    customers: all<any>(
+    customers: await all<any>(
       `${CUSTOMER_SELECT} WHERE c.name LIKE ? OR c.doc LIKE ? OR replace(replace(replace(replace(c.phone,'(',''),')',''),'-',''),' ','') LIKE ?
         ORDER BY c.name LIMIT 20`,
       [like, like, phoneLike],
     ),
-    reservations: all<any>(
+    reservations: await all<any>(
       `SELECT r.*, c.name AS customer_name FROM reservations r JOIN customers c ON c.id = r.customer_id
         WHERE r.number LIKE ? OR c.name LIKE ? OR r.address LIKE ? OR r.district LIKE ?
         ORDER BY r.event_date DESC LIMIT 20`,
       [like, like, like, like],
     ),
-    quotes: all<any>(
+    quotes: await all<any>(
       `SELECT q.*, c.name AS customer_name FROM quotes q JOIN customers c ON c.id = q.customer_id
         WHERE q.number LIKE ? OR c.name LIKE ? ORDER BY q.id DESC LIMIT 20`,
       [like, like],
     ),
-    freights: all<any>(
+    freights: await all<any>(
       `SELECT f.*, c.name AS customer_name FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
         WHERE f.number LIKE ? OR f.destination LIKE ? OR f.origin LIKE ? OR c.name LIKE ? OR f.contact_name LIKE ?
         ORDER BY f.date DESC LIMIT 20`,
       [like, like, like, like, like],
     ),
-    products: all<any>(
+    products: await all<any>(
       `SELECT p.*, cat.name AS category FROM products p LEFT JOIN categories cat ON cat.id = p.category_id
         WHERE p.name LIKE ? OR p.code LIKE ? ORDER BY p.name LIMIT 20`,
       [like, like],
     ),
-    units: all<any>(
+    units: await all<any>(
       `SELECT u.*, p.name AS product_name FROM product_units u JOIN products p ON p.id = u.product_id
         WHERE u.code LIKE ? ORDER BY u.code LIMIT 20`,
       [like],
     ),
-    contracts: all<any>(
+    contracts: await all<any>(
       `SELECT ct.*, r.number AS reservation_number, c.name AS customer_name
          FROM contracts ct JOIN reservations r ON r.id = ct.reservation_id JOIN customers c ON c.id = r.customer_id
         WHERE ct.number LIKE ? OR r.number LIKE ? OR c.name LIKE ? ORDER BY ct.id DESC LIMIT 20`,

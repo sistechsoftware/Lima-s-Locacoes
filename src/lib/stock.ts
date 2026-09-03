@@ -63,13 +63,13 @@ export function holdWindow(r: {
 }
 
 /** Reservas que ocupam um produto dentro da janela informada. */
-export function holdsForProduct(
+export async function holdsForProduct(
   productId: number,
   from: string,
   to: string,
   excludeReservationId?: number | null,
-): Hold[] {
-  return all<Hold>(
+): Promise<Hold[]> {
+  return await all<Hold>(
     `SELECT r.id AS reservation_id, r.number, c.name AS customer, r.status,
             i.qty, ${HOLD_START} AS hold_start, ${HOLD_END} AS hold_end
        FROM reservation_items i
@@ -106,19 +106,19 @@ export function peakUsage(holds: Hold[], from: string, to: string): number {
 }
 
 /** Disponibilidade de um produto na janela informada. */
-export function availabilityFor(
+export async function availabilityFor(
   productId: number,
   from: string,
   to: string,
   excludeReservationId?: number | null,
-): Availability {
-  const p = one<any>(
+): Promise<Availability> {
+  const p = await one<any>(
     `SELECT p.id, p.code, p.name, p.total_qty, p.maintenance_qty, p.min_qty, c.name AS category
        FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
     [productId],
   );
   if (!p) throw new Error("Produto nao encontrado: " + productId);
-  const holds = holdsForProduct(productId, from, to, excludeReservationId);
+  const holds = await holdsForProduct(productId, from, to, excludeReservationId);
   const reserved = peakUsage(holds, from, to);
   const effective = Math.max(0, p.total_qty - p.maintenance_qty);
   return {
@@ -137,18 +137,18 @@ export function availabilityFor(
 }
 
 /** Disponibilidade de todos os produtos ativos numa janela (tela de consulta). */
-export function availabilityAll(
+export async function availabilityAll(
   from: string,
   to: string,
   excludeReservationId?: number | null,
-): Availability[] {
-  const products = all<any>(
+): Promise<Availability[]> {
+  const products = await all<any>(
     `SELECT p.id, p.code, p.name, p.total_qty, p.maintenance_qty, p.min_qty, c.name AS category
        FROM products p LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.active = 1
       ORDER BY c.name, p.name`,
   );
-  const rows = all<Hold & { product_id: number }>(
+  const rows = await all<Hold & { product_id: number }>(
     `SELECT i.product_id, r.id AS reservation_id, r.number, c.name AS customer, r.status,
             i.qty, ${HOLD_START} AS hold_start, ${HOLD_END} AS hold_end
        FROM reservation_items i
@@ -200,19 +200,19 @@ export type Conflict = {
  * Verifica se a lista de itens cabe no estoque durante a janela.
  * Retorna apenas os produtos com falta.
  */
-export function checkConflicts(
+export async function checkConflicts(
   items: { product_id: number; qty: number }[],
   from: string,
   to: string,
   excludeReservationId?: number | null,
-): Conflict[] {
+): Promise<Conflict[]> {
   const conflicts: Conflict[] = [];
   const merged = new Map<number, number>();
   for (const it of items) merged.set(it.product_id, (merged.get(it.product_id) ?? 0) + Number(it.qty || 0));
 
   for (const [productId, qty] of merged) {
     if (qty <= 0) continue;
-    const a = availabilityFor(productId, from, to, excludeReservationId);
+    const a = await availabilityFor(productId, from, to, excludeReservationId);
     if (qty > a.available) {
       conflicts.push({
         product_id: productId,
@@ -222,7 +222,7 @@ export function checkConflicts(
         total: a.total,
         reserved: a.reserved,
         missing: qty - Math.max(0, a.available),
-        holds: holdsForProduct(productId, from, to, excludeReservationId),
+        holds: await holdsForProduct(productId, from, to, excludeReservationId),
       });
     }
   }
@@ -230,8 +230,8 @@ export function checkConflicts(
 }
 
 /** Resumo por categoria para a tela de disponibilidade. */
-export function availabilityByCategory(from: string, to: string) {
-  const rows = availabilityAll(from, to);
+export async function availabilityByCategory(from: string, to: string) {
+  const rows = await availabilityAll(from, to);
   const groups = new Map<string, Availability[]>();
   for (const r of rows) {
     const key = r.category ?? "Sem categoria";

@@ -19,12 +19,12 @@ export default async function ConfiguracoesPage({
 }) {
   const user = await requireUser();
   const { aba = "empresa", erro } = await searchParams;
-  const s = getSettings();
-  const categorias = all<any>(
+  const s = await getSettings();
+  const categorias = await all<any>(
     `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS produtos FROM categories c ORDER BY c.name`,
   );
-  const vehicles = all<any>(`SELECT * FROM vehicles ORDER BY active DESC, name`);
-  const users = user.role === "admin" ? listUsers() : [];
+  const vehicles = await all<any>(`SELECT * FROM vehicles ORDER BY active DESC, name`);
+  const users = user.role === "admin" ? await listUsers() : [];
 
   const ABAS = [
     { value: "empresa", label: "Empresa" },

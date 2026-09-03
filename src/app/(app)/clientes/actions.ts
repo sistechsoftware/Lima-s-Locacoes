@@ -25,12 +25,12 @@ export async function createCustomer(_prev: string | null, fd: FormData): Promis
   const c = readCustomer(fd);
   if (!c.name) return "Informe o nome do cliente.";
 
-  const id = insert(
+  const id = await insert(
     `INSERT INTO customers (name, doc, phone, whatsapp, email, address, district, city, zip, notes)
      VALUES (?,?,?,?,?,?,?,?,?,?)`,
     [c.name, c.doc, c.phone, c.whatsapp || c.phone, c.email, c.address, c.district, c.city, c.zip, c.notes],
   );
-  logAction(user, "criar", "cliente", id, `${user.name} cadastrou o cliente ${c.name}`);
+  await logAction(user, "criar", "cliente", id, `${user.name} cadastrou o cliente ${c.name}`);
   revalidatePath("/clientes");
 
   const next = String(fd.get("next") ?? "");
@@ -43,13 +43,13 @@ export async function updateCustomer(_prev: string | null, fd: FormData): Promis
   const c = readCustomer(fd);
   if (!c.name) return "Informe o nome do cliente.";
 
-  run(
+  await run(
     `UPDATE customers SET name=?, doc=?, phone=?, whatsapp=?, email=?, address=?, district=?, city=?, zip=?, notes=?,
             updated_at = datetime('now','localtime')
       WHERE id = ?`,
     [c.name, c.doc, c.phone, c.whatsapp || c.phone, c.email, c.address, c.district, c.city, c.zip, c.notes, id],
   );
-  logAction(user, "editar", "cliente", id, `${user.name} alterou o cliente ${c.name}`);
+  await logAction(user, "editar", "cliente", id, `${user.name} alterou o cliente ${c.name}`);
   revalidatePath(`/clientes/${id}`);
   redirect(`/clientes/${id}`);
 }
@@ -58,11 +58,11 @@ export async function updateCustomer(_prev: string | null, fd: FormData): Promis
 export async function toggleCustomer(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const c = one<any>(`SELECT * FROM customers WHERE id = ?`, [id]);
+  const c = await one<any>(`SELECT * FROM customers WHERE id = ?`, [id]);
   if (!c) return;
   const active = c.active ? 0 : 1;
-  run(`UPDATE customers SET active = ? WHERE id = ?`, [active, id]);
-  logAction(user, active ? "reativar" : "inativar", "cliente", id, `${user.name} ${active ? "reativou" : "inativou"} o cliente ${c.name}`);
+  await run(`UPDATE customers SET active = ? WHERE id = ?`, [active, id]);
+  await logAction(user, active ? "reativar" : "inativar", "cliente", id, `${user.name} ${active ? "reativou" : "inativou"} o cliente ${c.name}`);
   revalidatePath(`/clientes/${id}`);
 }
 
@@ -70,17 +70,17 @@ export async function toggleCustomer(fd: FormData) {
 export async function deleteCustomer(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const usados = scalar<number>(
+  const usados = await scalar<number>(
     `SELECT (SELECT COUNT(*) FROM reservations WHERE customer_id = ?) + (SELECT COUNT(*) FROM quotes WHERE customer_id = ?)`,
     [id, id],
   );
-  const c = one<any>(`SELECT name FROM customers WHERE id = ?`, [id]);
+  const c = await one<any>(`SELECT name FROM customers WHERE id = ?`, [id]);
   if (usados > 0) {
-    run(`UPDATE customers SET active = 0 WHERE id = ?`, [id]);
-    logAction(user, "inativar", "cliente", id, `${user.name} inativou o cliente ${c?.name} (possui historico)`);
+    await run(`UPDATE customers SET active = 0 WHERE id = ?`, [id]);
+    await logAction(user, "inativar", "cliente", id, `${user.name} inativou o cliente ${c?.name} (possui historico)`);
     redirect(`/clientes/${id}?aviso=inativado`);
   }
-  run(`DELETE FROM customers WHERE id = ?`, [id]);
-  logAction(user, "excluir", "cliente", id, `${user.name} excluiu o cliente ${c?.name}`);
+  await run(`DELETE FROM customers WHERE id = ?`, [id]);
+  await logAction(user, "excluir", "cliente", id, `${user.name} excluiu o cliente ${c?.name}`);
   redirect("/clientes");
 }

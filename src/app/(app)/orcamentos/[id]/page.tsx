@@ -24,17 +24,17 @@ export default async function OrcamentoPage({
   const user = await requireUser();
   const { id } = await params;
   const { erro } = await searchParams;
-  const q = one<any>(
+  const q = await one<any>(
     `SELECT qt.*, c.name AS customer_name, c.phone AS customer_phone, c.whatsapp AS customer_whatsapp
        FROM quotes qt JOIN customers c ON c.id = qt.customer_id WHERE qt.id = ?`,
     [Number(id)],
   );
   if (!q) notFound();
 
-  const items = quoteItems(q.id);
+  const items = await quoteItems(q.id);
   const resumo = items.map((i) => `${i.qty}x ${i.product_name}`).join(", ");
-  const msg = messageForQuote(q, items.map((i) => `- ${i.qty}x ${i.product_name}: ${money(i.subtotal_cents)}`).join("\n"));
-  const historico = logsFor("orcamento", q.id);
+  const msg = await messageForQuote(q, items.map((i) => `- ${i.qty}x ${i.product_name}: ${money(i.subtotal_cents)}`).join("\n"));
+  const historico = await logsFor("orcamento", q.id);
 
   return (
     <div className="space-y-4">

@@ -43,29 +43,29 @@ export default async function ReservaPage({
   const user = await requireUser();
   const { id } = await params;
   const { erro } = await searchParams;
-  const r = getReservation(Number(id));
+  const r = await getReservation(Number(id));
   if (!r) notFound();
 
-  const items = reservationItems(r.id);
-  const m = reservationMoney(r.id);
-  const ops = reservationOperations(r.id);
-  const payments = all<any>(`SELECT * FROM payments WHERE reservation_id = ? ORDER BY paid_at DESC, id DESC`, [r.id]);
-  const contracts = all<any>(`SELECT * FROM contracts WHERE reservation_id = ? ORDER BY id DESC`, [r.id]);
-  const damages = all<any>(
+  const items = await reservationItems(r.id);
+  const m = await reservationMoney(r.id);
+  const ops = await reservationOperations(r.id);
+  const payments = await all<any>(`SELECT * FROM payments WHERE reservation_id = ? ORDER BY paid_at DESC, id DESC`, [r.id]);
+  const contracts = await all<any>(`SELECT * FROM contracts WHERE reservation_id = ? ORDER BY id DESC`, [r.id]);
+  const damages = await all<any>(
     `SELECT d.*, p.name AS product_name FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
       WHERE d.reservation_id = ? ORDER BY d.id DESC`,
     [r.id],
   );
-  const historico = logsFor("reserva", r.id);
+  const historico = await logsFor("reserva", r.id);
   const pay = paymentState(m.total, m.paid);
-  const resumo = itemsSummary(r.id);
-  const mensagens = messagesForReservation(r, resumo, m.balance);
+  const resumo = await itemsSummary(r.id);
+  const mensagens = await messagesForReservation(r, resumo, m.balance);
   const maps = mapsLink(r.address, r.district, r.city);
 
   const w = holdWindow(r);
   const conflicts =
     r.status !== "cancelada"
-      ? checkConflicts(
+      ? await checkConflicts(
           items.map((i) => ({ product_id: i.product_id, qty: i.qty })),
           w.from,
           w.to,

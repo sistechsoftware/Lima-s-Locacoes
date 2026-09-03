@@ -33,7 +33,7 @@ export async function attach(
   for (const f of files) {
     const p = await saveUpload(f);
     if (!p) continue;
-    insert(`INSERT INTO attachments (entity, entity_id, path, caption, created_by) VALUES (?,?,?,?,?)`, [
+    await insert(`INSERT INTO attachments (entity, entity_id, path, caption, created_by) VALUES (?,?,?,?,?)`, [
       entity,
       entityId,
       p,
@@ -45,14 +45,14 @@ export async function attach(
   return saved;
 }
 
-export function attachmentsFor(entity: string, entityId: number) {
-  return all<any>(`SELECT * FROM attachments WHERE entity = ? AND entity_id = ? ORDER BY id DESC`, [entity, entityId]);
+export async function attachmentsFor(entity: string, entityId: number) {
+  return await all<any>(`SELECT * FROM attachments WHERE entity = ? AND entity_id = ? ORDER BY id DESC`, [entity, entityId]);
 }
 
 export async function removeAttachment(id: number) {
-  const a = one<any>(`SELECT * FROM attachments WHERE id = ?`, [id]);
+  const a = await one<any>(`SELECT * FROM attachments WHERE id = ?`, [id]);
   if (!a) return;
-  run(`DELETE FROM attachments WHERE id = ?`, [id]);
+  await run(`DELETE FROM attachments WHERE id = ?`, [id]);
   try {
     await fs.unlink(path.join(process.cwd(), "public", a.path.replace(/^\//, "")));
   } catch {

@@ -22,14 +22,14 @@ export default async function ContratoPage({
   const user = await requireUser();
   const { id } = await params;
   const sp = await searchParams;
-  const c = one<any>(
+  const c = await one<any>(
     `SELECT ct.*, r.number AS reservation_number, cu.name AS customer_name
        FROM contracts ct JOIN reservations r ON r.id = ct.reservation_id JOIN customers cu ON cu.id = r.customer_id
       WHERE ct.id = ?`,
     [Number(id)],
   );
   if (!c) notFound();
-  const s = getSettings();
+  const s = await getSettings();
 
   return (
     <div className="space-y-4">

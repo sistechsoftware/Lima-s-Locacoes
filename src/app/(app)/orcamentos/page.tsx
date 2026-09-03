@@ -29,8 +29,8 @@ export default async function OrcamentosPage({
   else if (aba === "recusados") where.push("qt.status = 'recusado'");
 
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const total = scalar<number>(`SELECT COUNT(*) FROM quotes qt JOIN customers c ON c.id = qt.customer_id ${clause}`, params);
-  const rows = all<any>(
+  const total = await scalar<number>(`SELECT COUNT(*) FROM quotes qt JOIN customers c ON c.id = qt.customer_id ${clause}`, params);
+  const rows = await all<any>(
     `SELECT qt.*, c.name AS customer_name FROM quotes qt JOIN customers c ON c.id = qt.customer_id
      ${clause} ORDER BY qt.id DESC LIMIT ? OFFSET ?`,
     [...params, PER_PAGE, (page - 1) * PER_PAGE],

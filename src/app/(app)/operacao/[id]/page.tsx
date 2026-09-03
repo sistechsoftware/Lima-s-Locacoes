@@ -18,30 +18,30 @@ export const dynamic = "force-dynamic";
 export default async function OperacaoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const op = getOperation(Number(id));
+  const op = await getOperation(Number(id));
   if (!op) notFound();
 
   const kind = OPERATION_KINDS.find((k) => k.value === op.kind)!;
   const itens = op.reservation_id
-    ? all<any>(
+    ? await all<any>(
         `SELECT i.*, p.name AS product_name, p.id AS product_id FROM reservation_items i
            JOIN products p ON p.id = i.product_id WHERE i.reservation_id = ? ORDER BY p.name`,
         [op.reservation_id],
       )
     : [];
-  const vehicles = all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
-  const checklist = one<any>(`SELECT * FROM checklists WHERE operation_id = ? ORDER BY id DESC LIMIT 1`, [op.id]);
+  const vehicles = await all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
+  const checklist = await one<any>(`SELECT * FROM checklists WHERE operation_id = ? ORDER BY id DESC LIMIT 1`, [op.id]);
   const marcados: Record<string, boolean> = checklist ? JSON.parse(checklist.data) : {};
-  const fotos = attachmentsFor("operacao", op.id);
+  const fotos = await attachmentsFor("operacao", op.id);
   const itensChecklist = checklistFor(op.kind);
   const danos = op.reservation_id
-    ? all<any>(
+    ? await all<any>(
         `SELECT d.*, p.name AS product_name FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
           WHERE d.reservation_id = ? ORDER BY d.id DESC`,
         [op.reservation_id],
       )
     : [];
-  const historico = logsFor("operacao", op.id).slice(0, 10);
+  const historico = (await logsFor("operacao", op.id)).slice(0, 10);
 
   const maps = mapsLink(op.address, op.district, op.city);
   const wa = waLink(

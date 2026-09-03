@@ -17,7 +17,7 @@ export default async function DisponibilidadePage({
   const data = sp.data || today();
   const ate = sp.ate || data;
 
-  const grupos = availabilityByCategory(`${data}T00:00`, `${ate}T23:59`);
+  const grupos = await availabilityByCategory(`${data}T00:00`, `${ate}T23:59`);
   const totalDisponivel = grupos.reduce((s, g) => s + g.available, 0);
   const totalReservado = grupos.reduce((s, g) => s + g.reserved, 0);
 

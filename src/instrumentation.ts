@@ -5,6 +5,6 @@ export async function register() {
   const { ensureSeed } = await import("./lib/seed");
   const { purgeExpiredSessions } = await import("./lib/auth");
   getDb();
-  ensureSeed();
-  purgeExpiredSessions();
+  await ensureSeed();
+  await purgeExpiredSessions();
 }

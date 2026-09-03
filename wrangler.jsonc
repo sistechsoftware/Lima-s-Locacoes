@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "limas-locacoes",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "limas-locacoes",
+      "database_id": "79a1d43c-8355-4689-9f11-5ff461e48c58"
+    }
+  ]
+}

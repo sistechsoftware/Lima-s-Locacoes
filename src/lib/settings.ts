@@ -76,20 +76,20 @@ export const DEFAULT_SETTINGS: Settings = {
     "Ola, {{cliente}}! Segue o orcamento {{orcamento}} da {{empresa}} para o dia {{data_evento}}:\n{{itens}}\nTotal: {{valor_total}}",
 };
 
-export function getSettings(): Settings {
-  const rows = all<{ key: string; value: string }>("SELECT key, value FROM settings");
+export async function getSettings(): Promise<Settings> {
+  const rows = await all<{ key: string; value: string }>("SELECT key, value FROM settings");
   const out: Settings = { ...DEFAULT_SETTINGS };
   for (const r of rows) if (r.value !== null && r.value !== undefined) out[r.key] = r.value;
   return out;
 }
 
-export function getSetting(key: string): string {
-  return getSettings()[key] ?? "";
+export async function getSetting(key: string): Promise<string> {
+  return (await getSettings())[key] ?? "";
 }
 
-export function setSettings(values: Settings) {
+export async function setSettings(values: Settings) {
   for (const [key, value] of Object.entries(values)) {
-    run("INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", [
+    await run("INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", [
       key,
       value ?? "",
     ]);

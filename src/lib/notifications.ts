@@ -13,8 +13,8 @@ type Alert = {
   link?: string;
 };
 
-function upsert(a: Alert) {
-  run(
+async function upsert(a: Alert) {
+  await run(
     `INSERT INTO notifications (type, severity, title, body, link, dedupe_key)
      VALUES (?,?,?,?,?,?)
      ON CONFLICT(dedupe_key) DO UPDATE SET
@@ -28,17 +28,17 @@ function upsert(a: Alert) {
  * Usa dedupe_key para nao duplicar o mesmo aviso a cada carregamento e remove
  * os alertas que deixaram de ser verdadeiros.
  */
-export function rebuildNotifications() {
+export async function rebuildNotifications() {
   const d0 = today();
   const d3 = addDays(d0, 3);
   const keep: string[] = [];
-  const push = (a: Alert) => {
+  const push = async (a: Alert) => {
     keep.push(a.dedupe_key);
-    upsert(a);
+    await upsert(a);
   };
 
   /* operacoes de hoje e atrasadas */
-  const ops = all<any>(
+  const ops = await all<any>(
     `SELECT o.*, c.name AS customer, r.number
        FROM operations o
        LEFT JOIN reservations r ON r.id = o.reservation_id
@@ -49,7 +49,7 @@ export function rebuildNotifications() {
   );
   for (const o of ops) {
     const late = o.scheduled_at.slice(0, 10) < d0;
-    push({
+    await push({
       dedupe_key: `op-${o.id}`,
       type: o.kind,
       severity: late ? "critico" : "aviso",
@@ -60,7 +60,7 @@ export function rebuildNotifications() {
   }
 
   /* pagamentos pendentes de reservas ja entregues ou com evento passado */
-  const unpaid = all<any>(
+  const unpaid = await all<any>(
     `SELECT r.id, r.number, r.event_date, r.total_cents, c.name AS customer,
             (SELECT COALESCE(SUM(amount_cents),0) FROM payments p WHERE p.reservation_id = r.id) AS paid
        FROM reservations r JOIN customers c ON c.id = r.customer_id
@@ -70,7 +70,7 @@ export function rebuildNotifications() {
     [d0],
   );
   for (const r of unpaid) {
-    push({
+    await push({
       dedupe_key: `pay-${r.id}`,
       type: "pagamento",
       severity: "critico",
@@ -81,14 +81,14 @@ export function rebuildNotifications() {
   }
 
   /* reservas proximas ainda como pre-reserva */
-  const soon = all<any>(
+  const soon = await all<any>(
     `SELECT r.id, r.number, r.event_date, c.name AS customer
        FROM reservations r JOIN customers c ON c.id = r.customer_id
       WHERE r.status = 'pre_reserva' AND r.event_date BETWEEN ? AND ?`,
     [d0, d3],
   );
   for (const r of soon) {
-    push({
+    await push({
       dedupe_key: `soon-${r.id}`,
       type: "reserva",
       severity: "aviso",
@@ -99,7 +99,7 @@ export function rebuildNotifications() {
   }
 
   /* contratos nao assinados de eventos proximos */
-  const contracts = all<any>(
+  const contracts = await all<any>(
     `SELECT r.id, r.number, r.event_date, c.name AS customer,
             (SELECT ct.status FROM contracts ct WHERE ct.reservation_id = r.id ORDER BY ct.id DESC LIMIT 1) AS cstatus
        FROM reservations r JOIN customers c ON c.id = r.customer_id
@@ -108,7 +108,7 @@ export function rebuildNotifications() {
   );
   for (const r of contracts) {
     if (r.cstatus === "assinado") continue;
-    push({
+    await push({
       dedupe_key: `contract-${r.id}`,
       type: "contrato",
       severity: "aviso",
@@ -119,7 +119,7 @@ export function rebuildNotifications() {
   }
 
   /* caucao nao recebida em reservas confirmadas */
-  const deposits = all<any>(
+  const deposits = await all<any>(
     `SELECT r.id, r.number, c.name AS customer, d.amount_cents, d.status
        FROM reservations r
        JOIN customers c ON c.id = r.customer_id
@@ -128,7 +128,7 @@ export function rebuildNotifications() {
         AND r.status IN ('confirmada','entregue','em_uso','aguardando_retirada')`,
   );
   for (const r of deposits) {
-    push({
+    await push({
       dedupe_key: `deposit-${r.id}`,
       type: "caucao",
       severity: "aviso",
@@ -139,12 +139,12 @@ export function rebuildNotifications() {
   }
 
   /* estoque baixo */
-  const low = all<any>(
+  const low = await all<any>(
     `SELECT id, name, total_qty, maintenance_qty, min_qty FROM products
       WHERE active = 1 AND min_qty > 0 AND (total_qty - maintenance_qty) < min_qty`,
   );
   for (const p of low) {
-    push({
+    await push({
       dedupe_key: `low-${p.id}`,
       type: "estoque",
       severity: "aviso",
@@ -155,11 +155,11 @@ export function rebuildNotifications() {
   }
 
   /* manutencoes abertas */
-  const maint = all<any>(
+  const maint = await all<any>(
     `SELECT m.id, m.qty, p.name FROM maintenance m JOIN products p ON p.id = m.product_id WHERE m.status = 'aberta'`,
   );
   for (const m of maint) {
-    push({
+    await push({
       dedupe_key: `maint-${m.id}`,
       type: "manutencao",
       severity: "info",
@@ -170,13 +170,13 @@ export function rebuildNotifications() {
   }
 
   /* conflitos de estoque em reservas futuras */
-  for (const r of futureHoldingReservations(d0)) {
-    const items = all<any>(`SELECT product_id, qty FROM reservation_items WHERE reservation_id = ?`, [r.id]);
+  for (const r of await futureHoldingReservations(d0)) {
+    const items = await all<any>(`SELECT product_id, qty FROM reservation_items WHERE reservation_id = ?`, [r.id]);
     if (!items.length) continue;
     const w = holdWindow(r);
-    const conflicts = checkConflicts(items, w.from, w.to, r.id);
+    const conflicts = await checkConflicts(items, w.from, w.to, r.id);
     if (conflicts.length) {
-      push({
+      await push({
         dedupe_key: `conflict-${r.id}`,
         type: "conflito",
         severity: "critico",
@@ -190,14 +190,14 @@ export function rebuildNotifications() {
   /* remove alertas que nao se aplicam mais */
   if (keep.length) {
     const placeholders = keep.map(() => "?").join(",");
-    run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL AND dedupe_key NOT IN (${placeholders})`, keep);
+    await run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL AND dedupe_key NOT IN (${placeholders})`, keep);
   } else {
-    run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL`);
+    await run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL`);
   }
 }
 
-function futureHoldingReservations(from: string) {
-  return all<any>(
+async function futureHoldingReservations(from: string) {
+  return await all<any>(
     `SELECT r.id, r.number, r.event_date, r.delivery_at, r.pickup_at, c.name AS customer
        FROM reservations r JOIN customers c ON c.id = r.customer_id
       WHERE r.status IN ('pre_reserva','confirmada') AND r.event_date >= ?
@@ -206,15 +206,15 @@ function futureHoldingReservations(from: string) {
   );
 }
 
-export function listNotifications(onlyUnread = false) {
-  return all<any>(
+export async function listNotifications(onlyUnread = false) {
+  return await all<any>(
     `SELECT * FROM notifications ${onlyUnread ? "WHERE read_at IS NULL" : ""}
       ORDER BY CASE severity WHEN 'critico' THEN 0 WHEN 'aviso' THEN 1 ELSE 2 END, id DESC
       LIMIT 200`,
   );
 }
 
-export function unreadCount(): number {
-  const r = all<{ n: number }>(`SELECT COUNT(*) AS n FROM notifications WHERE read_at IS NULL`);
+export async function unreadCount(): Promise<number> {
+  const r = await all<{ n: number }>(`SELECT COUNT(*) AS n FROM notifications WHERE read_at IS NULL`);
   return r[0]?.n ?? 0;
 }

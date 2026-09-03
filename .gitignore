@@ -4,6 +4,8 @@ node_modules/
 # Next.js build output
 .next/
 out/
+.open-next/
+.wrangler/
 
 # TypeScript cache
 *.tsbuildinfo
@@ -12,6 +14,7 @@ out/
 .env
 .env.*
 !.env.example
+.dev.vars
 
 # Runtime data (may contain customer and authentication data)
 data/*.db
@@ -22,4 +25,3 @@ public/uploads/*
 # Logs and OS files
 *.log
 .DS_Store
-

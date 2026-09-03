@@ -5,12 +5,12 @@ import { requireUser } from "@/lib/auth";
 
 export async function markAllRead() {
   await requireUser();
-  run(`UPDATE notifications SET read_at = datetime('now','localtime') WHERE read_at IS NULL`);
+  await run(`UPDATE notifications SET read_at = datetime('now','localtime') WHERE read_at IS NULL`);
   revalidatePath("/notificacoes");
 }
 
 export async function markRead(fd: FormData) {
   await requireUser();
-  run(`UPDATE notifications SET read_at = datetime('now','localtime') WHERE id = ?`, [Number(fd.get("id"))]);
+  await run(`UPDATE notifications SET read_at = datetime('now','localtime') WHERE id = ?`, [Number(fd.get("id"))]);
   revalidatePath("/notificacoes");
 }

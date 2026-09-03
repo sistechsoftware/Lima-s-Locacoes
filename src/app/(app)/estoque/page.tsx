@@ -15,8 +15,8 @@ export default async function EstoquePage({
   const sp = await searchParams;
   const aba = sp.aba ?? "todos";
   const d0 = today();
-  const disponibilidade = availabilityAll(`${d0}T00:00`, `${d0}T23:59`);
-  const produtos = all<any>(
+  const disponibilidade = await availabilityAll(`${d0}T00:00`, `${d0}T23:59`);
+  const produtos = await all<any>(
     `SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id
       ORDER BY p.active DESC, c.name, p.name`,
   );

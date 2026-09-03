@@ -22,29 +22,31 @@ export default async function ProdutoPage({
   const user = await requireUser();
   const { id } = await params;
   const { aviso } = await searchParams;
-  const p = one<any>(
+  const p = await one<any>(
     `SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
     [Number(id)],
   );
   if (!p) notFound();
 
   const d0 = today();
-  const hoje = availabilityFor(p.id, `${d0}T00:00`, `${d0}T23:59`);
-  const proximos = Array.from({ length: 14 }, (_, i) => {
-    const d = addDays(d0, i);
-    return { date: d, ...availabilityFor(p.id, `${d}T00:00`, `${d}T23:59`) };
-  });
-  const holds = holdsForProduct(p.id, `${d0}T00:00`, `${addDays(d0, 60)}T23:59`);
-  const units = all<any>(`SELECT * FROM product_units WHERE product_id = ? ORDER BY code`, [p.id]);
-  const maint = all<any>(`SELECT * FROM maintenance WHERE product_id = ? ORDER BY status, id DESC LIMIT 20`, [p.id]);
-  const historico = logsFor("produto", p.id).slice(0, 10);
+  const hoje = await availabilityFor(p.id, `${d0}T00:00`, `${d0}T23:59`);
+  const proximos = await Promise.all(
+    Array.from({ length: 14 }, async (_, i) => {
+      const d = addDays(d0, i);
+      return { date: d, ...(await availabilityFor(p.id, `${d}T00:00`, `${d}T23:59`)) };
+    }),
+  );
+  const holds = await holdsForProduct(p.id, `${d0}T00:00`, `${addDays(d0, 60)}T23:59`);
+  const units = await all<any>(`SELECT * FROM product_units WHERE product_id = ? ORDER BY code`, [p.id]);
+  const maint = await all<any>(`SELECT * FROM maintenance WHERE product_id = ? ORDER BY status, id DESC LIMIT 20`, [p.id]);
+  const historico = (await logsFor("produto", p.id)).slice(0, 10);
 
-  const usos = all<any>(
+  const usos = (await all<any>(
     `SELECT COUNT(*) AS reservas, COALESCE(SUM(i.qty),0) AS unidades, COALESCE(SUM(i.subtotal_cents),0) AS receita
        FROM reservation_items i JOIN reservations r ON r.id = i.reservation_id
       WHERE i.product_id = ? AND r.status <> 'cancelada'`,
     [p.id],
-  )[0];
+  ))[0];
 
   return (
     <div className="space-y-4">

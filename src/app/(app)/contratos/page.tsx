@@ -30,8 +30,8 @@ export default async function ContratosPage({
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
   const base = `FROM contracts ct JOIN reservations r ON r.id = ct.reservation_id JOIN customers c ON c.id = r.customer_id`;
-  const total = scalar<number>(`SELECT COUNT(*) ${base} ${clause}`, params);
-  const rows = all<any>(
+  const total = await scalar<number>(`SELECT COUNT(*) ${base} ${clause}`, params);
+  const rows = await all<any>(
     `SELECT ct.*, r.number AS reservation_number, r.event_date, r.total_cents, c.name AS customer_name
      ${base} ${clause} ORDER BY ct.id DESC LIMIT ? OFFSET ?`,
     [...params, PER_PAGE, (page - 1) * PER_PAGE],

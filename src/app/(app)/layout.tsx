@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const settings = getSettings();
-  rebuildNotifications();
-  const unread = unreadCount();
+  const settings = await getSettings();
+  await rebuildNotifications();
+  const unread = await unreadCount();
 
   return (
     <div className="flex min-h-screen">

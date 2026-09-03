@@ -9,7 +9,7 @@ export async function addExpense(fd: FormData) {
   const user = await requireUser();
   const amount = parseMoney(String(fd.get("amount") ?? ""));
   if (amount <= 0) return;
-  const id = insert(
+  const id = await insert(
     `INSERT INTO expenses (date, category, description, amount_cents, method, reservation_id, status, created_by)
      VALUES (?,?,?,?,?,?,?,?)`,
     [
@@ -23,17 +23,17 @@ export async function addExpense(fd: FormData) {
       user.id,
     ],
   );
-  logAction(user, "criar", "despesa", id, `${user.name} lancou despesa de ${money(amount)}`);
+  await logAction(user, "criar", "despesa", id, `${user.name} lancou despesa de ${money(amount)}`);
   revalidatePath("/financeiro");
 }
 
 export async function deleteExpense(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const e = one<any>(`SELECT * FROM expenses WHERE id = ?`, [id]);
+  const e = await one<any>(`SELECT * FROM expenses WHERE id = ?`, [id]);
   if (!e) return;
-  run(`DELETE FROM expenses WHERE id = ?`, [id]);
-  logAction(user, "excluir", "despesa", id, `${user.name} removeu despesa de ${money(e.amount_cents)}`);
+  await run(`DELETE FROM expenses WHERE id = ?`, [id]);
+  await logAction(user, "excluir", "despesa", id, `${user.name} removeu despesa de ${money(e.amount_cents)}`);
   revalidatePath("/financeiro");
 }
 
@@ -42,7 +42,7 @@ export async function addIncome(fd: FormData) {
   const user = await requireUser();
   const amount = parseMoney(String(fd.get("amount") ?? ""));
   if (amount <= 0) return;
-  const id = insert(
+  const id = await insert(
     `INSERT INTO payments (reservation_id, freight_id, amount_cents, method, paid_at, notes, created_by)
      VALUES (?,?,?,?,?,?,?)`,
     [
@@ -55,6 +55,6 @@ export async function addIncome(fd: FormData) {
       user.id,
     ],
   );
-  logAction(user, "criar", "pagamento", id, `${user.name} lancou entrada de ${money(amount)}`);
+  await logAction(user, "criar", "pagamento", id, `${user.name} lancou entrada de ${money(amount)}`);
   revalidatePath("/financeiro");
 }

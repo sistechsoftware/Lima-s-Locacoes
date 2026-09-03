@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 export default async function NovoFretePage() {
   await requireUser();
-  const customers = all<any>(`SELECT id, name, phone FROM customers WHERE active = 1 ORDER BY name`);
-  const vehicles = all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
+  const customers = await all<any>(`SELECT id, name, phone FROM customers WHERE active = 1 ORDER BY name`);
+  const vehicles = await all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader title="Novo frete" subtitle="Servico de transporte avulso" />

@@ -30,8 +30,8 @@ export async function createFreight(_prev: string | null, fd: FormData): Promise
   if (!f.date) return "Informe a data do frete.";
   if (!f.contact_name && !f.customer_id) return "Informe o cliente ou o nome do contato.";
 
-  const number = nextNumber("freights", "FRT");
-  const id = insert(
+  const number = await nextNumber("freights", "FRT");
+  const id = await insert(
     `INSERT INTO freights (number, customer_id, contact_name, phone, date, time, origin, destination, cargo,
       amount_cents, method, status, vehicle_id, notes, created_by)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
@@ -53,7 +53,7 @@ export async function createFreight(_prev: string | null, fd: FormData): Promise
       user.id,
     ],
   );
-  logAction(user, "criar", "frete", id, `${user.name} criou o frete ${number} (${money(f.amount_cents)})`);
+  await logAction(user, "criar", "frete", id, `${user.name} criou o frete ${number} (${money(f.amount_cents)})`);
   revalidatePath("/fretes");
   revalidatePath("/agenda");
   redirect(`/fretes/${id}`);
@@ -63,10 +63,10 @@ export async function updateFreight(_prev: string | null, fd: FormData): Promise
   const user = await requireUser();
   const id = Number(fd.get("id"));
   const f = read(fd);
-  const current = one<any>(`SELECT number FROM freights WHERE id = ?`, [id]);
+  const current = await one<any>(`SELECT number FROM freights WHERE id = ?`, [id]);
   if (!current) return "Frete nao encontrado.";
 
-  run(
+  await run(
     `UPDATE freights SET customer_id=?, contact_name=?, phone=?, date=?, time=?, origin=?, destination=?, cargo=?,
             amount_cents=?, method=?, status=?, vehicle_id=?, notes=? WHERE id = ?`,
     [
@@ -86,7 +86,7 @@ export async function updateFreight(_prev: string | null, fd: FormData): Promise
       id,
     ],
   );
-  logAction(user, "editar", "frete", id, `${user.name} alterou o frete ${current.number}`);
+  await logAction(user, "editar", "frete", id, `${user.name} alterou o frete ${current.number}`);
   revalidatePath(`/fretes/${id}`);
   redirect(`/fretes/${id}`);
 }
@@ -95,10 +95,10 @@ export async function setFreightStatus(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("id"));
   const status = String(fd.get("status"));
-  const f = one<any>(`SELECT * FROM freights WHERE id = ?`, [id]);
+  const f = await one<any>(`SELECT * FROM freights WHERE id = ?`, [id]);
   if (!f) return;
-  run(`UPDATE freights SET status = ? WHERE id = ?`, [status, id]);
-  logAction(user, "status", "frete", id, `${user.name} marcou o frete ${f.number} como ${status}`);
+  await run(`UPDATE freights SET status = ? WHERE id = ?`, [status, id]);
+  await logAction(user, "status", "frete", id, `${user.name} marcou o frete ${f.number} como ${status}`);
   revalidatePath(`/fretes/${id}`);
   revalidatePath("/fretes");
 }
@@ -106,15 +106,15 @@ export async function setFreightStatus(fd: FormData) {
 export async function payFreight(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("id"));
-  const f = one<any>(`SELECT * FROM freights WHERE id = ?`, [id]);
+  const f = await one<any>(`SELECT * FROM freights WHERE id = ?`, [id]);
   if (!f) return;
   const amount = parseMoney(String(fd.get("amount") ?? "")) || f.amount_cents;
   if (amount <= 0) return;
-  insert(
+  await insert(
     `INSERT INTO payments (freight_id, amount_cents, method, paid_at, notes, created_by) VALUES (?,?,?,?,?,?)`,
     [id, amount, String(fd.get("method") ?? f.method), String(fd.get("paid_at") ?? ""), `Frete ${f.number}`, user.id],
   );
-  logAction(user, "pagamento", "frete", id, `${user.name} registrou pagamento de ${money(amount)} no frete ${f.number}`);
+  await logAction(user, "pagamento", "frete", id, `${user.name} registrou pagamento de ${money(amount)} no frete ${f.number}`);
   revalidatePath(`/fretes/${id}`);
   revalidatePath("/financeiro");
 }
@@ -122,8 +122,8 @@ export async function payFreight(fd: FormData) {
 export async function deleteFreight(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const f = one<any>(`SELECT number FROM freights WHERE id = ?`, [id]);
-  run(`DELETE FROM freights WHERE id = ?`, [id]);
-  logAction(user, "excluir", "frete", id, `${user.name} excluiu o frete ${f?.number}`);
+  const f = await one<any>(`SELECT number FROM freights WHERE id = ?`, [id]);
+  await run(`DELETE FROM freights WHERE id = ?`, [id]);
+  await logAction(user, "excluir", "frete", id, `${user.name} excluiu o frete ${f?.number}`);
   redirect("/fretes");
 }

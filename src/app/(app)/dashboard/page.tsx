@@ -24,16 +24,16 @@ export default async function DashboardPage({
 }) {
   const user = await requireUser();
   const { erro } = await searchParams;
-  const s = dashboardStats();
+  const s = await dashboardStats();
   const d0 = today();
 
-  const entregas = operationsOn(d0, ["entrega"]);
-  const retiradas = operationsOn(d0, ["retirada"]);
-  const montagens = operationsOn(d0, ["montagem"]);
-  const desmontagens = operationsOn(d0, ["desmontagem"]);
-  const atrasadas = lateOperations();
-  const agenda = agendaEvents(d0, d0);
-  const alertas = listNotifications(true).slice(0, 6);
+  const entregas = await operationsOn(d0, ["entrega"]);
+  const retiradas = await operationsOn(d0, ["retirada"]);
+  const montagens = await operationsOn(d0, ["montagem"]);
+  const desmontagens = await operationsOn(d0, ["desmontagem"]);
+  const atrasadas = await lateOperations();
+  const agenda = await agendaEvents(d0, d0);
+  const alertas = (await listNotifications(true)).slice(0, 6);
 
   return (
     <div className="space-y-5">

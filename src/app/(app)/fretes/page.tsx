@@ -30,18 +30,18 @@ export default async function FretesPage({
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const total = scalar<number>(
+  const total = await scalar<number>(
     `SELECT COUNT(*) FROM freights f LEFT JOIN customers c ON c.id = f.customer_id ${clause}`,
     params,
   );
-  const rows = all<any>(
+  const rows = await all<any>(
     `SELECT f.*, c.name AS customer_name, v.name AS vehicle_name
        FROM freights f LEFT JOIN customers c ON c.id = f.customer_id LEFT JOIN vehicles v ON v.id = f.vehicle_id
      ${clause} ORDER BY f.date DESC, f.id DESC LIMIT ? OFFSET ?`,
     [...params, PER_PAGE, (page - 1) * PER_PAGE],
   );
-  const faturado = scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM freights WHERE status = 'concluido'`);
-  const agendados = scalar<number>(`SELECT COUNT(*) FROM freights WHERE status IN ('agendado','em_rota')`);
+  const faturado = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM freights WHERE status = 'concluido'`);
+  const agendados = await scalar<number>(`SELECT COUNT(*) FROM freights WHERE status IN ('agendado','em_rota')`);
 
   return (
     <div className="space-y-4">

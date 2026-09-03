@@ -38,7 +38,7 @@ export function verifyPassword(password: string, stored: string): boolean {
 export async function createSession(userId: number) {
   const id = crypto.randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + SESSION_DAYS * 864e5);
-  run("INSERT INTO sessions (id, user_id, expires_at) VALUES (?,?,?)", [
+  await run("INSERT INTO sessions (id, user_id, expires_at) VALUES (?,?,?)", [
     id,
     userId,
     expires.toISOString(),
@@ -56,7 +56,7 @@ export async function createSession(userId: number) {
 export async function destroySession() {
   const jar = await cookies();
   const id = jar.get(COOKIE)?.value;
-  if (id) run("DELETE FROM sessions WHERE id = ?", [id]);
+  if (id) await run("DELETE FROM sessions WHERE id = ?", [id]);
   jar.delete(COOKIE);
 }
 
@@ -65,7 +65,7 @@ export async function currentUser(): Promise<SessionUser | null> {
   const jar = await cookies();
   const id = jar.get(COOKIE)?.value;
   if (!id) return null;
-  const row = one<SessionUser & { expires_at: string; active: number }>(
+  const row = await one<SessionUser & { expires_at: string; active: number }>(
     `SELECT u.id, u.name, u.username, u.role, u.active, s.expires_at
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id = ?`,
@@ -73,7 +73,7 @@ export async function currentUser(): Promise<SessionUser | null> {
   );
   if (!row) return null;
   if (!row.active || new Date(row.expires_at) < new Date()) {
-    run("DELETE FROM sessions WHERE id = ?", [id]);
+    await run("DELETE FROM sessions WHERE id = ?", [id]);
     return null;
   }
   return { id: row.id, name: row.name, username: row.username, role: row.role };
@@ -107,10 +107,10 @@ export async function assertAdmin(): Promise<SessionUser> {
   return u;
 }
 
-export function listUsers() {
-  return all(`SELECT id, name, username, email, phone, role, active, created_at FROM users ORDER BY name`);
+export async function listUsers() {
+  return await all(`SELECT id, name, username, email, phone, role, active, created_at FROM users ORDER BY name`);
 }
 
-export function purgeExpiredSessions() {
-  run("DELETE FROM sessions WHERE expires_at < ?", [new Date().toISOString()]);
+export async function purgeExpiredSessions() {
+  await run("DELETE FROM sessions WHERE expires_at < ?", [new Date().toISOString()]);
 }

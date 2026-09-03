@@ -19,7 +19,7 @@ export async function createOperation(_prev: string | null, fd: FormData): Promi
   if (!scheduled) return "Informe a data e o horario.";
   if (!reservationId) return "Selecione a reserva.";
 
-  const id = insert(
+  const id = await insert(
     `INSERT INTO operations (kind, reservation_id, scheduled_at, status, assignee, vehicle_id, notes)
      VALUES (?,?,?,?,?,?,?)`,
     [
@@ -32,8 +32,8 @@ export async function createOperation(_prev: string | null, fd: FormData): Promi
       String(fd.get("notes") ?? ""),
     ],
   );
-  const r = one<any>(`SELECT number FROM reservations WHERE id = ?`, [reservationId]);
-  logAction(user, "criar", "operacao", id, `${user.name} agendou ${kind} de ${r?.number} para ${scheduled}`);
+  const r = await one<any>(`SELECT number FROM reservations WHERE id = ?`, [reservationId]);
+  await logAction(user, "criar", "operacao", id, `${user.name} agendou ${kind} de ${r?.number} para ${scheduled}`);
   revalidatePath("/operacao");
   revalidatePath("/agenda");
   redirect(`/operacao/${id}`);
@@ -42,16 +42,16 @@ export async function createOperation(_prev: string | null, fd: FormData): Promi
 export async function updateOperation(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("id"));
-  const op = one<any>(`SELECT * FROM operations WHERE id = ?`, [id]);
+  const op = await one<any>(`SELECT * FROM operations WHERE id = ?`, [id]);
   if (!op) return;
 
   const scheduled = stamp(String(fd.get("scheduled_at") ?? op.scheduled_at), "08:00");
-  run(
+  await run(
     `UPDATE operations SET scheduled_at = ?, assignee = ?, vehicle_id = ?, notes = ?, updated_at = datetime('now','localtime')
       WHERE id = ?`,
     [scheduled, String(fd.get("assignee") ?? ""), Number(fd.get("vehicle_id")) || null, String(fd.get("notes") ?? ""), id],
   );
-  logAction(user, "editar", "operacao", id, `${user.name} atualizou a ${op.kind} agendada para ${scheduled}`);
+  await logAction(user, "editar", "operacao", id, `${user.name} atualizou a ${op.kind} agendada para ${scheduled}`);
   revalidatePath(`/operacao/${id}`);
   revalidatePath("/agenda");
 }
@@ -60,14 +60,14 @@ export async function setOperationStatus(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("id"));
   const status = String(fd.get("status"));
-  const op = one<any>(
+  const op = await one<any>(
     `SELECT o.*, r.number, r.status AS reservation_status FROM operations o
        LEFT JOIN reservations r ON r.id = o.reservation_id WHERE o.id = ?`,
     [id],
   );
   if (!op) return;
 
-  run(
+  await run(
     `UPDATE operations SET status = ?, completed_at = CASE WHEN ? = 'concluida' THEN ? ELSE completed_at END,
             updated_at = datetime('now','localtime') WHERE id = ?`,
     [status, status, nowLocal(), id],
@@ -76,14 +76,14 @@ export async function setOperationStatus(fd: FormData) {
   // avanca o status da reserva conforme a operacao e concluida
   if (status === "concluida" && op.reservation_id) {
     if (op.kind === "entrega" && ["confirmada", "pre_reserva"].includes(op.reservation_status)) {
-      run(`UPDATE reservations SET status = 'entregue' WHERE id = ?`, [op.reservation_id]);
+      await run(`UPDATE reservations SET status = 'entregue' WHERE id = ?`, [op.reservation_id]);
     }
     if (op.kind === "retirada" && ["entregue", "em_uso", "aguardando_retirada"].includes(op.reservation_status)) {
-      run(`UPDATE reservations SET status = 'retirada' WHERE id = ?`, [op.reservation_id]);
+      await run(`UPDATE reservations SET status = 'retirada' WHERE id = ?`, [op.reservation_id]);
     }
   }
 
-  logAction(user, "status", "operacao", id, `${user.name} marcou a ${op.kind} de ${op.number ?? "-"} como ${status}`);
+  await logAction(user, "status", "operacao", id, `${user.name} marcou a ${op.kind} de ${op.number ?? "-"} como ${status}`);
   revalidatePath(`/operacao/${id}`);
   revalidatePath("/operacao");
   revalidatePath("/dashboard");
@@ -92,10 +92,10 @@ export async function setOperationStatus(fd: FormData) {
 export async function cancelOperation(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const op = one<any>(`SELECT * FROM operations WHERE id = ?`, [id]);
+  const op = await one<any>(`SELECT * FROM operations WHERE id = ?`, [id]);
   if (!op) return;
-  run(`UPDATE operations SET status = 'cancelada' WHERE id = ?`, [id]);
-  logAction(user, "cancelar", "operacao", id, `${user.name} cancelou a ${op.kind}`);
+  await run(`UPDATE operations SET status = 'cancelada' WHERE id = ?`, [id]);
+  await logAction(user, "cancelar", "operacao", id, `${user.name} cancelou a ${op.kind}`);
   revalidatePath(`/operacao/${id}`);
 }
 
@@ -104,7 +104,7 @@ export async function cancelOperation(fd: FormData) {
 export async function saveChecklist(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("operation_id"));
-  const op = one<any>(`SELECT * FROM operations WHERE id = ?`, [id]);
+  const op = await one<any>(`SELECT * FROM operations WHERE id = ?`, [id]);
   if (!op) return;
 
   const itens = checklistFor(op.kind);
@@ -112,11 +112,11 @@ export async function saveChecklist(fd: FormData) {
   for (const item of itens) data[item] = fd.get(`chk:${item}`) === "on";
   const notes = String(fd.get("notes") ?? "");
 
-  const existing = one<any>(`SELECT id FROM checklists WHERE operation_id = ? ORDER BY id DESC LIMIT 1`, [id]);
+  const existing = await one<any>(`SELECT id FROM checklists WHERE operation_id = ? ORDER BY id DESC LIMIT 1`, [id]);
   if (existing) {
-    run(`UPDATE checklists SET data = ?, notes = ? WHERE id = ?`, [JSON.stringify(data), notes, existing.id]);
+    await run(`UPDATE checklists SET data = ?, notes = ? WHERE id = ?`, [JSON.stringify(data), notes, existing.id]);
   } else {
-    insert(`INSERT INTO checklists (operation_id, kind, data, notes, created_by) VALUES (?,?,?,?,?)`, [
+    await insert(`INSERT INTO checklists (operation_id, kind, data, notes, created_by) VALUES (?,?,?,?,?)`, [
       id,
       op.kind,
       JSON.stringify(data),
@@ -128,7 +128,7 @@ export async function saveChecklist(fd: FormData) {
   const files = fd.getAll("photos").filter((f): f is File => f instanceof File);
   if (files.length) await attach("operacao", id, files, user.id, "Checklist");
 
-  logAction(user, "checklist", "operacao", id, `${user.name} salvou o checklist da ${op.kind}`);
+  await logAction(user, "checklist", "operacao", id, `${user.name} salvou o checklist da ${op.kind}`);
   revalidatePath(`/operacao/${id}`);
 }
 
@@ -137,7 +137,7 @@ export async function deletePhoto(fd: FormData) {
   const attachmentId = Number(fd.get("attachment_id"));
   const operationId = Number(fd.get("operation_id"));
   await removeAttachment(attachmentId);
-  logAction(user, "excluir", "operacao", operationId, `${user.name} removeu uma foto`);
+  await logAction(user, "excluir", "operacao", operationId, `${user.name} removeu uma foto`);
   revalidatePath(`/operacao/${operationId}`);
 }
 
@@ -155,7 +155,7 @@ export async function reportDamage(fd: FormData) {
   const file = fd.get("photo");
   const photo = file instanceof File && file.size > 0 ? await attachOne(file, user.id, reservationId) : null;
 
-  const id = insert(
+  const id = await insert(
     `INSERT INTO damage_reports (reservation_id, product_id, qty, damage_type, description, photo, estimated_cents, charged_cents, created_by)
      VALUES (?,?,?,?,?,?,?,?,?)`,
     [
@@ -173,10 +173,10 @@ export async function reportDamage(fd: FormData) {
 
   // desconta da caucao quando houver valor cobrado
   if (charged > 0) {
-    const dep = one<any>(`SELECT * FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`, [reservationId]);
+    const dep = await one<any>(`SELECT * FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`, [reservationId]);
     if (dep) {
       const retido = Math.min(dep.amount_cents, dep.retained_cents + charged);
-      run(`UPDATE deposits SET retained_cents = ?, status = ?, reason = COALESCE(NULLIF(reason,''),?) WHERE id = ?`, [
+      await run(`UPDATE deposits SET retained_cents = ?, status = ?, reason = COALESCE(NULLIF(reason,''),?) WHERE id = ?`, [
         retido,
         retido >= dep.amount_cents ? "retida_integral" : "retida_parcial",
         String(fd.get("description") ?? "Dano registrado na retirada"),
@@ -185,7 +185,7 @@ export async function reportDamage(fd: FormData) {
     }
   }
 
-  logAction(user, "dano", "reserva", reservationId, `${user.name} registrou dano em ${qty} item(ns)`, { damage: id });
+  await logAction(user, "dano", "reserva", reservationId, `${user.name} registrou dano em ${qty} item(ns)`, { damage: id });
   revalidatePath(`/operacao/${operationId}`);
   revalidatePath(`/reservas/${reservationId}`);
 }
@@ -193,7 +193,7 @@ export async function reportDamage(fd: FormData) {
 async function attachOne(file: File, userId: number, reservationId: number) {
   const saved = await attach("dano", reservationId, [file], userId, "Dano");
   if (!saved) return null;
-  const a = one<any>(`SELECT path FROM attachments WHERE entity = 'dano' AND entity_id = ? ORDER BY id DESC LIMIT 1`, [
+  const a = await one<any>(`SELECT path FROM attachments WHERE entity = 'dano' AND entity_id = ? ORDER BY id DESC LIMIT 1`, [
     reservationId,
   ]);
   return a?.path ?? null;
@@ -213,11 +213,11 @@ export async function saveVehicle(fd: FormData) {
   ];
   if (!values[0]) return;
   if (id) {
-    run(`UPDATE vehicles SET name=?, plate=?, model=?, capacity=?, notes=? WHERE id = ?`, [...values, id]);
-    logAction(user, "editar", "veiculo", id, `${user.name} alterou o veiculo ${values[0]}`);
+    await run(`UPDATE vehicles SET name=?, plate=?, model=?, capacity=?, notes=? WHERE id = ?`, [...values, id]);
+    await logAction(user, "editar", "veiculo", id, `${user.name} alterou o veiculo ${values[0]}`);
   } else {
-    const newId = insert(`INSERT INTO vehicles (name, plate, model, capacity, notes) VALUES (?,?,?,?,?)`, values);
-    logAction(user, "criar", "veiculo", newId, `${user.name} cadastrou o veiculo ${values[0]}`);
+    const newId = await insert(`INSERT INTO vehicles (name, plate, model, capacity, notes) VALUES (?,?,?,?,?)`, values);
+    await logAction(user, "criar", "veiculo", newId, `${user.name} cadastrou o veiculo ${values[0]}`);
   }
   revalidatePath("/configuracoes");
   revalidatePath("/fretes");
@@ -226,10 +226,10 @@ export async function saveVehicle(fd: FormData) {
 export async function deleteVehicle(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
-  const v = one<any>(`SELECT name FROM vehicles WHERE id = ?`, [id]);
-  run(`UPDATE operations SET vehicle_id = NULL WHERE vehicle_id = ?`, [id]);
-  run(`UPDATE freights SET vehicle_id = NULL WHERE vehicle_id = ?`, [id]);
-  run(`DELETE FROM vehicles WHERE id = ?`, [id]);
-  logAction(user, "excluir", "veiculo", id, `${user.name} removeu o veiculo ${v?.name}`);
+  const v = await one<any>(`SELECT name FROM vehicles WHERE id = ?`, [id]);
+  await run(`UPDATE operations SET vehicle_id = NULL WHERE vehicle_id = ?`, [id]);
+  await run(`UPDATE freights SET vehicle_id = NULL WHERE vehicle_id = ?`, [id]);
+  await run(`DELETE FROM vehicles WHERE id = ?`, [id]);
+  await logAction(user, "excluir", "veiculo", id, `${user.name} removeu o veiculo ${v?.name}`);
   revalidatePath("/configuracoes");
 }

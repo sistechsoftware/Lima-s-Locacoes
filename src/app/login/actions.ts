@@ -9,12 +9,12 @@ export async function loginAction(_prev: string | null, formData: FormData): Pro
   const password = String(formData.get("password") ?? "");
   if (!username || !password) return "Informe usuario e senha.";
 
-  const user = one<any>(`SELECT * FROM users WHERE lower(username) = ?`, [username]);
+  const user = await one<any>(`SELECT * FROM users WHERE lower(username) = ?`, [username]);
   if (!user || !user.active || !verifyPassword(password, user.password_hash)) {
     return "Usuario ou senha invalidos.";
   }
   await createSession(user.id);
-  logAction({ id: user.id, name: user.name, username: user.username, role: user.role }, "login", "usuario", user.id, `${user.name} entrou no sistema`);
+  await logAction({ id: user.id, name: user.name, username: user.username, role: user.role }, "login", "usuario", user.id, `${user.name} entrou no sistema`);
   redirect("/dashboard");
 }
 

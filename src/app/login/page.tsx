@@ -5,7 +5,7 @@ import LoginForm from "./LoginForm";
 
 export default async function LoginPage() {
   if (await currentUser()) redirect("/dashboard");
-  const s = getSettings();
+  const s = await getSettings();
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-areia-200 to-areia-100 p-5">
       <div className="w-full max-w-sm">

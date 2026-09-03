@@ -27,8 +27,8 @@ export default async function ClientesPage({
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const total = scalar<number>(`SELECT COUNT(*) FROM customers c ${clause}`, params);
-  const rows = all<any>(
+  const total = await scalar<number>(`SELECT COUNT(*) FROM customers c ${clause}`, params);
+  const rows = await all<any>(
     `${CUSTOMER_SELECT} ${clause} ORDER BY c.name LIMIT ? OFFSET ?`,
     [...params, PER_PAGE, (page - 1) * PER_PAGE],
   );

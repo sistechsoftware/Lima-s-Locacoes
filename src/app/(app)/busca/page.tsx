@@ -14,7 +14,7 @@ export default async function BuscaPage({ searchParams }: { searchParams: Promis
   const termo = q.trim();
   if (!termo) redirect("/dashboard");
 
-  const r = globalSearch(termo);
+  const r = await globalSearch(termo);
 
   // atalho: numero exato de reserva abre direto
   const exata = r.reservations.find((x: any) => x.number.toLowerCase() === termo.toLowerCase());

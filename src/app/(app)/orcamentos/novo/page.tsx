@@ -13,11 +13,11 @@ export default async function NovoOrcamentoPage({
 }) {
   await requireUser();
   const { cliente } = await searchParams;
-  const products = all<any>(
+  const products = await all<any>(
     `SELECT p.id, p.code, p.name, p.rent_price_cents, p.total_qty, c.name AS category
        FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.active = 1 ORDER BY c.name, p.name`,
   );
-  const customers = all<any>(`SELECT id, name, address, district, city FROM customers WHERE active = 1 ORDER BY name`);
+  const customers = await all<any>(`SELECT id, name, address, district, city FROM customers WHERE active = 1 ORDER BY name`);
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader title="Novo orcamento" subtitle="Depois basta converter em reserva" />

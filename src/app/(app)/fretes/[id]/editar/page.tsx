@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function EditarFretePage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
-  const freight = one<any>(`SELECT * FROM freights WHERE id = ?`, [Number(id)]);
+  const freight = await one<any>(`SELECT * FROM freights WHERE id = ?`, [Number(id)]);
   if (!freight) notFound();
-  const customers = all<any>(`SELECT id, name, phone FROM customers WHERE active = 1 ORDER BY name`);
-  const vehicles = all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
+  const customers = await all<any>(`SELECT id, name, phone FROM customers WHERE active = 1 ORDER BY name`);
+  const vehicles = await all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader title={`Editar ${freight.number}`} />

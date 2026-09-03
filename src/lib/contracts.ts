@@ -5,12 +5,12 @@ import { getReservation, reservationItems, reservationMoney } from "./reservatio
 import { dateBR, docBR, money, phoneBR } from "./format";
 
 /** Monta o texto do contrato a partir do modelo configurado e dos dados da reserva. */
-export function buildContractBody(reservationId: number, contractNumber: string): string {
-  const s = getSettings();
-  const r = getReservation(reservationId);
+export async function buildContractBody(reservationId: number, contractNumber: string): Promise<string> {
+  const s = await getSettings();
+  const r = await getReservation(reservationId);
   if (!r) throw new Error("Reserva nao encontrada");
-  const items = reservationItems(reservationId);
-  const m = reservationMoney(reservationId);
+  const items = await reservationItems(reservationId);
+  const m = await reservationMoney(reservationId);
 
   const itensTexto = items
     .map((i) => `- ${i.qty} x ${i.product_name} .......... ${money(i.subtotal_cents)}`)
@@ -46,15 +46,15 @@ export function buildContractBody(reservationId: number, contractNumber: string)
 }
 
 /** Cria o contrato da reserva (ou devolve o existente). */
-export function ensureContract(reservationId: number, userId?: number): number {
-  const existing = one<any>(
+export async function ensureContract(reservationId: number, userId?: number): Promise<number> {
+  const existing = await one<any>(
     `SELECT id FROM contracts WHERE reservation_id = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 1`,
     [reservationId],
   );
   if (existing) return existing.id;
-  const number = nextNumber("contracts", "CTR");
-  const body = buildContractBody(reservationId, number);
-  return insert(
+  const number = await nextNumber("contracts", "CTR");
+  const body = await buildContractBody(reservationId, number);
+  return await insert(
     `INSERT INTO contracts (number, reservation_id, status, body, created_by) VALUES (?,?,'pendente',?,?)`,
     [number, reservationId, body, userId ?? null],
   );

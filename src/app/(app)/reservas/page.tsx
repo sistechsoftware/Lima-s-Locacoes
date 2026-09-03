@@ -55,11 +55,11 @@ export default async function ReservasPage({
   }
 
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const total = scalar<number>(
+  const total = await scalar<number>(
     `SELECT COUNT(*) FROM reservations r JOIN customers c ON c.id = r.customer_id ${clause}`,
     params,
   );
-  const rows = all<any>(
+  const rows = await all<any>(
     `${RESERVATION_SELECT} ${clause} ORDER BY r.event_date DESC, r.id DESC LIMIT ? OFFSET ?`,
     [...params, PER_PAGE, (page - 1) * PER_PAGE],
   );

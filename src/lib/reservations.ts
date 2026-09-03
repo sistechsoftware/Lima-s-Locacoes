@@ -7,18 +7,18 @@ import { stamp } from "./stock";
 /* ------------------------------------------------------------------ */
 
 /** Recalcula subtotais dos itens e o total da reserva. Fonte unica da verdade. */
-export function recalcReservation(id: number) {
-  run(
+export async function recalcReservation(id: number) {
+  await run(
     `UPDATE reservation_items
         SET subtotal_cents = MAX(0, qty * unit_price_cents - discount_cents)
       WHERE reservation_id = ?`,
     [id],
   );
-  const items = scalar<number>(
+  const items = await scalar<number>(
     `SELECT COALESCE(SUM(subtotal_cents),0) FROM reservation_items WHERE reservation_id = ?`,
     [id],
   );
-  run(
+  await run(
     `UPDATE reservations
         SET items_cents = ?,
             total_cents = MAX(0, ? + freight_cents + assembly_cents + disassembly_cents + other_cents - discount_cents),
@@ -28,13 +28,13 @@ export function recalcReservation(id: number) {
   );
 }
 
-export function recalcQuote(id: number) {
-  run(
+export async function recalcQuote(id: number) {
+  await run(
     `UPDATE quote_items SET subtotal_cents = MAX(0, qty * unit_price_cents - discount_cents) WHERE quote_id = ?`,
     [id],
   );
-  const items = scalar<number>(`SELECT COALESCE(SUM(subtotal_cents),0) FROM quote_items WHERE quote_id = ?`, [id]);
-  run(
+  const items = await scalar<number>(`SELECT COALESCE(SUM(subtotal_cents),0) FROM quote_items WHERE quote_id = ?`, [id]);
+  await run(
     `UPDATE quotes
         SET items_cents = ?,
             total_cents = MAX(0, ? + freight_cents + assembly_cents + disassembly_cents + other_cents - discount_cents),
@@ -60,8 +60,8 @@ const KIND_FLAG: Record<string, string> = {
  * Cria o que falta, reagenda o que mudou e cancela o que foi desmarcado.
  * Nunca sobrescreve operacao ja concluida.
  */
-export function syncOperations(reservationId: number) {
-  const r = one<any>(`SELECT * FROM reservations WHERE id = ?`, [reservationId]);
+export async function syncOperations(reservationId: number) {
+  const r = await one<any>(`SELECT * FROM reservations WHERE id = ?`, [reservationId]);
   if (!r) return;
 
   const when: Record<string, string> = {
@@ -73,13 +73,13 @@ export function syncOperations(reservationId: number) {
 
   for (const kind of Object.keys(KIND_FLAG)) {
     const wanted = r.status !== "cancelada" && !!r[KIND_FLAG[kind]];
-    const existing = one<any>(`SELECT * FROM operations WHERE reservation_id = ? AND kind = ?`, [
+    const existing = await one<any>(`SELECT * FROM operations WHERE reservation_id = ? AND kind = ?`, [
       reservationId,
       kind,
     ]);
 
     if (wanted && !existing) {
-      insert(`INSERT INTO operations (kind, reservation_id, scheduled_at, status) VALUES (?,?,?, 'pendente')`, [
+      await insert(`INSERT INTO operations (kind, reservation_id, scheduled_at, status) VALUES (?,?,?, 'pendente')`, [
         kind,
         reservationId,
         when[kind],
@@ -97,14 +97,14 @@ export function syncOperations(reservationId: number) {
       }
       if (updates.length) {
         params.push(reservationId, kind);
-        run(
+        await run(
           `UPDATE operations SET ${updates.join(", ")}, updated_at = datetime('now','localtime')
             WHERE reservation_id = ? AND kind = ?`,
           params,
         );
       }
     } else if (!wanted && existing && existing.status !== "concluida" && existing.status !== "cancelada") {
-      run(
+      await run(
         `UPDATE operations SET status = 'cancelada', updated_at = datetime('now','localtime')
           WHERE id = ?`,
         [existing.id],
@@ -126,10 +126,10 @@ export type ReservationMoney = {
   depositRetained: number;
 };
 
-export function reservationMoney(id: number): ReservationMoney {
-  const total = scalar<number>(`SELECT COALESCE(total_cents,0) FROM reservations WHERE id = ?`, [id]);
-  const paid = scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE reservation_id = ?`, [id]);
-  const dep = one<any>(`SELECT * FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`, [id]);
+export async function reservationMoney(id: number): Promise<ReservationMoney> {
+  const total = await scalar<number>(`SELECT COALESCE(total_cents,0) FROM reservations WHERE id = ?`, [id]);
+  const paid = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE reservation_id = ?`, [id]);
+  const dep = await one<any>(`SELECT * FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`, [id]);
   return {
     total,
     paid,
@@ -156,16 +156,16 @@ export const RESERVATION_SELECT = `
     FROM reservations r
     JOIN customers c ON c.id = r.customer_id`;
 
-export function getReservation(id: number) {
-  return one<any>(`${RESERVATION_SELECT} WHERE r.id = ?`, [id]);
+export async function getReservation(id: number) {
+  return await one<any>(`${RESERVATION_SELECT} WHERE r.id = ?`, [id]);
 }
 
-export function getReservationByNumber(number: string) {
-  return one<any>(`${RESERVATION_SELECT} WHERE r.number = ?`, [number]);
+export async function getReservationByNumber(number: string) {
+  return await one<any>(`${RESERVATION_SELECT} WHERE r.number = ?`, [number]);
 }
 
-export function reservationItems(id: number) {
-  return all<any>(
+export async function reservationItems(id: number) {
+  return await all<any>(
     `SELECT i.*, p.name AS product_name, p.code AS product_code
        FROM reservation_items i JOIN products p ON p.id = i.product_id
       WHERE i.reservation_id = ? ORDER BY i.id`,
@@ -173,8 +173,8 @@ export function reservationItems(id: number) {
   );
 }
 
-export function quoteItems(id: number) {
-  return all<any>(
+export async function quoteItems(id: number) {
+  return await all<any>(
     `SELECT i.*, p.name AS product_name, p.code AS product_code
        FROM quote_items i JOIN products p ON p.id = i.product_id
       WHERE i.quote_id = ? ORDER BY i.id`,
@@ -182,8 +182,8 @@ export function quoteItems(id: number) {
   );
 }
 
-export function reservationOperations(id: number) {
-  return all<any>(
+export async function reservationOperations(id: number) {
+  return await all<any>(
     `SELECT o.*, v.name AS vehicle_name FROM operations o
        LEFT JOIN vehicles v ON v.id = o.vehicle_id
       WHERE o.reservation_id = ? ORDER BY o.scheduled_at`,
@@ -191,7 +191,7 @@ export function reservationOperations(id: number) {
   );
 }
 
-export function itemsSummary(id: number): string {
-  const items = reservationItems(id);
+export async function itemsSummary(id: number): Promise<string> {
+  const items = await reservationItems(id);
   return items.map((i) => `${i.qty}x ${i.product_name}`).join(", ");
 }

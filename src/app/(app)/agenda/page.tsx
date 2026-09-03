@@ -37,7 +37,7 @@ export default async function AgendaPage({
     to = endOfMonth(data);
   }
 
-  const eventos = agendaEvents(from, to).filter((e) => !tipo || e.kind === tipo);
+  const eventos = (await agendaEvents(from, to)).filter((e) => !tipo || e.kind === tipo);
 
   const step = view === "mes" ? "mes" : view === "semana" ? 7 : 1;
   const nav = (dir: number) => {

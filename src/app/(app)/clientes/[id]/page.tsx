@@ -24,21 +24,21 @@ export default async function ClientePage({
   const user = await requireUser();
   const { id } = await params;
   const { aviso } = await searchParams;
-  const c = getCustomer(Number(id));
+  const c = await getCustomer(Number(id));
   if (!c) notFound();
 
-  const reservas = all<any>(
+  const reservas = await all<any>(
     `SELECT r.*, (SELECT COALESCE(SUM(amount_cents),0) FROM payments p WHERE p.reservation_id = r.id) AS paid
        FROM reservations r WHERE r.customer_id = ? ORDER BY r.event_date DESC LIMIT 50`,
     [c.id],
   );
-  const orcamentos = all<any>(`SELECT * FROM quotes WHERE customer_id = ? ORDER BY id DESC LIMIT 20`, [c.id]);
-  const pagamentos = all<any>(
+  const orcamentos = await all<any>(`SELECT * FROM quotes WHERE customer_id = ? ORDER BY id DESC LIMIT 20`, [c.id]);
+  const pagamentos = await all<any>(
     `SELECT p.*, r.number FROM payments p LEFT JOIN reservations r ON r.id = p.reservation_id
       WHERE r.customer_id = ? ORDER BY p.paid_at DESC LIMIT 20`,
     [c.id],
   );
-  const historico = logsFor("cliente", c.id).slice(0, 10);
+  const historico = (await logsFor("cliente", c.id)).slice(0, 10);
 
   const wa = waLink(c.whatsapp || c.phone, `Ola, ${c.name.split(" ")[0]}! Aqui e da Lima's Locacoes.`);
   const maps = mapsLink(c.address, c.district, c.city);

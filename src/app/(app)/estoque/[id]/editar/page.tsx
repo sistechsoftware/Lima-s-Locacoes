@@ -8,9 +8,9 @@ import { updateProduct } from "../../actions";
 export default async function EditarProdutoPage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
-  const product = one<any>(`SELECT * FROM products WHERE id = ?`, [Number(id)]);
+  const product = await one<any>(`SELECT * FROM products WHERE id = ?`, [Number(id)]);
   if (!product) notFound();
-  const categories = all<any>(`SELECT id, name FROM categories WHERE active = 1 ORDER BY name`);
+  const categories = await all<any>(`SELECT id, name FROM categories WHERE active = 1 ORDER BY name`);
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader title="Editar produto" subtitle={product.name} />
