@@ -5,6 +5,7 @@ import { all, insert, one, run, scalar, tx } from "@/lib/db";
 import { nextNumber } from "@/lib/db";
 import { assertAdmin, currentUser, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { removeAttachment } from "@/lib/uploads";
 import { recalcReservation, reservationMoney, syncOperations, getReservation, itemsSummary } from "@/lib/reservations";
 import {
   checkConflicts,
@@ -368,11 +369,37 @@ export async function deleteReservation(fd: FormData) {
   const user = await assertAdmin();
   const id = Number(fd.get("id"));
   const r = await one<any>(`SELECT number FROM reservations WHERE id = ?`, [id]);
-  await tx(async () => {
-    await run(`DELETE FROM reservations WHERE id = ?`, [id]);
-    await logAction(user, "excluir", "reserva", id, `${user.name} excluiu definitivamente a reserva ${r?.number}`);
-  });
+  if (!r) redirect("/reservas");
+
+  // O orcamento de origem aponta para a reserva sem ON DELETE CASCADE, entao
+  // esse vinculo precisa ser desfeito antes, senao a chave estrangeira barra a
+  // exclusao. O orcamento em si e preservado e volta a ficar como aprovado.
+  const origem = await all<any>(`SELECT id, number FROM quotes WHERE reservation_id = ?`, [id]);
+  for (const q of origem) {
+    await run(`UPDATE quotes SET reservation_id = NULL, status = 'aprovado' WHERE id = ?`, [q.id]);
+  }
+
+  // anexos sao polimorficos (sem chave estrangeira), logo nao caem no cascade
+  const anexos = await all<any>(
+    `SELECT id FROM attachments WHERE entity = 'operacao' AND entity_id IN (SELECT id FROM operations WHERE reservation_id = ?)`,
+    [id],
+  );
+  for (const a of anexos) await removeAttachment(a.id);
+  const anexosDano = await all<any>(`SELECT id FROM attachments WHERE entity = 'dano' AND entity_id = ?`, [id]);
+  for (const a of anexosDano) await removeAttachment(a.id);
+
+  await run(`DELETE FROM reservations WHERE id = ?`, [id]);
+  await logAction(
+    user,
+    "excluir",
+    "reserva",
+    id,
+    `${user.name} excluiu definitivamente a reserva ${r.number}` +
+      (origem.length ? ` (orcamento ${origem.map((q) => q.number).join(", ")} voltou para aprovado)` : ""),
+  );
+
   revalidatePath("/reservas");
+  revalidatePath("/orcamentos");
   redirect("/reservas");
 }
 

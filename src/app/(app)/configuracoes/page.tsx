@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/settings";
 import { Alerta, Badge, Card, Empty, Field, Grid, PageHeader, Section } from "@/components/ui";
 import { Tabs } from "@/components/List";
 import { SubmitButton } from "@/components/SubmitButton";
+import ImageInput from "@/components/ImageInput";
 import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveTemplates, toggleUser } from "./actions";
 import { saveVehicle, deleteVehicle } from "../operacao/actions";
 import UserForm from "./UserForm";
@@ -98,7 +99,7 @@ export default async function ConfiguracoesPage({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={s.company_logo} alt="Logo" className="h-14 w-14 rounded-xl border border-areia-300 object-contain" />
                 )}
-                <input type="file" name="logo_file" accept="image/*" className="campo" disabled={user.role !== "admin"} />
+                <ImageInput name="logo_file" disabled={user.role !== "admin"} />
               </div>
             </Field>
             {user.role === "admin" && <SubmitButton>Salvar dados da empresa</SubmitButton>}

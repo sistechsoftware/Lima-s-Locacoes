@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
-import { setSettings } from "@/lib/settings";
+import { getSettings, setSettings } from "@/lib/settings";
 import { logAction } from "@/lib/audit";
-import { saveUpload } from "@/lib/uploads";
+import { saveUpload, UploadError, removeFileByUrl } from "@/lib/uploads";
 import { parseMoney } from "@/lib/format";
 
 export async function saveCompanySettings(fd: FormData): Promise<void> {
@@ -13,7 +13,12 @@ export async function saveCompanySettings(fd: FormData): Promise<void> {
   const logoFile = fd.get("logo_file");
   let logoPath: string | null = null;
   if (logoFile instanceof File && logoFile.size > 0) {
-    logoPath = await saveUpload(logoFile);
+    try {
+      logoPath = await saveUpload(logoFile, user.id);
+    } catch (e) {
+      const motivo = e instanceof UploadError ? e.message : "Nao foi possivel salvar a imagem.";
+      redirect(`/configuracoes?aba=empresa&erro=${encodeURIComponent(motivo)}`);
+    }
   }
 
   const values: Record<string, string> = {
@@ -29,7 +34,12 @@ export async function saveCompanySettings(fd: FormData): Promise<void> {
     bank_info: String(fd.get("bank_info") ?? "").trim(),
     default_deposit_cents: String(parseMoney(String(fd.get("default_deposit") ?? ""))),
   };
-  if (logoPath) values.company_logo = logoPath;
+  if (logoPath) {
+    // troca a logo e descarta a anterior, para nao acumular arquivo orfao
+    const anterior = (await getSettings()).company_logo;
+    values.company_logo = logoPath;
+    if (anterior && anterior !== logoPath) await removeFileByUrl(anterior);
+  }
 
   await setSettings(values);
   await logAction(user, "editar", "configuracao", null, `${user.name} atualizou os dados da empresa`);

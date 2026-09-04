@@ -11,13 +11,21 @@ import { dateBR, dateTimeBR, mapsLink, money, phoneBR, timeBR, waLink } from "@/
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, StatusBadge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
+import ImageInput from "@/components/ImageInput";
 import { cancelOperation, deletePhoto, reportDamage, saveChecklist, setOperationStatus, updateOperation } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function OperacaoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OperacaoDetalhePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
+}) {
   const user = await requireUser();
   const { id } = await params;
+  const { erro } = await searchParams;
   const op = await getOperation(Number(id));
   if (!op) notFound();
 
@@ -59,6 +67,8 @@ export default async function OperacaoDetalhePage({ params }: { params: Promise<
           op.reservation_id ? <LinkButton href={`/reservas/${op.reservation_id}`}>Ver reserva</LinkButton> : undefined
         }
       />
+
+      {erro && <Alerta tone="vermelho" title="Nao foi possivel concluir">{erro}</Alerta>}
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
@@ -225,7 +235,7 @@ export default async function OperacaoDetalhePage({ params }: { params: Promise<
           </label>
           <label className="block">
             <span className="rotulo">Anexar fotos</span>
-            <input type="file" name="photos" accept="image/*" multiple capture="environment" className="campo" />
+            <ImageInput name="photos" multiple capture="environment" />
           </label>
           <SubmitButton className="w-full">Salvar checklist</SubmitButton>
         </form>
@@ -290,7 +300,7 @@ export default async function OperacaoDetalhePage({ params }: { params: Promise<
             </label>
             <label className="col-span-2 block">
               <span className="rotulo">Foto do dano</span>
-              <input type="file" name="photo" accept="image/*" capture="environment" className="campo" />
+              <ImageInput name="photo" capture="environment" />
             </label>
             <div className="col-span-2">
               <SubmitButton variant="perigo" className="w-full">

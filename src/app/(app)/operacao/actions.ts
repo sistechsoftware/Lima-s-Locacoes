@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { all, insert, one, run } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
-import { attach, removeAttachment } from "@/lib/uploads";
+import { attach, removeAttachment, UploadError } from "@/lib/uploads";
 import { parseMoney, nowLocal, today } from "@/lib/format";
 import { stamp } from "@/lib/stock";
 import { checklistFor } from "@/lib/checklists";
@@ -126,7 +126,14 @@ export async function saveChecklist(fd: FormData) {
   }
 
   const files = fd.getAll("photos").filter((f): f is File => f instanceof File);
-  if (files.length) await attach("operacao", id, files, user.id, "Checklist");
+  if (files.length) {
+    try {
+      await attach("operacao", id, files, user.id, "Checklist");
+    } catch (e) {
+      const motivo = e instanceof UploadError ? e.message : "Nao foi possivel salvar as fotos.";
+      redirect(`/operacao/${id}?erro=${encodeURIComponent(motivo)}`);
+    }
+  }
 
   await logAction(user, "checklist", "operacao", id, `${user.name} salvou o checklist da ${op.kind}`);
   revalidatePath(`/operacao/${id}`);
@@ -153,7 +160,15 @@ export async function reportDamage(fd: FormData) {
   const charged = parseMoney(String(fd.get("charged") ?? ""));
 
   const file = fd.get("photo");
-  const photo = file instanceof File && file.size > 0 ? await attachOne(file, user.id, reservationId) : null;
+  let photo: string | null = null;
+  if (file instanceof File && file.size > 0) {
+    try {
+      photo = await attachOne(file, user.id, reservationId);
+    } catch (e) {
+      const motivo = e instanceof UploadError ? e.message : "Nao foi possivel salvar a foto do dano.";
+      redirect(`/operacao/${operationId}?erro=${encodeURIComponent(motivo)}`);
+    }
+  }
 
   const id = await insert(
     `INSERT INTO damage_reports (reservation_id, product_id, qty, damage_type, description, photo, estimated_cents, charged_cents, created_by)
