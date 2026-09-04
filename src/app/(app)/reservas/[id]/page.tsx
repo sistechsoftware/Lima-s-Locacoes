@@ -11,7 +11,7 @@ import {
   reservationOperations,
 } from "@/lib/reservations";
 import { messagesForReservation } from "@/lib/whatsapp";
-import { checkConflicts, holdWindow } from "@/lib/stock";
+import { checkConflicts, holdWindow, reservationPhysicalUsage } from "@/lib/stock";
 import {
   CONTRACT_STATUS,
   DEPOSIT_STATUS,
@@ -57,6 +57,8 @@ export default async function ReservaPage({
     [r.id],
   );
   const historico = await logsFor("reserva", r.id);
+  const consumoFisico = await reservationPhysicalUsage(r.id);
+  const temKit = items.some((i: any) => i.product_kind === "kit");
   const pay = paymentState(m.total, m.paid);
   const resumo = await itemsSummary(r.id);
   const mensagens = await messagesForReservation(r, resumo, m.balance);
@@ -200,6 +202,11 @@ export default async function ReservaPage({
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-carvao-900">
                       {i.qty} x {i.product_name}
+                      {i.product_kind === "kit" && (
+                        <span className="ml-1.5 rounded bg-terra-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-terra-700">
+                          kit
+                        </span>
+                      )}
                     </span>
                     <span className="block text-xs text-stone-500">
                       {money(i.unit_price_cents)} cada
@@ -225,6 +232,24 @@ export default async function ReservaPage({
           </div>
         </Section>
       </div>
+
+      {temKit && (
+        <Section title="Consumo de estoque">
+          <p className="mb-2 text-sm text-stone-600">
+            Itens fisicos que esta reserva ocupa. Kits aparecem expandidos nos seus componentes.
+          </p>
+          <ul className="divide-y divide-areia-200">
+            {consumoFisico.map((c: any) => (
+              <li key={c.product_id} className="flex items-center justify-between py-2 text-sm">
+                <Link href={`/estoque/${c.product_id}`} className="truncate text-terra-600">
+                  {c.product_name}
+                </Link>
+                <span className="shrink-0 font-bold text-carvao-900">{c.qty} un.</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       {/* operacoes */}
       <Section

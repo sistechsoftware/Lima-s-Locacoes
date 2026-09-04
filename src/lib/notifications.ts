@@ -140,8 +140,9 @@ export async function rebuildNotifications() {
 
   /* estoque baixo */
   const low = await all<any>(
+    // kits nao tem estoque proprio: o alerta olha somente os produtos fisicos
     `SELECT id, name, total_qty, maintenance_qty, min_qty FROM products
-      WHERE active = 1 AND min_qty > 0 AND (total_qty - maintenance_qty) < min_qty`,
+      WHERE active = 1 AND kind <> 'kit' AND min_qty > 0 AND (total_qty - maintenance_qty) < min_qty`,
   );
   for (const p of low) {
     await push({

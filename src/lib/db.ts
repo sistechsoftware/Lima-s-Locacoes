@@ -2,7 +2,20 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 type Row = Record<string, any>;
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __limasTestDb: D1Database | undefined;
+}
+
+/**
+ * Banco da requisicao atual.
+ *
+ * Em producao vem do binding D1 do Worker. Os testes automatizados injetam um
+ * D1 compativel em globalThis para exercitar as mesmas consultas SQL sem
+ * precisar de infraestrutura Cloudflare.
+ */
 export function getDb(): D1Database {
+  if (globalThis.__limasTestDb) return globalThis.__limasTestDb;
   return getCloudflareContext().env.DB;
 }
 
@@ -57,9 +70,25 @@ function normalize(params: any[]): any[] {
   });
 }
 
-/** Executa fn dentro de uma transacao (rollback em erro). */
+/**
+ * Agrupa escritas relacionadas.
+ *
+ * O D1 nao oferece transacao interativa (BEGIN/COMMIT dirigido pela
+ * aplicacao), apenas `batch()` para um conjunto de statements ja conhecido.
+ * Como as escritas de reserva dependem do id gerado pelo INSERT anterior,
+ * elas nao cabem num unico batch. Por isso o controle de concorrencia de
+ * estoque e feito por verificacao pos-escrita com rollback deterministico
+ * (ver guardStock em lib/stock.ts), e nao por bloqueio de transacao.
+ */
 export async function tx<T>(fn: () => Promise<T>): Promise<T> {
   return fn();
+}
+
+/** Executa varios statements atomicamente (transacao unica no D1). */
+export async function batch(statements: { sql: string; params?: any[] }[]) {
+  if (!statements.length) return [];
+  const db = getDb();
+  return db.batch(statements.map((s) => db.prepare(s.sql).bind(...normalize(s.params ?? []))));
 }
 
 /* ------------------------------------------------------------------ */
@@ -118,11 +147,17 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
 
+/*
+ * kind = 'simples' | 'kit'.
+ * Kits nao possuem estoque proprio: total_qty fica em 0 e a disponibilidade
+ * e derivada dos componentes (ver product_components).
+ */
 CREATE TABLE IF NOT EXISTS products (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   code              TEXT NOT NULL UNIQUE,
   name              TEXT NOT NULL,
   category_id       INTEGER REFERENCES categories(id),
+  kind              TEXT NOT NULL DEFAULT 'simples',
   total_qty         INTEGER NOT NULL DEFAULT 0,
   maintenance_qty   INTEGER NOT NULL DEFAULT 0,
   min_qty           INTEGER NOT NULL DEFAULT 0,
@@ -134,6 +169,20 @@ CREATE TABLE IF NOT EXISTS products (
   active            INTEGER NOT NULL DEFAULT 1,
   created_at        TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+
+/* Composicao dos kits: apenas produtos simples podem ser componentes. */
+CREATE TABLE IF NOT EXISTS product_components (
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_product_id    INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  component_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  quantity             INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  created_at           TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at           TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  UNIQUE (parent_product_id, component_product_id),
+  CHECK (parent_product_id <> component_product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pcomp_parent ON product_components(parent_product_id);
+CREATE INDEX IF NOT EXISTS idx_pcomp_component ON product_components(component_product_id);
 
 CREATE TABLE IF NOT EXISTS product_units (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,6 +246,30 @@ CREATE TABLE IF NOT EXISTS reservation_items (
 );
 CREATE INDEX IF NOT EXISTS idx_ritems_res ON reservation_items(reservation_id);
 CREATE INDEX IF NOT EXISTS idx_ritems_prod ON reservation_items(product_id);
+
+/*
+ * Expansao fisica das linhas da reserva.
+ *
+ * reservation_items guarda a linha COMERCIAL (o que o cliente contratou e
+ * enxerga: "10 x Kit Mesa + 4 Cadeiras"). Esta tabela guarda o consumo FISICO
+ * correspondente ("10 Mesas, 40 Cadeiras"), que e o que ocupa estoque.
+ *
+ * Produtos simples geram uma linha 1:1. A fotografia e feita no momento da
+ * operacao, de modo que alterar a composicao de um kit depois nao altera
+ * reservas ja registradas.
+ */
+CREATE TABLE IF NOT EXISTS reservation_item_components (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  reservation_id      INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
+  reservation_item_id INTEGER NOT NULL REFERENCES reservation_items(id) ON DELETE CASCADE,
+  product_id          INTEGER NOT NULL REFERENCES products(id),
+  qty_per_unit        INTEGER NOT NULL DEFAULT 1,
+  qty                 INTEGER NOT NULL,
+  created_at          TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_ricomp_res ON reservation_item_components(reservation_id);
+CREATE INDEX IF NOT EXISTS idx_ricomp_item ON reservation_item_components(reservation_item_id);
+CREATE INDEX IF NOT EXISTS idx_ricomp_prod ON reservation_item_components(product_id);
 
 CREATE TABLE IF NOT EXISTS quotes (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,

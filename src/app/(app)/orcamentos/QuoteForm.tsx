@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import ItemsEditor, { type ItemRow, type Product, type StockInfo } from "@/components/ItemsEditor";
+import ConflictList from "@/components/ConflictList";
 import { Alerta, Field, Grid } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { money, parseMoney } from "@/lib/format";
@@ -160,13 +161,7 @@ export default function QuoteForm({
         {conflicts.length > 0 && (
           <div className="mb-3">
             <Alerta tone="ambar" title="Atencao: estoque apertado nesta data">
-              <ul className="mt-1 space-y-0.5 text-xs">
-                {conflicts.map((c) => (
-                  <li key={c.product_id}>
-                    <b>{c.product}</b>: pedido {c.requested}, disponivel {c.available}.
-                  </li>
-                ))}
-              </ul>
+              <ConflictList conflicts={conflicts} />
               <p className="mt-1 text-xs">
                 O orcamento pode ser salvo assim mesmo. A checagem sera refeita na conversao em reserva.
               </p>

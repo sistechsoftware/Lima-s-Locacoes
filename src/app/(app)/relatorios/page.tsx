@@ -68,9 +68,20 @@ export default async function RelatoriosPage({
     );
   const fretesQtd = await scalar<number>(`SELECT COUNT(*) FROM freights WHERE date BETWEEN ? AND ? AND status <> 'cancelado'`, [de, ate]);
 
-  /* produtos */
+  /* consumo fisico: expande kits nos componentes que realmente sairam do estoque */
+  const consumoFisico = await all<any>(
+    `SELECT p.id, p.name, COALESCE(SUM(ric.qty),0) AS unidades, COUNT(DISTINCT r.id) AS reservas
+       FROM reservation_item_components ric
+       JOIN reservations r ON r.id = ric.reservation_id
+       JOIN products p ON p.id = ric.product_id
+      WHERE r.status <> 'cancelada' AND r.event_date BETWEEN ? AND ?
+      GROUP BY p.id ORDER BY unidades DESC`,
+    [de, ate],
+  );
+
+  /* produtos (linhas comerciais: kits contam como kits) */
   const produtos = await all<any>(
-    `SELECT p.id, p.name, COALESCE(SUM(i.qty),0) AS unidades, COUNT(DISTINCT r.id) AS reservas,
+    `SELECT p.id, p.name, p.kind, COALESCE(SUM(i.qty),0) AS unidades, COUNT(DISTINCT r.id) AS reservas,
             COALESCE(SUM(i.subtotal_cents),0) AS receita
        FROM products p
        LEFT JOIN reservation_items i ON i.product_id = p.id
@@ -191,7 +202,7 @@ export default async function RelatoriosPage({
       </Section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="Produtos mais alugados no periodo">
+        <Section title="Mais alugados no periodo (linhas contratadas)">
           {produtos.filter((x) => x.unidades > 0).length === 0 ? (
             <Empty>Nenhuma locacao no periodo.</Empty>
           ) : (
@@ -202,6 +213,7 @@ export default async function RelatoriosPage({
                 .map((x) => (
                   <li key={x.id} className="flex items-center justify-between py-2 text-sm">
                     <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-terra-600">
+                      {x.kind === "kit" ? "[KIT] " : ""}
                       {x.name}
                     </Link>
                     <span className="shrink-0 text-right">
@@ -211,6 +223,31 @@ export default async function RelatoriosPage({
                   </li>
                 ))}
             </ul>
+          )}
+        </Section>
+
+        <Section title="Consumo fisico de equipamentos">
+          {consumoFisico.length === 0 ? (
+            <Empty>Nenhuma locacao no periodo.</Empty>
+          ) : (
+            <>
+              <p className="mb-2 text-xs text-stone-500">
+                Kits ja expandidos nos componentes: e o que realmente saiu do estoque.
+              </p>
+              <ul className="divide-y divide-areia-200">
+                {consumoFisico.slice(0, 10).map((x) => (
+                  <li key={x.id} className="flex items-center justify-between py-2 text-sm">
+                    <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-terra-600">
+                      {x.name}
+                    </Link>
+                    <span className="shrink-0 text-right">
+                      <b className="text-carvao-900">{x.unidades} un.</b>
+                      <span className="block text-xs text-stone-500">{x.reservas} reserva(s)</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </Section>
 

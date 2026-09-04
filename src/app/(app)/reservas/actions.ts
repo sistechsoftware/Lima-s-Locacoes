@@ -6,7 +6,14 @@ import { nextNumber } from "@/lib/db";
 import { assertAdmin, currentUser, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { recalcReservation, reservationMoney, syncOperations, getReservation, itemsSummary } from "@/lib/reservations";
-import { checkConflicts, holdWindow, stamp } from "@/lib/stock";
+import {
+  checkConflicts,
+  conflictsMessage,
+  findOverbookings,
+  holdWindow,
+  rebuildReservationComponents,
+  stamp,
+} from "@/lib/stock";
 import { HOLDING_STATUSES } from "@/lib/domain";
 import { money, parseMoney, today } from "@/lib/format";
 
@@ -54,15 +61,30 @@ function readHeader(fd: FormData) {
   };
 }
 
-function conflictMessage(conflicts: Awaited<ReturnType<typeof checkConflicts>>) {
+const conflictMessage = conflictsMessage;
+
+/**
+ * Confere, apos gravar, se esta reserva estourou o estoque por causa de uma
+ * gravacao concorrente. Se estourou, desfaz a propria reserva e devolve o
+ * erro. Ver findOverbookings para o criterio de desempate.
+ */
+async function guardStock(reservationId: number, authorized: boolean): Promise<string | null> {
+  if (authorized) return null;
+  const excessos = await findOverbookings(reservationId);
+  if (!excessos.length) return null;
+
+  await run(`DELETE FROM reservation_items WHERE reservation_id = ?`, [reservationId]);
+  await run(`DELETE FROM reservation_item_components WHERE reservation_id = ?`, [reservationId]);
+  await run(`DELETE FROM deposits WHERE reservation_id = ?`, [reservationId]);
+  await run(`DELETE FROM operations WHERE reservation_id = ?`, [reservationId]);
+  await run(`DELETE FROM reservations WHERE id = ?`, [reservationId]);
+
   return (
     "ESTOQUE INSUFICIENTE. " +
-    conflicts
-      .map(
-        (c) =>
-          `${c.product}: pedido ${c.requested}, disponivel ${c.available} nesta data (reservado ${c.reserved} de ${c.total}).`,
-      )
-      .join(" ")
+    excessos
+      .map((e) => `${e.product}: faltam ${e.excess} unidade(s) (outra reserva ocupou o estoque agora ha pouco).`)
+      .join(" ") +
+    " Refaca a operacao com as quantidades disponiveis."
   );
 }
 
@@ -135,10 +157,15 @@ export async function createReservation(_prev: string | null, fd: FormData): Pro
       id,
       h.deposit_cents,
     ]);
+    // expande kits nos componentes fisicos antes de qualquer calculo de estoque
+    await rebuildReservationComponents(id);
     await recalcReservation(id);
     await syncOperations(id);
     await logAction(user, "criar", "reserva", id, `${user.name} criou a reserva ${number}`, { items: items.length });
   });
+
+  const corrida = await guardStock(id, override && user.role === "admin");
+  if (corrida) return corrida;
 
   revalidatePath("/reservas");
   revalidatePath("/dashboard");
@@ -213,6 +240,8 @@ export async function updateReservation(_prev: string | null, fd: FormData): Pro
     if (dep) await run(`UPDATE deposits SET amount_cents = ? WHERE id = ?`, [h.deposit_cents, dep.id]);
     else await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,?,'nao_recebida')`, [id, h.deposit_cents]);
 
+    // regrava a expansao: alterar quantidade de kits ajusta o consumo fisico
+    await rebuildReservationComponents(id);
     await recalcReservation(id);
     await syncOperations(id);
     await logAction(user, "editar", "reserva", id, `${user.name} alterou a reserva ${current.number}`);
@@ -251,6 +280,8 @@ export async function changeStatus(fd: FormData) {
   if (status === "cancelada") {
     await run(`UPDATE reservations SET cancel_reason = ? WHERE id = ?`, [String(fd.get("reason") ?? ""), id]);
   }
+  // cancelar libera o estoque automaticamente: a reserva deixa de ocupar a
+  // janela, e a expansao fisica deixa de ser contabilizada pelo motor.
   await syncOperations(id);
   await logAction(user, "status", "reserva", id, `${user.name} alterou o status da reserva ${r.number} para ${status}`);
   revalidatePath(`/reservas/${id}`);
@@ -360,11 +391,11 @@ export async function checkStock(payload: {
   return conflicts.map((c) => ({
     product_id: c.product_id,
     product: c.product,
+    kind: c.kind,
     requested: c.requested,
     available: c.available,
-    reserved: c.reserved,
-    total: c.total,
     missing: c.missing,
+    components: c.components,
     holds: c.holds.map((h) => ({ number: h.number, customer: h.customer, qty: h.qty })),
   }));
 }

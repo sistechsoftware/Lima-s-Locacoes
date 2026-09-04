@@ -24,7 +24,13 @@ export default async function DisponibilidadePage({
   const resumoTexto =
     `Disponibilidade para ${dateBR(data)}${ate !== data ? ` ate ${dateBR(ate)}` : ""}:\n` +
     grupos
-      .flatMap((g) => g.products.map((p) => `${p.name}: ${Math.max(0, p.available)} de ${p.total}`))
+      .flatMap((g) =>
+        g.products.map((p) =>
+          p.kind === "kit"
+            ? `${p.name}: ${Math.max(0, p.available)} kit(s) disponiveis`
+            : `${p.name}: ${Math.max(0, p.available)} de ${p.total}`,
+        ),
+      )
       .join("\n");
 
   return (
@@ -75,10 +81,20 @@ export default async function DisponibilidadePage({
                 <Link key={p.product_id} href={`/estoque/${p.product_id}`} className="block px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-carvao-900">{p.name}</p>
+                      <p className="flex items-center gap-1.5 truncate text-sm font-bold text-carvao-900">
+                        {p.kind === "kit" && (
+                          <span className="shrink-0 rounded bg-terra-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-terra-700">
+                            kit
+                          </span>
+                        )}
+                        <span className="truncate">{p.name}</span>
+                      </p>
                       <p className="text-xs text-stone-500">
-                        Total {p.total} - reservados {p.reserved}
-                        {p.maintenance > 0 ? ` - manutencao ${p.maintenance}` : ""}
+                        {p.kind === "kit"
+                          ? "Kit: disponibilidade calculada pelos componentes"
+                          : `Total ${p.total} - reservados ${p.reserved}${
+                              p.maintenance > 0 ? ` - manutencao ${p.maintenance}` : ""
+                            }`}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
@@ -90,11 +106,11 @@ export default async function DisponibilidadePage({
                         {livre}
                       </p>
                       <p className="text-[0.65rem] uppercase text-stone-400">
-                        {livre <= 0 ? "indisponivel" : "disponiveis"}
+                        {livre <= 0 ? "indisponivel" : p.kind === "kit" ? "kits montaveis" : "disponiveis"}
                       </p>
                     </div>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-areia-200">
+                  <div className={`mt-2 h-1.5 overflow-hidden rounded-full bg-areia-200 ${p.kind === "kit" ? "hidden" : ""}`}>
                     <div
                       className={`h-full ${pct >= 100 ? "bg-red-500" : pct > 70 ? "bg-amber-500" : "bg-emerald-500"}`}
                       style={{ width: `${Math.min(100, pct)}%` }}

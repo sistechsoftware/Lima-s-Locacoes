@@ -4,6 +4,7 @@ import { all, insert, one, run, scalar, tx } from "./db";
 import { DEFAULT_CATEGORIES } from "./domain";
 import { addDays, today } from "./format";
 import { recalcReservation, syncOperations } from "./reservations";
+import { rebuildReservationComponents } from "./stock";
 
 function hash(password: string) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -48,11 +49,34 @@ export async function ensureSeed() {
     const productId: Record<string, number> = {};
     for (const [code, name, category, total, min, rent, replace] of products) {
       productId[code] = await insert(
-        `INSERT INTO products (code, name, category_id, total_qty, min_qty, rent_price_cents, replace_cents, is_demo)
-         VALUES (?,?,?,?,?,?,?,1)`,
+        `INSERT INTO products (code, name, category_id, kind, total_qty, min_qty, rent_price_cents, replace_cents, is_demo)
+         VALUES (?,?,?,'simples',?,?,?,?,1)`,
         [code, name, await cat(category), total, min, rent, replace],
       );
     }
+
+    // Kit de demonstracao: nao possui estoque proprio, consome mesa e cadeiras.
+    const kitId = await insert(
+      `INSERT INTO products (code, name, category_id, kind, total_qty, min_qty, rent_price_cents, replace_cents, description, is_demo)
+       VALUES (?,?,?,'kit',0,0,?,0,?,1)`,
+      [
+        "KIT-MC4",
+        "Kit Mesa + 4 Cadeiras",
+        await cat("Outros"),
+        20000,
+        "Produto composto de demonstracao: 1 mesa e 4 cadeiras.",
+      ],
+    );
+    await insert(`INSERT INTO product_components (parent_product_id, component_product_id, quantity) VALUES (?,?,?)`, [
+      kitId,
+      productId.MESA,
+      1,
+    ]);
+    await insert(`INSERT INTO product_components (parent_product_id, component_product_id, quantity) VALUES (?,?,?)`, [
+      kitId,
+      productId.CAD,
+      4,
+    ]);
 
     // unidades individuais de exemplo para os brinquedos
     await insert(
@@ -186,6 +210,7 @@ export async function ensureSeed() {
           [id, pid, qty, price],
         );
       }
+      await rebuildReservationComponents(id);
       await recalcReservation(id);
       await syncOperations(id);
       await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,?,?)`, [
@@ -254,6 +279,7 @@ export async function purgeDemoData() {
       await run(`DELETE FROM payments WHERE reservation_id = ?`, [id]);
       await run(`DELETE FROM deposits WHERE reservation_id = ?`, [id]);
       await run(`DELETE FROM operations WHERE reservation_id = ?`, [id]);
+      await run(`DELETE FROM reservation_item_components WHERE reservation_id = ?`, [id]);
       await run(`DELETE FROM reservation_items WHERE reservation_id = ?`, [id]);
       await run(`DELETE FROM reservations WHERE id = ?`, [id]);
     }
@@ -261,6 +287,12 @@ export async function purgeDemoData() {
     await run(`DELETE FROM freights WHERE is_demo = 1`);
     await run(`DELETE FROM expenses WHERE is_demo = 1`);
     await run(`DELETE FROM product_units WHERE product_id IN (SELECT id FROM products WHERE is_demo = 1)`);
+    // remove a composicao antes dos produtos, senao a FK do componente bloqueia
+    await run(
+      `DELETE FROM product_components
+        WHERE parent_product_id IN (SELECT id FROM products WHERE is_demo = 1)
+           OR component_product_id IN (SELECT id FROM products WHERE is_demo = 1)`,
+    );
     await run(`DELETE FROM products WHERE is_demo = 1 AND id NOT IN (SELECT product_id FROM reservation_items)`);
     await run(`DELETE FROM customers WHERE is_demo = 1 AND id NOT IN (SELECT customer_id FROM reservations)`);
     await run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL`);

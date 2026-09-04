@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { all, one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { availabilityFor, holdsForProduct } from "@/lib/stock";
+import { availabilityFor, componentsOf, holdsForProduct, kitsUsing } from "@/lib/stock";
 import { logsFor } from "@/lib/audit";
 import { UNIT_STATUS } from "@/lib/domain";
 import { addDays, dateBR, money, today } from "@/lib/format";
@@ -40,6 +40,9 @@ export default async function ProdutoPage({
   const units = await all<any>(`SELECT * FROM product_units WHERE product_id = ? ORDER BY code`, [p.id]);
   const maint = await all<any>(`SELECT * FROM maintenance WHERE product_id = ? ORDER BY status, id DESC LIMIT 20`, [p.id]);
   const historico = (await logsFor("produto", p.id)).slice(0, 10);
+  const ehKit = p.kind === "kit";
+  const componentes = ehKit ? await componentsOf(p.id) : [];
+  const kitsQueUsam = ehKit ? [] : await kitsUsing(p.id);
 
   const usos = (await all<any>(
     `SELECT COUNT(*) AS reservas, COALESCE(SUM(i.qty),0) AS unidades, COALESCE(SUM(i.subtotal_cents),0) AS receita
@@ -61,6 +64,11 @@ export default async function ProdutoPage({
         }
       />
 
+      {aviso === "componente" && (
+        <Alerta tone="ambar" title="Produto inativado">
+          Este produto faz parte da composicao de um ou mais kits, por isso foi inativado em vez de excluido.
+        </Alerta>
+      )}
       {aviso === "inativado" && (
         <Alerta tone="ambar" title="Produto inativado">
           O produto ja foi usado em reservas, por isso foi inativado em vez de excluido.
@@ -70,15 +78,66 @@ export default async function ProdutoPage({
       {hoje.low && <Alerta tone="vermelho">Disponibilidade abaixo do minimo configurado ({p.min_qty}).</Alerta>}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat label="Total" value={p.total_qty} />
-        <Stat label="Reservado hoje" value={hoje.reserved} />
-        <Stat label="Disponivel hoje" value={Math.max(0, hoje.available)} tone={hoje.available <= 0 ? "vermelho" : "verde"} />
-        <Stat label="Em manutencao" value={p.maintenance_qty} />
+        <Stat label={ehKit ? "Estoque proprio" : "Total"} value={ehKit ? "-" : p.total_qty} />
+        <Stat label="Reservado hoje" value={ehKit ? "-" : hoje.reserved} />
+        <Stat
+          label={ehKit ? "Kits montaveis hoje" : "Disponivel hoje"}
+          value={Math.max(0, hoje.available)}
+          tone={hoje.available <= 0 ? "vermelho" : "verde"}
+        />
+        <Stat label="Em manutencao" value={ehKit ? "-" : p.maintenance_qty} />
       </div>
+
+      {ehKit && (
+        <Section title="Composicao do kit">
+          <p className="mb-2 text-sm text-stone-600">
+            Este kit nao possui estoque proprio. Alugar 1 unidade consome os itens abaixo, e a disponibilidade e
+            calculada a partir deles.
+          </p>
+          {componentes.length === 0 ? (
+            <Alerta tone="vermelho">
+              Kit sem composicao definida. Edite o produto e informe os componentes.
+            </Alerta>
+          ) : (
+            <ul className="divide-y divide-areia-200">
+              {componentes.map((c: any) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-2">
+                  <Link href={`/estoque/${c.component_product_id}`} className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-terra-600">{c.component_name}</span>
+                    <span className="block text-xs text-stone-500">
+                      {c.component_code} - estoque total {c.total_qty} un.
+                    </span>
+                  </Link>
+                  <span className="shrink-0 text-sm font-bold text-carvao-900">{c.quantity} por kit</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+
+      {!ehKit && kitsQueUsam.length > 0 && (
+        <Section title={`Kits que usam este produto (${kitsQueUsam.length})`}>
+          <ul className="divide-y divide-areia-200">
+            {kitsQueUsam.map((k: any) => (
+              <li key={k.id} className="flex items-center justify-between gap-3 py-2">
+                <Link href={`/estoque/${k.id}`} className="min-w-0 truncate text-sm font-semibold text-terra-600">
+                  {k.name}
+                </Link>
+                <span className="shrink-0 text-sm text-stone-500">{k.quantity} un. por kit</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-stone-500">
+            Alugar esses kits consome o estoque deste produto.
+          </p>
+        </Section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="Dados do produto">
           <Row label="Codigo" value={p.code} />
+          <Row label="Tipo" value={ehKit ? "Kit / produto composto" : "Produto simples"} />
           <Row label="Categoria" value={p.category ?? "-"} />
           <Row label="Valor de locacao" value={money(p.rent_price_cents)} />
           <Row label="Valor de reposicao" value={money(p.replace_cents)} />
@@ -129,6 +188,7 @@ export default async function ProdutoPage({
         </Section>
       </div>
 
+      {!ehKit && (
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title={`Unidades individuais (${units.length})`}>
           <form action={addUnits} className="mb-3 flex flex-wrap gap-2">
@@ -231,6 +291,7 @@ export default async function ProdutoPage({
           </div>
         </Section>
       </div>
+      )}
 
       {historico.length > 0 && (
         <Section title="Historico">

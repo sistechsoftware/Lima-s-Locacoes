@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import ReservationForm from "../ReservationForm";
 import { createReservation } from "../actions";
+import { sellableProducts } from "@/lib/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,7 @@ export default async function NovaReservaPage({
   const user = await requireUser();
   const { cliente } = await searchParams;
 
-  const products = await all<any>(
-    `SELECT p.id, p.code, p.name, p.rent_price_cents, p.total_qty, c.name AS category
-       FROM products p LEFT JOIN categories c ON c.id = p.category_id
-      WHERE p.active = 1 ORDER BY c.name, p.name`,
-  );
+  const products = await sellableProducts();
   const customers = await all<any>(
     `SELECT id, name, phone, address, district, city FROM customers WHERE active = 1 ORDER BY name`,
   );

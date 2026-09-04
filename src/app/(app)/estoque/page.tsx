@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { all } from "@/lib/db";
-import { availabilityAll } from "@/lib/stock";
+import { availabilityAllWithKits } from "@/lib/stock";
 import { money, today } from "@/lib/format";
 import { Badge, Empty, LinkButton, PageHeader, Stat } from "@/components/ui";
 import { Tabs } from "@/components/List";
@@ -15,7 +15,7 @@ export default async function EstoquePage({
   const sp = await searchParams;
   const aba = sp.aba ?? "todos";
   const d0 = today();
-  const disponibilidade = await availabilityAll(`${d0}T00:00`, `${d0}T23:59`);
+  const disponibilidade = await availabilityAllWithKits(`${d0}T00:00`, `${d0}T23:59`);
   const produtos = await all<any>(
     `SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id
       ORDER BY p.active DESC, c.name, p.name`,
@@ -25,6 +25,7 @@ export default async function EstoquePage({
   const filtrados = produtos.filter((p) => {
     if (aba === "ativos") return p.active;
     if (aba === "inativos") return !p.active;
+    if (aba === "kits") return p.kind === "kit";
     if (aba === "baixo") return info.get(p.id)?.low;
     if (aba === "manutencao") return p.maintenance_qty > 0;
     return true;
@@ -46,8 +47,12 @@ export default async function EstoquePage({
       />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat label="Disponiveis hoje" value={disponibilidade.reduce((s, d) => s + Math.max(0, d.available), 0)} />
+        <Stat
+          label="Disponiveis hoje"
+          value={disponibilidade.filter((d) => d.kind !== "kit").reduce((s, d) => s + Math.max(0, d.available), 0)}
+        />
         <Stat label="Reservados hoje" value={disponibilidade.reduce((s, d) => s + d.reserved, 0)} />
+        <Stat label="Kits cadastrados" value={produtos.filter((p) => p.kind === "kit").length} />
         <Stat label="Em manutencao" value={produtos.reduce((s, p) => s + p.maintenance_qty, 0)} />
         <Stat
           label="Abaixo do minimo"
@@ -60,6 +65,7 @@ export default async function EstoquePage({
         items={[
           { value: "todos", label: "Todos" },
           { value: "ativos", label: "Ativos" },
+          { value: "kits", label: "Kits" },
           { value: "baixo", label: "Estoque baixo" },
           { value: "manutencao", label: "Em manutencao" },
           { value: "inativos", label: "Inativos" },
@@ -83,6 +89,7 @@ export default async function EstoquePage({
                     <Link key={p.id} href={`/estoque/${p.id}`} className="cartao flex items-center gap-3 p-3">
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex flex-wrap gap-1.5">
+                          {p.kind === "kit" && <Badge tone="terracota">Kit</Badge>}
                           {!p.active && <Badge tone="cinza">Inativo</Badge>}
                           {d?.low && <Badge tone="vermelho">Estoque baixo</Badge>}
                           {p.maintenance_qty > 0 && <Badge tone="roxo">{p.maintenance_qty} em manutencao</Badge>}
@@ -96,7 +103,9 @@ export default async function EstoquePage({
                         <p className="text-lg font-bold leading-none text-carvao-900">
                           {d ? Math.max(0, d.available) : p.total_qty}
                         </p>
-                        <p className="text-[0.65rem] uppercase text-stone-400">de {p.total_qty} hoje</p>
+                        <p className="text-[0.65rem] uppercase text-stone-400">
+                          {p.kind === "kit" ? "kits montaveis" : `de ${p.total_qty} hoje`}
+                        </p>
                       </div>
                     </Link>
                   );

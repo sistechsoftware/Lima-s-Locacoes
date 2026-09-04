@@ -5,7 +5,7 @@ import { all, insert, nextNumber, one, run, tx } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { recalcQuote, recalcReservation, syncOperations } from "@/lib/reservations";
-import { checkConflicts, stamp } from "@/lib/stock";
+import { checkConflicts, conflictsMessage, rebuildReservationComponents, stamp } from "@/lib/stock";
 import { parseMoney } from "@/lib/format";
 
 type ItemInput = { product_id: number; qty: number; unit_price_cents: number; discount_cents: number };
@@ -184,9 +184,7 @@ export async function convertQuote(fd: FormData) {
     q.pickup_at,
   );
   if (conflicts.length && !(force && user.role === "admin")) {
-    const msg =
-      "ESTOQUE INSUFICIENTE. " +
-      conflicts.map((c) => `${c.product}: pedido ${c.requested}, disponivel ${c.available}.`).join(" ");
+    const msg = conflictsMessage(conflicts);
     redirect(`/orcamentos/${id}?erro=${encodeURIComponent(msg)}`);
   }
 
@@ -230,6 +228,8 @@ export async function convertQuote(fd: FormData) {
     await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,0,'nao_recebida')`, [reservationId]);
     await run(`UPDATE reservations SET needs_assembly = ? WHERE id = ?`, [q.assembly_cents > 0 ? 1 : 0, reservationId]);
     await run(`UPDATE reservations SET needs_disassembly = ? WHERE id = ?`, [q.disassembly_cents > 0 ? 1 : 0, reservationId]);
+    // expande kits do orcamento nos componentes fisicos da reserva
+    await rebuildReservationComponents(reservationId);
     await recalcReservation(reservationId);
     await syncOperations(reservationId);
     await run(`UPDATE quotes SET status = 'convertido', reservation_id = ? WHERE id = ?`, [reservationId, id]);

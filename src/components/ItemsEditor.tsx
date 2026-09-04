@@ -10,6 +10,9 @@ export type Product = {
   category: string | null;
   rent_price_cents: number;
   total_qty: number;
+  kind?: "simples" | "kit" | string;
+  /** Resumo da composicao do kit ("1 Mesa + 4 Cadeira"). */
+  composition?: string | null;
 };
 
 export type ItemRow = {
@@ -74,6 +77,7 @@ export default function ItemsEditor({
             <optgroup key={cat} label={cat}>
               {list.map((p) => (
                 <option key={p.id} value={p.id}>
+                  {p.kind === "kit" ? "[KIT] " : ""}
                   {p.name} - {money(p.rent_price_cents)}
                 </option>
               ))}
@@ -99,9 +103,20 @@ export default function ItemsEditor({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-carvao-900">{p?.name ?? "Produto"}</p>
-                    <p className="text-xs text-stone-500">
-                      {p?.code} - estoque total {p?.total_qty}
+                    <p className="flex items-center gap-1.5 truncate text-sm font-bold text-carvao-900">
+                      {p?.kind === "kit" && (
+                        <span className="shrink-0 rounded bg-terra-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-terra-700">
+                          kit
+                        </span>
+                      )}
+                      <span className="truncate">{p?.name ?? "Produto"}</span>
+                    </p>
+                    <p className="truncate text-xs text-stone-500">
+                      {p?.kind === "kit"
+                        ? p?.composition
+                          ? `Consome ${p.composition} por unidade`
+                          : "Kit sem composicao definida"
+                        : `${p?.code} - estoque total ${p?.total_qty}`}
                     </p>
                   </div>
                   <button
@@ -167,6 +182,7 @@ export default function ItemsEditor({
                   {info ? (
                     <span className="text-xs font-bold text-red-700">
                       Faltam {info.missing} - disponivel {info.available}
+                      {p?.kind === "kit" ? " kit(s)" : ""}
                     </span>
                   ) : (
                     <span className="text-xs text-stone-400">Subtotal</span>

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import ItemsEditor, { type ItemRow, type Product, type StockInfo } from "@/components/ItemsEditor";
+import ConflictList from "@/components/ConflictList";
 import { Field, Grid, Alerta } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { money, parseMoney } from "@/lib/format";
@@ -223,19 +224,7 @@ export default function ReservationForm({
         {conflicts.length > 0 && (
           <div className="mb-3">
             <Alerta tone="vermelho" title="Estoque insuficiente nesta data">
-              <ul className="mt-1 space-y-1 text-xs">
-                {conflicts.map((c) => (
-                  <li key={c.product_id}>
-                    <b>{c.product}</b>: pedido {c.requested}, disponivel {c.available} (reservado {c.reserved} de{" "}
-                    {c.total}).
-                    {c.holds.length > 0 && (
-                      <span className="block opacity-80">
-                        Em uso por: {c.holds.map((h: any) => `${h.number} (${h.customer}, ${h.qty})`).join("; ")}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <ConflictList conflicts={conflicts} />
               {isAdmin ? (
                 <label className="mt-2 flex items-center gap-2 text-xs font-semibold">
                   <input

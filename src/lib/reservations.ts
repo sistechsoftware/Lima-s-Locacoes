@@ -166,7 +166,7 @@ export async function getReservationByNumber(number: string) {
 
 export async function reservationItems(id: number) {
   return await all<any>(
-    `SELECT i.*, p.name AS product_name, p.code AS product_code
+    `SELECT i.*, p.name AS product_name, p.code AS product_code, p.kind AS product_kind
        FROM reservation_items i JOIN products p ON p.id = i.product_id
       WHERE i.reservation_id = ? ORDER BY i.id`,
     [id],
@@ -175,7 +175,7 @@ export async function reservationItems(id: number) {
 
 export async function quoteItems(id: number) {
   return await all<any>(
-    `SELECT i.*, p.name AS product_name, p.code AS product_code
+    `SELECT i.*, p.name AS product_name, p.code AS product_code, p.kind AS product_kind
        FROM quote_items i JOIN products p ON p.id = i.product_id
       WHERE i.quote_id = ? ORDER BY i.id`,
     [id],
