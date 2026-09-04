@@ -81,8 +81,14 @@ export default async function RelatoriosPage({
 
   /* produtos (linhas comerciais: kits contam como kits) */
   const produtos = await all<any>(
-    `SELECT p.id, p.name, p.kind, COALESCE(SUM(i.qty),0) AS unidades, COUNT(DISTINCT r.id) AS reservas,
-            COALESCE(SUM(i.subtotal_cents),0) AS receita
+    // os LEFT JOIN mantem na lista os produtos sem locacao (usados em "menos
+    // alugados"), por isso a soma precisa ignorar explicitamente os itens cuja
+    // reserva nao casou com o filtro: sem isso, reservas canceladas ou fora do
+    // periodo entrariam no total.
+    `SELECT p.id, p.name, p.kind,
+            COALESCE(SUM(CASE WHEN r.id IS NOT NULL THEN i.qty END),0) AS unidades,
+            COUNT(DISTINCT r.id) AS reservas,
+            COALESCE(SUM(CASE WHEN r.id IS NOT NULL THEN i.subtotal_cents END),0) AS receita
        FROM products p
        LEFT JOIN reservation_items i ON i.product_id = p.id
        LEFT JOIN reservations r ON r.id = i.reservation_id AND r.status <> 'cancelada'
