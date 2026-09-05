@@ -10,10 +10,12 @@ import { alterarReserva, cancelarReserva, criarReserva, montarCenario, resetSequ
 import {
   availabilityFor,
   checkConflicts,
+  compositionDrift,
   findOverbookings,
   physicalAvailability,
   rebuildReservationComponents,
   reservationPhysicalUsage,
+  scanConflicts,
 } from "../src/lib/stock.ts";
 import { all, run } from "../src/lib/db.ts";
 
@@ -232,5 +234,64 @@ describe("concorrencia", () => {
     const c = await montarCenario(2, 8);
     const id = await criarReserva(c.clienteId, [{ product_id: c.kitId, qty: 2 }]);
     assert.deepEqual(await findOverbookings(id), []);
+  });
+});
+
+describe("composicao desatualizada", () => {
+  it("aponta a divergencia quando o kit muda depois da reserva, e a atualizacao corrige", async () => {
+    createTestDb();
+    resetSequencia();
+    const c = await montarCenario(20, 80);
+
+    // kit cadastrado incompleto: so cadeiras, sem a mesa
+    await run(`DELETE FROM product_components WHERE parent_product_id = ? AND component_product_id = ?`, [
+      c.kitId,
+      c.mesaId,
+    ]);
+
+    const id = await criarReserva(c.clienteId, [{ product_id: c.kitId, qty: 5 }]);
+    assert.deepEqual(await estoqueLivre(c), { mesas: 20, cadeiras: 60 }, "mesa ainda nao e consumida");
+    assert.deepEqual(await compositionDrift(id), [], "sem divergencia enquanto o kit nao muda");
+
+    // composicao corrigida: passa a incluir 1 mesa por kit
+    await run(`INSERT INTO product_components (parent_product_id, component_product_id, quantity) VALUES (?,?,1)`, [
+      c.kitId,
+      c.mesaId,
+    ]);
+
+    const drift = await compositionDrift(id);
+    assert.equal(drift.length, 1);
+    assert.equal(drift[0].product, "Mesa");
+    assert.equal(drift[0].gravado, 0);
+    assert.equal(drift[0].atual, 5);
+
+    // a reserva antiga so muda quando alguem confirma a atualizacao
+    await rebuildReservationComponents(id);
+    assert.deepEqual(await compositionDrift(id), []);
+    assert.deepEqual(await estoqueLivre(c), { mesas: 15, cadeiras: 60 });
+  });
+});
+
+describe("varredura de conflitos", () => {
+  it("acha as reservas que estouram o estoque, sem percorrer uma a uma", async () => {
+    createTestDb();
+    resetSequencia();
+    const c = await montarCenario(2, 8);
+
+    const idA = await criarReserva(c.clienteId, [{ product_id: c.kitId, qty: 2 }]);
+    const idB = await criarReserva(c.clienteId, [{ product_id: c.kitId, qty: 2 }]);
+
+    const conflitos = await scanConflicts("2026-01-01");
+    const envolvidas = conflitos.map((x) => x.reservation_id).sort();
+    assert.deepEqual(envolvidas, [idA, idB].sort(), "as duas reservas dividem a mesma janela estourada");
+    assert.ok(conflitos[0].faltas.length > 0);
+  });
+
+  it("nao acusa nada quando tudo cabe", async () => {
+    createTestDb();
+    resetSequencia();
+    const c = await montarCenario(20, 80);
+    await criarReserva(c.clienteId, [{ product_id: c.kitId, qty: 5 }]);
+    assert.deepEqual(await scanConflicts("2026-01-01"), []);
   });
 });

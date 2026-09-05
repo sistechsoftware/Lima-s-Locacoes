@@ -11,7 +11,7 @@ import {
   reservationOperations,
 } from "@/lib/reservations";
 import { messagesForReservation } from "@/lib/whatsapp";
-import { checkConflicts, holdWindow, reservationPhysicalUsage } from "@/lib/stock";
+import { checkConflicts, compositionDrift, holdWindow, reservationPhysicalUsage } from "@/lib/stock";
 import {
   CONTRACT_STATUS,
   DEPOSIT_STATUS,
@@ -24,11 +24,11 @@ import {
   paymentState,
   statusLabel,
 } from "@/lib/domain";
-import { dateBR, dateTimeBR, mapsLink, money, phoneBR, timeBR, today } from "@/lib/format";
+import { dateBR, dateTimeBR, mapsLink, money, phoneBR, timeBR, today, utcParaLocal } from "@/lib/format";
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, Stat, StatusBadge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
-import { addPayment, changeStatus, deletePayment, deleteReservation, saveDeposit } from "../actions";
+import { addPayment, changeStatus, deletePayment, deleteReservation, refreshComposition, saveDeposit } from "../actions";
 import { generateContract } from "../../contratos/actions";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +58,7 @@ export default async function ReservaPage({
   );
   const historico = await logsFor("reserva", r.id);
   const consumoFisico = await reservationPhysicalUsage(r.id);
+  const divergencia = r.status === "cancelada" ? [] : await compositionDrift(r.id);
   const temKit = items.some((i: any) => i.product_kind === "kit");
   const pay = paymentState(m.total, m.paid);
   const resumo = await itemsSummary(r.id);
@@ -107,6 +108,28 @@ export default async function ReservaPage({
           ) : (
             <p className="mt-1 text-xs font-semibold">Ajuste as quantidades ou as datas para resolver.</p>
           )}
+        </Alerta>
+      )}
+
+      {divergencia.length > 0 && (
+        <Alerta tone="ambar" title="A composicao do kit mudou depois desta reserva">
+          <p className="mt-0.5 text-xs">
+            Esta reserva foi gravada com a composicao antiga, entao o estoque considera o consumo abaixo. Atualize para
+            usar a composicao atual dos kits. Quantidades, precos e total nao mudam.
+          </p>
+          <ul className="mt-1 space-y-0.5 text-xs">
+            {divergencia.map((d) => (
+              <li key={d.product}>
+                <b>{d.product}</b>: gravado {d.gravado}, pela composicao atual seria {d.atual}.
+              </li>
+            ))}
+          </ul>
+          <form action={refreshComposition} className="mt-2">
+            <input type="hidden" name="id" value={r.id} />
+            <SubmitButton variant="secundario" className="px-3 py-1.5 text-xs">
+              Atualizar composicao
+            </SubmitButton>
+          </form>
         </Alerta>
       )}
 
@@ -466,7 +489,7 @@ export default async function ReservaPage({
           <ul className="space-y-1.5 text-sm">
             {historico.slice(0, 20).map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
-                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span className="shrink-0 text-xs text-stone-400">{utcParaLocal(h.created_at)}</span>
                 <span>{h.summary}</span>
               </li>
             ))}

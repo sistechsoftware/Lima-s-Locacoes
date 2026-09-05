@@ -5,6 +5,7 @@ import { Empty, PageHeader, Stat } from "@/components/ui";
 import { Tabs } from "@/components/List";
 import { SubmitButton } from "@/components/SubmitButton";
 import { markAllRead, markRead } from "./actions";
+import { utcParaLocal } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,7 @@ export default async function NotificacoesPage({
                   <p className="text-sm font-bold text-carvao-900">{n.title}</p>
                   {n.body && <p className="text-xs text-stone-600">{n.body}</p>}
                   <p className="mt-0.5 text-[0.65rem] uppercase tracking-wide text-stone-400">
-                    {n.type} - {n.created_at}
+                    {n.type} - {utcParaLocal(n.created_at)}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">

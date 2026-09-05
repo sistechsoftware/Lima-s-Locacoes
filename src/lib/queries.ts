@@ -165,14 +165,22 @@ export async function dashboardStats() {
     `SELECT COALESCE(SUM(total_cents),0) FROM reservations WHERE event_date BETWEEN ? AND ? AND status IN (${ACTIVE})`,
     [mStart, mEnd],
   );
+  // Frete agendado ja e faturamento previsto, do mesmo jeito que uma reserva
+  // confirmada. So orcamento e cancelado ficam de fora.
   const fretesMes = await count(
-    `SELECT COALESCE(SUM(amount_cents),0) FROM freights WHERE date BETWEEN ? AND ? AND status = 'concluido'`,
+    `SELECT COALESCE(SUM(amount_cents),0) FROM freights
+      WHERE date BETWEEN ? AND ? AND status IN ('agendado','em_rota','concluido')`,
     [mStart, mEnd],
   );
-  const aReceber = await count(
-    `SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)),0)
+  const aReceber =
+    (await count(
+      `SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)),0)
        FROM reservations r WHERE r.status IN (${ACTIVE})`,
-  );
+    )) +
+    (await count(
+      `SELECT COALESCE(SUM(f.amount_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.freight_id = f.id),0)),0)
+       FROM freights f WHERE f.status IN ('agendado','em_rota','concluido')`,
+    ));
   const despesasMes = await count(`SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ? AND ?`, [
     mStart,
     mEnd,

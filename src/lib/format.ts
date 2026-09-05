@@ -27,23 +27,70 @@ export function parseMoney(input: string | number | null | undefined): number {
 
 /* ------------------------------- datas ------------------------------ */
 
-/** Data de hoje no fuso local, formato YYYY-MM-DD. */
+/**
+ * Fuso do negocio.
+ *
+ * O servidor (Worker da Cloudflare) roda em UTC, entao `new Date().getDate()`
+ * la vira o dia seguinte a partir das 21h no horario de Brasilia. Como toda a
+ * regra do sistema e baseada em "hoje" (entregas do dia, atrasos, alertas),
+ * as datas sao sempre calculadas neste fuso, e nunca no fuso do servidor.
+ */
+export const FUSO = "America/Sao_Paulo";
+
+const FORMATADOR = new Intl.DateTimeFormat("en-CA", {
+  timeZone: FUSO,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/** Partes da data conforme o relogio de parede do fuso do negocio. */
+function partesNoFuso(d: Date) {
+  const p: Record<string, string> = {};
+  for (const parte of FORMATADOR.formatToParts(d)) {
+    if (parte.type !== "literal") p[parte.type] = parte.value;
+  }
+  // en-CA usa 24h, mas a meia-noite pode vir como "24"
+  const hora = p.hour === "24" ? "00" : p.hour;
+  return { ano: p.year, mes: p.month, dia: p.day, hora, minuto: p.minute };
+}
+
+/** Data de hoje no fuso do negocio, formato YYYY-MM-DD. */
 export function today(): string {
-  return toISODate(new Date());
+  const { ano, mes, dia } = partesNoFuso(new Date());
+  return `${ano}-${mes}-${dia}`;
+}
+
+/** Data e hora de agora no fuso do negocio, formato YYYY-MM-DDTHH:MM. */
+export function nowLocal(): string {
+  const { ano, mes, dia, hora, minuto } = partesNoFuso(new Date());
+  return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
 }
 
 export function toISODate(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const { ano, mes, dia } = partesNoFuso(d);
+  return `${ano}-${mes}-${dia}`;
 }
 
 export function toISODateTime(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${toISODate(d)}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  const { ano, mes, dia, hora, minuto } = partesNoFuso(d);
+  return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
 }
 
-export function nowLocal(): string {
-  return toISODateTime(new Date());
+/**
+ * Converte um instante gravado em UTC pelo banco para o texto do fuso local.
+ * Usado nos carimbos criados por datetime('now'), que no Worker saem em UTC.
+ */
+export function utcParaLocal(s: string | null | undefined): string {
+  if (!s) return "-";
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(s);
+  if (!m) return s;
+  const utc = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
+  const { ano, mes, dia, hora, minuto } = partesNoFuso(utc);
+  return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
 }
 
 /** Interpreta "YYYY-MM-DD" ou "YYYY-MM-DDTHH:MM" como horario local. */

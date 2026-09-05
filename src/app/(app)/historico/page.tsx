@@ -2,6 +2,7 @@ import { all, scalar } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { Empty, PageHeader } from "@/components/ui";
 import { Pagination, SearchForm } from "@/components/List";
+import { utcParaLocal } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 const PER_PAGE = 50;
@@ -56,7 +57,7 @@ export default async function HistoricoPage({
               <>
                 <span className="block text-sm text-carvao-900">{h.summary}</span>
                 <span className="block text-xs text-stone-400">
-                  {h.created_at} - {h.user_name} - {h.action} em {h.entity}
+                  {utcParaLocal(h.created_at)} - {h.user_name} - {h.action} em {h.entity}
                 </span>
               </>
             );

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { agendaEvents, dashboardStats, lateOperations, operationsOn } from "@/lib/queries";
-import { listNotifications } from "@/lib/notifications";
+import { listNotifications, rebuildNotifications } from "@/lib/notifications";
 import { dateBR, money, moneyShort, today } from "@/lib/format";
 import { Alerta, Card, LinkButton, PageHeader, Section, Stat } from "@/components/ui";
 import { OperationCard } from "@/components/OperationCard";
@@ -24,6 +24,7 @@ export default async function DashboardPage({
 }) {
   const user = await requireUser();
   const { erro } = await searchParams;
+  await rebuildNotifications();
   const s = await dashboardStats();
   const d0 = today();
 

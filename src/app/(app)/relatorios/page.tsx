@@ -42,7 +42,8 @@ export default async function RelatoriosPage({
     [de, ate],
   );
   const fretes = await scalar<number>(
-    `SELECT COALESCE(SUM(amount_cents),0) FROM freights WHERE date BETWEEN ? AND ? AND status = 'concluido'`,
+    `SELECT COALESCE(SUM(amount_cents),0) FROM freights
+      WHERE date BETWEEN ? AND ? AND status IN ('agendado','em_rota','concluido')`,
     [de, ate],
   );
   const despesas = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ? AND ?`, [de, ate]);

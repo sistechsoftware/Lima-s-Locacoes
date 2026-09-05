@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { availabilityFor, componentsOf, holdsForProduct, kitsUsing } from "@/lib/stock";
 import { logsFor } from "@/lib/audit";
 import { UNIT_STATUS } from "@/lib/domain";
-import { addDays, dateBR, money, today } from "@/lib/format";
+import { addDays, dateBR, money, today, utcParaLocal } from "@/lib/format";
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, Stat, StatusBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addUnits, closeMaintenance, deleteProduct, deleteUnit, openMaintenance, setUnitStatus, toggleProduct } from "../actions";
@@ -298,7 +298,7 @@ export default async function ProdutoPage({
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
-                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span className="shrink-0 text-xs text-stone-400">{utcParaLocal(h.created_at)}</span>
                 <span>{h.summary}</span>
               </li>
             ))}

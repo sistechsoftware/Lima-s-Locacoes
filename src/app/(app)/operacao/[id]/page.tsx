@@ -7,7 +7,7 @@ import { attachmentsFor } from "@/lib/uploads";
 import { checklistFor } from "@/lib/checklists";
 import { logsFor } from "@/lib/audit";
 import { OPERATION_KINDS, OPERATION_STATUS, RESERVATION_STATUS } from "@/lib/domain";
-import { dateBR, dateTimeBR, mapsLink, money, phoneBR, timeBR, waLink } from "@/lib/format";
+import { dateBR, dateTimeBR, mapsLink, money, phoneBR, timeBR, utcParaLocal, waLink } from "@/lib/format";
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, StatusBadge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -327,7 +327,7 @@ export default async function OperacaoDetalhePage({
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
-                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span className="shrink-0 text-xs text-stone-400">{utcParaLocal(h.created_at)}</span>
                 <span>{h.summary}</span>
               </li>
             ))}

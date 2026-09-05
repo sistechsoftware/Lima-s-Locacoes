@@ -1,8 +1,7 @@
 import "server-only";
 import { all, run } from "./db";
 import { addDays, today } from "./format";
-import { checkConflicts } from "./stock";
-import { holdWindow } from "./stock";
+import { scanConflicts } from "./stock";
 
 type Alert = {
   dedupe_key: string;
@@ -170,22 +169,16 @@ export async function rebuildNotifications() {
     });
   }
 
-  /* conflitos de estoque em reservas futuras */
-  for (const r of await futureHoldingReservations(d0)) {
-    const items = await all<any>(`SELECT product_id, qty FROM reservation_items WHERE reservation_id = ?`, [r.id]);
-    if (!items.length) continue;
-    const w = holdWindow(r);
-    const conflicts = await checkConflicts(items, w.from, w.to, r.id);
-    if (conflicts.length) {
-      await push({
-        dedupe_key: `conflict-${r.id}`,
-        type: "conflito",
-        severity: "critico",
-        title: `Conflito de estoque - ${r.customer}`,
-        body: `${r.number}: ${conflicts.map((c) => `${c.product} faltam ${c.missing}`).join("; ")}`,
-        link: `/reservas/${r.id}`,
-      });
-    }
+  /* conflitos de estoque em reservas futuras (uma varredura, sem N+1) */
+  for (const r of await scanConflicts(d0)) {
+    await push({
+      dedupe_key: `conflict-${r.reservation_id}`,
+      type: "conflito",
+      severity: "critico",
+      title: `Conflito de estoque - ${r.customer}`,
+      body: `${r.number}: ${r.faltas.map((f) => `${f.product} faltam ${f.missing}`).join("; ")}`,
+      link: `/reservas/${r.reservation_id}`,
+    });
   }
 
   /* remove alertas que nao se aplicam mais */
@@ -195,16 +188,6 @@ export async function rebuildNotifications() {
   } else {
     await run(`DELETE FROM notifications WHERE dedupe_key IS NOT NULL`);
   }
-}
-
-async function futureHoldingReservations(from: string) {
-  return await all<any>(
-    `SELECT r.id, r.number, r.event_date, r.delivery_at, r.pickup_at, c.name AS customer
-       FROM reservations r JOIN customers c ON c.id = r.customer_id
-      WHERE r.status IN ('pre_reserva','confirmada') AND r.event_date >= ?
-      ORDER BY r.event_date LIMIT 120`,
-    [from],
-  );
 }
 
 export async function listNotifications(onlyUnread = false) {

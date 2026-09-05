@@ -435,3 +435,30 @@ export async function logWhatsApp(fd: FormData) {
   await logAction(user, "whatsapp", "reserva", id, `${user?.name} enviou mensagem de ${kind} pelo WhatsApp`);
   revalidatePath(`/reservas/${id}`);
 }
+
+/**
+ * Regrava a expansao fisica desta reserva usando a composicao atual dos kits.
+ *
+ * Serve para o caso em que o kit foi cadastrado incompleto e corrigido depois:
+ * a reserva antiga continua com o consumo antigo ate que alguem confirme a
+ * atualizacao aqui. Nada mais da reserva muda: quantidades, precos e total
+ * continuam como estao.
+ */
+export async function refreshComposition(fd: FormData) {
+  const user = await requireUser();
+  const id = Number(fd.get("id"));
+  const r = await one<any>(`SELECT number FROM reservations WHERE id = ?`, [id]);
+  if (!r) return;
+
+  await rebuildReservationComponents(id);
+  await logAction(
+    user,
+    "editar",
+    "reserva",
+    id,
+    `${user.name} atualizou a composicao dos kits da reserva ${r.number}`,
+  );
+  revalidatePath(`/reservas/${id}`);
+  revalidatePath("/disponibilidade");
+  revalidatePath("/dashboard");
+}

@@ -16,7 +16,7 @@ const active = (pathname: string, href: string) =>
 export function Sidebar({ company, logo }: { company: string; logo?: string }) {
   const pathname = usePathname();
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-areia-300 bg-white md:flex">
+    <aside className="nao-imprimir hidden w-60 shrink-0 flex-col border-r border-areia-300 bg-white md:flex">
       <Link href="/dashboard" className="flex items-center gap-2.5 border-b border-areia-200 px-4 py-4">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -66,7 +66,7 @@ export function TopBar({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-30 border-b border-areia-300 bg-white/95 backdrop-blur">
+    <header className="nao-imprimir sticky top-0 z-30 border-b border-areia-300 bg-white/95 backdrop-blur">
       <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
         <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
           {logo ? (
@@ -188,7 +188,7 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-areia-300 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="nao-imprimir fixed inset-x-0 bottom-0 z-30 border-t border-areia-300 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="grid grid-cols-5">
           {MOBILE_NAV.map((n) => (
             <Link
@@ -233,7 +233,7 @@ export function FloatingAction() {
   return (
     <>
       {open && <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setOpen(false)} />}
-      <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-2 md:bottom-6">
+      <div className="nao-imprimir fixed bottom-20 right-4 z-40 flex flex-col items-end gap-2 md:bottom-6">
         {open &&
           ACOES.map((a) => (
             <Link

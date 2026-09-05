@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { getCustomer } from "@/lib/queries";
 import { logsFor } from "@/lib/audit";
 import { RESERVATION_STATUS, QUOTE_STATUS } from "@/lib/domain";
-import { dateBR, docBR, mapsLink, money, phoneBR, waLink } from "@/lib/format";
+import { dateBR, docBR, mapsLink, money, phoneBR, utcParaLocal, waLink } from "@/lib/format";
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, StatusBadge, Stat } from "@/components/ui";
 import { ListRow } from "@/components/List";
 import { Icon } from "@/components/Icons";
@@ -189,7 +189,7 @@ export default async function ClientePage({
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
-                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span className="shrink-0 text-xs text-stone-400">{utcParaLocal(h.created_at)}</span>
                 <span>{h.summary}</span>
               </li>
             ))}

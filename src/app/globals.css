@@ -89,15 +89,36 @@ label.rotulo {
   .nao-imprimir {
     display: none !important;
   }
+
+  html,
   body {
-    background: #fff;
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+
+  /* o documento precisa ocupar a folha inteira, sem as margens do layout do app */
+  .com-barra-inferior {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
   .imprimivel {
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    border-radius: 0 !important;
   }
+
+  /* evita quebrar cliente, itens ou assinatura no meio da pagina */
+  .imprimivel pre,
+  .imprimivel h1,
+  .imprimivel h2 {
+    break-inside: avoid;
+  }
+
   @page {
     margin: 16mm;
   }

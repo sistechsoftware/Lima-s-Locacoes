@@ -4,7 +4,7 @@ import { all, one, scalar } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { logsFor } from "@/lib/audit";
 import { FREIGHT_STATUS, PAYMENT_METHODS, PAYMENT_METHOD_LABEL } from "@/lib/domain";
-import { dateBR, mapsLink, money, phoneBR, timeBR, today, waLink } from "@/lib/format";
+import { dateBR, mapsLink, money, phoneBR, timeBR, today, utcParaLocal, waLink } from "@/lib/format";
 import { Card, Empty, LinkButton, PageHeader, Row, Section, StatusBadge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -157,7 +157,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
-                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span className="shrink-0 text-xs text-stone-400">{utcParaLocal(h.created_at)}</span>
                 <span>{h.summary}</span>
               </li>
             ))}

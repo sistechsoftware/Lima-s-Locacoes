@@ -450,6 +450,51 @@ export async function rebuildReservationComponents(reservationId: number) {
   }
 }
 
+/**
+ * Compara a expansao gravada com a que a composicao atual dos kits produziria.
+ *
+ * A fotografia e proposital: uma reserva ja fechada nao pode mudar sozinha
+ * porque alguem editou o kit depois. Mas quando a composicao foi corrigida
+ * (por exemplo, o kit foi cadastrado faltando um componente), a reserva antiga
+ * fica com um consumo que nao corresponde mais a realidade. Esta funcao aponta
+ * essa divergencia para que a tela possa oferecer a atualizacao.
+ */
+export async function compositionDrift(reservationId: number): Promise<
+  { product: string; gravado: number; atual: number }[]
+> {
+  const items = await all<{ id: number; product_id: number; qty: number }>(
+    `SELECT id, product_id, qty FROM reservation_items WHERE reservation_id = ?`,
+    [reservationId],
+  );
+  if (!items.length) return [];
+
+  const specs = await loadSpecs();
+  const esperado = new Map<number, number>();
+  for (const item of items) {
+    for (const parte of explodeLine({ product_id: item.product_id, qty: item.qty }, specs)) {
+      esperado.set(parte.product_id, (esperado.get(parte.product_id) ?? 0) + parte.qty);
+    }
+  }
+
+  const gravadoRows = await all<{ product_id: number; qty: number }>(
+    `SELECT product_id, SUM(qty) AS qty FROM reservation_item_components
+      WHERE reservation_id = ? GROUP BY product_id`,
+    [reservationId],
+  );
+  const gravado = new Map(gravadoRows.map((r) => [r.product_id, Number(r.qty)]));
+
+  const nomes = new Map([...specs.values()].map((s) => [s.id, s.name]));
+  const diffs: { product: string; gravado: number; atual: number }[] = [];
+  for (const productId of new Set([...esperado.keys(), ...gravado.keys()])) {
+    const a = gravado.get(productId) ?? 0;
+    const b = esperado.get(productId) ?? 0;
+    if (a !== b) {
+      diffs.push({ product: nomes.get(productId) ?? `Produto ${productId}`, gravado: a, atual: b });
+    }
+  }
+  return diffs;
+}
+
 /** Consumo fisico gravado de uma reserva, agrupado por produto. */
 export async function reservationPhysicalUsage(reservationId: number) {
   return await all<any>(
@@ -474,6 +519,91 @@ export type Overbooking = {
   used: number;
   excess: number;
 };
+
+export type ConflictScanRow = {
+  reservation_id: number;
+  number: string;
+  customer: string;
+  faltas: { product: string; missing: number }[];
+};
+
+/**
+ * Varredura global de conflitos, em consultas de tamanho fixo.
+ *
+ * A versao ingenua percorria cada reserva chamando checkConflicts, o que dava
+ * centenas de consultas por carregamento de pagina. Aqui todas as ocupacoes
+ * sao lidas de uma vez e o excesso e apurado em memoria, por produto, com uma
+ * varredura da linha do tempo: sempre que o uso simultaneo passa do estoque,
+ * as reservas ativas naquele instante entram no resultado.
+ */
+export async function scanConflicts(fromDate: string): Promise<ConflictScanRow[]> {
+  const holds = await all<any>(
+    `SELECT ric.product_id, ric.qty, r.id AS reservation_id, r.number, c.name AS customer,
+            ${HOLD_START} AS hold_start, ${HOLD_END} AS hold_end
+       FROM reservation_item_components ric
+       JOIN reservations r ON r.id = ric.reservation_id
+       JOIN customers c ON c.id = r.customer_id
+      WHERE r.status IN (${HOLD}) AND r.stock_override = 0 AND r.event_date >= ?`,
+    [fromDate],
+  );
+  if (!holds.length) return [];
+
+  const produtos = await all<any>(
+    `SELECT id, name, total_qty, maintenance_qty FROM products WHERE kind <> 'kit'`,
+  );
+  const estoque = new Map(produtos.map((p) => [p.id, { name: p.name, efetivo: Math.max(0, p.total_qty - p.maintenance_qty) }]));
+
+  const porProduto = new Map<number, any[]>();
+  for (const h of holds) {
+    const lista = porProduto.get(h.product_id) ?? [];
+    lista.push(h);
+    porProduto.set(h.product_id, lista);
+  }
+
+  const faltasPorReserva = new Map<number, { number: string; customer: string; faltas: Map<string, number> }>();
+
+  for (const [productId, lista] of porProduto) {
+    const info = estoque.get(productId);
+    if (!info) continue;
+
+    const eventos: { t: string; delta: number; hold: any }[] = [];
+    for (const h of lista) {
+      eventos.push({ t: h.hold_start, delta: h.qty, hold: h });
+      eventos.push({ t: h.hold_end, delta: -h.qty, hold: h });
+    }
+    eventos.sort((a, b) => (a.t === b.t ? a.delta - b.delta : a.t < b.t ? -1 : 1));
+
+    const ativos = new Map<any, number>();
+    let usado = 0;
+    for (const ev of eventos) {
+      if (ev.delta > 0) {
+        ativos.set(ev.hold, (ativos.get(ev.hold) ?? 0) + ev.delta);
+        usado += ev.delta;
+      } else {
+        usado += ev.delta;
+        ativos.delete(ev.hold);
+      }
+      const excesso = usado - info.efetivo;
+      if (excesso <= 0) continue;
+      for (const h of ativos.keys()) {
+        const atual = faltasPorReserva.get(h.reservation_id) ?? {
+          number: h.number,
+          customer: h.customer,
+          faltas: new Map<string, number>(),
+        };
+        atual.faltas.set(info.name, Math.max(atual.faltas.get(info.name) ?? 0, excesso));
+        faltasPorReserva.set(h.reservation_id, atual);
+      }
+    }
+  }
+
+  return [...faltasPorReserva.entries()].map(([reservation_id, v]) => ({
+    reservation_id,
+    number: v.number,
+    customer: v.customer,
+    faltas: [...v.faltas.entries()].map(([product, missing]) => ({ product, missing })),
+  }));
+}
 
 /**
  * Verifica, DEPOIS da escrita, se esta reserva estourou o estoque fisico.
