@@ -28,17 +28,20 @@ export default async function OperacaoPage({
   const dias = Math.max(0, Math.min(30, Number(sp.dias ?? 0)));
   const ate = addDays(data, dias);
 
-  const atrasadas = await lateOperations();
+  // Uma leitura do periodo cobre a aba aberta e os numeros de todas as abas:
+  // consultar cada tipo separadamente custava seis idas ao banco.
+  const [atrasadas, doPeriodo] = await Promise.all([lateOperations(), operationsBetween(data, ate)]);
   const def = ABAS.find((a) => a.value === aba) ?? ABAS[0];
   const ops =
-    aba === "atrasadas" ? atrasadas : await operationsBetween(data, ate, def.kind ? [def.kind] : undefined);
+    aba === "atrasadas" ? atrasadas : def.kind ? doPeriodo.filter((o: any) => o.kind === def.kind) : doPeriodo;
 
+  const contar = (kind: string) => doPeriodo.filter((o: any) => o.kind === kind).length;
   const contagem = {
-    entregas: (await operationsBetween(data, ate, ["entrega"])).length,
-    retiradas: (await operationsBetween(data, ate, ["retirada"])).length,
-    montagens: (await operationsBetween(data, ate, ["montagem"])).length,
-    desmontagens: (await operationsBetween(data, ate, ["desmontagem"])).length,
-    todas: (await operationsBetween(data, ate)).length,
+    entregas: contar("entrega"),
+    retiradas: contar("retirada"),
+    montagens: contar("montagem"),
+    desmontagens: contar("desmontagem"),
+    todas: doPeriodo.length,
     atrasadas: atrasadas.length,
   };
 

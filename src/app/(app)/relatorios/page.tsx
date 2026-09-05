@@ -35,92 +35,110 @@ export default async function RelatoriosPage({
   const p = sp.p ?? "mes";
   const { de, ate, label } = periodo(p, sp.de, sp.ate);
 
-  /* financeiro */
-  const recebido = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ? AND ?`, [de, ate]);
-  const faturado = await scalar<number>(
-    `SELECT COALESCE(SUM(total_cents),0) FROM reservations WHERE event_date BETWEEN ? AND ? AND status IN (${ACTIVE})`,
-    [de, ate],
-  );
-  const fretes = await scalar<number>(
-    `SELECT COALESCE(SUM(amount_cents),0) FROM freights
-      WHERE date BETWEEN ? AND ? AND status IN ('agendado','em_rota','concluido')`,
-    [de, ate],
-  );
-  const despesas = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ? AND ?`, [de, ate]);
-  const aReceber = await scalar<number>(
-    `SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(pa.amount_cents) FROM payments pa WHERE pa.reservation_id = r.id),0)),0)
-       FROM reservations r WHERE r.status IN (${ACTIVE}) AND r.event_date BETWEEN ? AND ?`,
-    [de, ate],
-  );
+  /*
+   * Nenhuma destas leituras depende da outra, e cada ida ao D1 custa uma volta
+   * pela rede. Buscadas juntas, o relatorio passa a pagar uma latencia so.
+   */
+  const [
+    recebido,
+    faturado,
+    fretes,
+    despesas,
+    aReceber,
+    locacoes,
+    canceladas,
+    entregasQtd,
+    retiradasQtd,
+    montagensQtd,
+    fretesQtd,
+    consumoFisico,
+    produtos,
+    melhores,
+    recorrentes,
+    inativos,
+    meses,
+  ] = await Promise.all([
+    scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ? AND ?`, [de, ate]),
+    scalar<number>(
+      `SELECT COALESCE(SUM(total_cents),0) FROM reservations WHERE event_date BETWEEN ? AND ? AND status IN (${ACTIVE})`,
+      [de, ate],
+    ),
+    scalar<number>(
+      `SELECT COALESCE(SUM(amount_cents),0) FROM freights
+        WHERE date BETWEEN ? AND ? AND status IN ('agendado','em_rota','concluido')`,
+      [de, ate],
+    ),
+    scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ? AND ?`, [de, ate]),
+    scalar<number>(
+      `SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(pa.amount_cents) FROM payments pa WHERE pa.reservation_id = r.id),0)),0)
+         FROM reservations r WHERE r.status IN (${ACTIVE}) AND r.event_date BETWEEN ? AND ?`,
+      [de, ate],
+    ),
+    scalar<number>(`SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status <> 'cancelada'`, [de, ate]),
+    scalar<number>(`SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status = 'cancelada'`, [de, ate]),
+    scalar<number>(
+      `SELECT COUNT(*) FROM operations WHERE kind = 'entrega' AND substr(scheduled_at,1,10) BETWEEN ? AND ? AND status <> 'cancelada'`,
+      [de, ate],
+    ),
+    scalar<number>(
+      `SELECT COUNT(*) FROM operations WHERE kind = 'retirada' AND substr(scheduled_at,1,10) BETWEEN ? AND ? AND status <> 'cancelada'`,
+      [de, ate],
+    ),
+    scalar<number>(
+      `SELECT COUNT(*) FROM operations WHERE kind = 'montagem' AND substr(scheduled_at,1,10) BETWEEN ? AND ? AND status <> 'cancelada'`,
+      [de, ate],
+    ),
+    scalar<number>(`SELECT COUNT(*) FROM freights WHERE date BETWEEN ? AND ? AND status <> 'cancelado'`, [de, ate]),
+    /* consumo fisico: expande kits nos componentes que realmente sairam do estoque */
+    all<any>(
+      `SELECT p.id, p.name, COALESCE(SUM(ric.qty),0) AS unidades, COUNT(DISTINCT r.id) AS reservas
+         FROM reservation_item_components ric
+         JOIN reservations r ON r.id = ric.reservation_id
+         JOIN products p ON p.id = ric.product_id
+        WHERE r.status <> 'cancelada' AND r.event_date BETWEEN ? AND ?
+        GROUP BY p.id ORDER BY unidades DESC`,
+      [de, ate],
+    ),
+    /* produtos (linhas comerciais: kits contam como kits).
+       Os LEFT JOIN mantem na lista os produtos sem locacao, por isso a soma
+       ignora explicitamente os itens cuja reserva nao casou com o filtro. */
+    all<any>(
+      `SELECT p.id, p.name, p.kind,
+              COALESCE(SUM(CASE WHEN r.id IS NOT NULL THEN i.qty END),0) AS unidades,
+              COUNT(DISTINCT r.id) AS reservas,
+              COALESCE(SUM(CASE WHEN r.id IS NOT NULL THEN i.subtotal_cents END),0) AS receita
+         FROM products p
+         LEFT JOIN reservation_items i ON i.product_id = p.id
+         LEFT JOIN reservations r ON r.id = i.reservation_id AND r.status <> 'cancelada'
+                                  AND r.event_date BETWEEN ? AND ?
+        GROUP BY p.id ORDER BY unidades DESC`,
+      [de, ate],
+    ),
+    all<any>(
+      `SELECT c.id, c.name, COUNT(r.id) AS locacoes, COALESCE(SUM(r.total_cents),0) AS total
+         FROM customers c JOIN reservations r ON r.customer_id = c.id
+        WHERE r.status IN (${ACTIVE}) AND r.event_date BETWEEN ? AND ?
+        GROUP BY c.id ORDER BY total DESC LIMIT 10`,
+      [de, ate],
+    ),
+    all<any>(
+      `SELECT c.id, c.name, COUNT(r.id) AS locacoes FROM customers c JOIN reservations r ON r.customer_id = c.id
+        WHERE r.status <> 'cancelada' GROUP BY c.id HAVING COUNT(r.id) >= 2 ORDER BY locacoes DESC LIMIT 10`,
+    ),
+    all<any>(
+      `SELECT c.id, c.name, MAX(r.event_date) AS ultima FROM customers c JOIN reservations r ON r.customer_id = c.id
+        WHERE r.status <> 'cancelada' GROUP BY c.id HAVING MAX(r.event_date) < ? ORDER BY ultima LIMIT 10`,
+      [addDays(today(), -90)],
+    ),
+    all<any>(
+      `SELECT substr(event_date,1,7) AS mes, COUNT(*) AS reservas, COALESCE(SUM(total_cents),0) AS total
+         FROM reservations WHERE status IN (${ACTIVE}) GROUP BY mes ORDER BY mes DESC LIMIT 12`,
+    ),
+  ]);
 
-  /* operacional */
-  const locacoes = await scalar<number>(
-    `SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status <> 'cancelada'`,
-    [de, ate],
-  );
-  const canceladas = await scalar<number>(
-    `SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status = 'cancelada'`,
-    [de, ate],
-  );
-  const opCount = async (kind: string) =>
-    await scalar<number>(
-      `SELECT COUNT(*) FROM operations WHERE kind = ? AND substr(scheduled_at,1,10) BETWEEN ? AND ? AND status <> 'cancelada'`,
-      [kind, de, ate],
-    );
-  const fretesQtd = await scalar<number>(`SELECT COUNT(*) FROM freights WHERE date BETWEEN ? AND ? AND status <> 'cancelado'`, [de, ate]);
+  const opCount = (kind: string) =>
+    kind === "entrega" ? entregasQtd : kind === "retirada" ? retiradasQtd : montagensQtd;
 
-  /* consumo fisico: expande kits nos componentes que realmente sairam do estoque */
-  const consumoFisico = await all<any>(
-    `SELECT p.id, p.name, COALESCE(SUM(ric.qty),0) AS unidades, COUNT(DISTINCT r.id) AS reservas
-       FROM reservation_item_components ric
-       JOIN reservations r ON r.id = ric.reservation_id
-       JOIN products p ON p.id = ric.product_id
-      WHERE r.status <> 'cancelada' AND r.event_date BETWEEN ? AND ?
-      GROUP BY p.id ORDER BY unidades DESC`,
-    [de, ate],
-  );
-
-  /* produtos (linhas comerciais: kits contam como kits) */
-  const produtos = await all<any>(
-    // os LEFT JOIN mantem na lista os produtos sem locacao (usados em "menos
-    // alugados"), por isso a soma precisa ignorar explicitamente os itens cuja
-    // reserva nao casou com o filtro: sem isso, reservas canceladas ou fora do
-    // periodo entrariam no total.
-    `SELECT p.id, p.name, p.kind,
-            COALESCE(SUM(CASE WHEN r.id IS NOT NULL THEN i.qty END),0) AS unidades,
-            COUNT(DISTINCT r.id) AS reservas,
-            COALESCE(SUM(CASE WHEN r.id IS NOT NULL THEN i.subtotal_cents END),0) AS receita
-       FROM products p
-       LEFT JOIN reservation_items i ON i.product_id = p.id
-       LEFT JOIN reservations r ON r.id = i.reservation_id AND r.status <> 'cancelada'
-                                AND r.event_date BETWEEN ? AND ?
-      GROUP BY p.id ORDER BY unidades DESC`,
-    [de, ate],
-  );
-
-  /* clientes */
-  const melhores = await all<any>(
-    `SELECT c.id, c.name, COUNT(r.id) AS locacoes, COALESCE(SUM(r.total_cents),0) AS total
-       FROM customers c JOIN reservations r ON r.customer_id = c.id
-      WHERE r.status IN (${ACTIVE}) AND r.event_date BETWEEN ? AND ?
-      GROUP BY c.id ORDER BY total DESC LIMIT 10`,
-    [de, ate],
-  );
-  const recorrentes = await all<any>(
-    `SELECT c.id, c.name, COUNT(r.id) AS locacoes FROM customers c JOIN reservations r ON r.customer_id = c.id
-      WHERE r.status <> 'cancelada' GROUP BY c.id HAVING COUNT(r.id) >= 2 ORDER BY locacoes DESC LIMIT 10`,
-  );
-  const inativos = await all<any>(
-    `SELECT c.id, c.name, MAX(r.event_date) AS ultima FROM customers c JOIN reservations r ON r.customer_id = c.id
-      WHERE r.status <> 'cancelada' GROUP BY c.id HAVING MAX(r.event_date) < ? ORDER BY ultima LIMIT 10`,
-    [addDays(today(), -90)],
-  );
-
-  /* faturamento por mes (12 meses) */
-  const meses = await all<any>(
-    `SELECT substr(event_date,1,7) AS mes, COUNT(*) AS reservas, COALESCE(SUM(total_cents),0) AS total
-       FROM reservations WHERE status IN (${ACTIVE}) GROUP BY mes ORDER BY mes DESC LIMIT 12`,
-  );
   const maxMes = Math.max(1, ...meses.map((m) => m.total));
 
   return (
@@ -178,9 +196,9 @@ export default async function RelatoriosPage({
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Locacoes" value={locacoes} />
           <Stat label="Canceladas" value={canceladas} />
-          <Stat label="Entregas" value={await opCount("entrega")} />
-          <Stat label="Retiradas" value={await opCount("retirada")} />
-          <Stat label="Montagens" value={await opCount("montagem")} />
+          <Stat label="Entregas" value={opCount("entrega")} />
+          <Stat label="Retiradas" value={opCount("retirada")} />
+          <Stat label="Montagens" value={opCount("montagem")} />
           <Stat label="Fretes" value={fretesQtd} />
         </div>
         <p className="mt-2 text-xs text-stone-500">A receber no periodo: {money(aReceber)}.</p>

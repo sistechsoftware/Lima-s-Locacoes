@@ -27,7 +27,7 @@ export default async function NotificacoesPage({
 }) {
   await requireUser();
   const { tipo = "todos" } = await searchParams;
-  await rebuildNotifications();
+  await rebuildNotifications({ force: true });
   const todas = await listNotifications();
   const lista = tipo === "todos" ? todas : todas.filter((n: any) => n.type === tipo);
 

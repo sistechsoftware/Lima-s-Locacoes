@@ -23,36 +23,43 @@ export default async function FinanceiroPage({
   const de = sp.de || startOfMonth(today());
   const ate = sp.ate || endOfMonth(today());
 
-  const entradas = await all<any>(
+  /* leituras independentes: uma latencia so em vez de cinco */
+  const [entradas, saidas, aReceber, caucaoRetida, reservas] = await Promise.all([
+    all<any>(
     `SELECT p.*, r.number AS reservation_number, c.name AS customer_name, f.number AS freight_number
        FROM payments p
        LEFT JOIN reservations r ON r.id = p.reservation_id
        LEFT JOIN customers c ON c.id = r.customer_id
        LEFT JOIN freights f ON f.id = p.freight_id
       WHERE p.paid_at BETWEEN ? AND ? ORDER BY p.paid_at DESC, p.id DESC`,
-    [de, ate],
-  );
-  const saidas = await all<any>(
+      [de, ate],
+    ),
+    all<any>(
     `SELECT e.*, r.number AS reservation_number FROM expenses e
        LEFT JOIN reservations r ON r.id = e.reservation_id
       WHERE e.date BETWEEN ? AND ? ORDER BY e.date DESC, e.id DESC`,
-    [de, ate],
-  );
-  const aReceber = await all<any>(
+      [de, ate],
+    ),
+    all<any>(
     `SELECT r.id, r.number, r.event_date, r.total_cents, c.name AS customer_name,
             COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0) AS paid
        FROM reservations r JOIN customers c ON c.id = r.customer_id
       WHERE r.status IN (${ACTIVE})
         AND r.total_cents > COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)
-      ORDER BY r.event_date`,
-  );
+        ORDER BY r.event_date`,
+    ),
+    scalar<number>(
+      `SELECT COALESCE(SUM(retained_cents),0) FROM deposits WHERE status IN ('retida_parcial','retida_integral')`,
+    ),
+    all<any>(
+      `SELECT r.id, r.number, c.name AS customer_name FROM reservations r JOIN customers c ON c.id = r.customer_id
+        WHERE r.status <> 'cancelada' ORDER BY r.id DESC LIMIT 100`,
+    ),
+  ]);
 
   const totalEntradas = entradas.reduce((s, e) => s + e.amount_cents, 0);
   const totalSaidas = saidas.reduce((s, e) => s + e.amount_cents, 0);
   const totalReceber = aReceber.reduce((s, r) => s + (r.total_cents - r.paid), 0);
-  const caucaoRetida = await scalar<number>(
-    `SELECT COALESCE(SUM(retained_cents),0) FROM deposits WHERE status IN ('retida_parcial','retida_integral')`,
-  );
 
   const porMetodo = PAYMENT_METHODS.map((m) => ({
     method: m,
@@ -63,11 +70,6 @@ export default async function FinanceiroPage({
     category: c,
     total: saidas.filter((e) => e.category === c).reduce((s, e) => s + e.amount_cents, 0),
   })).filter((x) => x.total > 0);
-
-  const reservas = await all<any>(
-    `SELECT r.id, r.number, c.name AS customer_name FROM reservations r JOIN customers c ON c.id = r.customer_id
-      WHERE r.status <> 'cancelada' ORDER BY r.id DESC LIMIT 100`,
-  );
 
   return (
     <div className="space-y-4">

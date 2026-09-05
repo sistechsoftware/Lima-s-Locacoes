@@ -24,17 +24,24 @@ export default async function DashboardPage({
 }) {
   const user = await requireUser();
   const { erro } = await searchParams;
-  await rebuildNotifications();
-  const s = await dashboardStats();
   const d0 = today();
 
-  const entregas = await operationsOn(d0, ["entrega"]);
-  const retiradas = await operationsOn(d0, ["retirada"]);
-  const montagens = await operationsOn(d0, ["montagem"]);
-  const desmontagens = await operationsOn(d0, ["desmontagem"]);
-  const atrasadas = await lateOperations();
-  const agenda = await agendaEvents(d0, d0);
-  const alertas = (await listNotifications(true)).slice(0, 6);
+  // Uma leitura so traz as operacoes do dia; a separacao por tipo e feita aqui,
+  // em vez de custar quatro idas ao banco. O resto vai em paralelo.
+  const [, operacoesHoje, atrasadas, agenda] = await Promise.all([
+    rebuildNotifications(),
+    operationsOn(d0),
+    lateOperations(),
+    agendaEvents(d0, d0),
+  ]);
+  // os indicadores contam alertas, entao so podem ser lidos depois do recalculo
+  const [s, todosAlertas] = await Promise.all([dashboardStats(), listNotifications(true)]);
+  const doTipo = (kind: string) => operacoesHoje.filter((o: any) => o.kind === kind);
+  const entregas = doTipo("entrega");
+  const retiradas = doTipo("retirada");
+  const montagens = doTipo("montagem");
+  const desmontagens = doTipo("desmontagem");
+  const alertas = todosAlertas.slice(0, 6);
 
   return (
     <div className="space-y-5">

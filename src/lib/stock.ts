@@ -89,12 +89,12 @@ export function holdWindow(r: {
 
 /** Carrega a ficha de composicao de todos os produtos. */
 export async function loadSpecs(): Promise<SpecMap> {
-  const products = await all<{ id: number; name: string; kind: string }>(
-    `SELECT id, name, kind FROM products`,
-  );
-  const components = await all<{ parent_product_id: number; component_product_id: number; quantity: number }>(
-    `SELECT parent_product_id, component_product_id, quantity FROM product_components`,
-  );
+  const [products, components] = await Promise.all([
+    all<{ id: number; name: string; kind: string }>(`SELECT id, name, kind FROM products`),
+    all<{ parent_product_id: number; component_product_id: number; quantity: number }>(
+      `SELECT parent_product_id, component_product_id, quantity FROM product_components`,
+    ),
+  ]);
   return buildSpecMap(products, components);
 }
 
@@ -103,17 +103,19 @@ export async function loadSpecs(): Promise<SpecMap> {
  * Usado pelos formularios de reserva e orcamento.
  */
 export async function sellableProducts() {
-  const rows = await all<any>(
-    `SELECT p.id, p.code, p.name, p.kind, p.rent_price_cents, p.total_qty, c.name AS category
-       FROM products p LEFT JOIN categories c ON c.id = p.category_id
-      WHERE p.active = 1
-      ORDER BY c.name, p.name`,
-  );
-  const comps = await all<any>(
-    `SELECT pc.parent_product_id, pc.quantity, p.name
-       FROM product_components pc JOIN products p ON p.id = pc.component_product_id
-      ORDER BY p.name`,
-  );
+  const [rows, comps] = await Promise.all([
+    all<any>(
+      `SELECT p.id, p.code, p.name, p.kind, p.rent_price_cents, p.total_qty, c.name AS category
+         FROM products p LEFT JOIN categories c ON c.id = p.category_id
+        WHERE p.active = 1
+        ORDER BY c.name, p.name`,
+    ),
+    all<any>(
+      `SELECT pc.parent_product_id, pc.quantity, p.name
+         FROM product_components pc JOIN products p ON p.id = pc.component_product_id
+        ORDER BY p.name`,
+    ),
+  ]);
   const byParent = new Map<number, string[]>();
   for (const c of comps) {
     const list = byParent.get(c.parent_product_id) ?? [];
@@ -288,13 +290,14 @@ export async function availabilityAll(
   to: string,
   excludeReservationId?: number | null,
 ): Promise<Availability[]> {
-  const products = await all<any>(
-    `SELECT p.id, p.code, p.name, p.kind, p.total_qty, p.maintenance_qty, p.min_qty, c.name AS category
-       FROM products p LEFT JOIN categories c ON c.id = p.category_id
-      WHERE p.active = 1 AND p.kind <> 'kit'
-      ORDER BY c.name, p.name`,
-  );
-  const rows = await all<Hold & { product_id: number }>(
+  const [products, rows] = await Promise.all([
+    all<any>(
+      `SELECT p.id, p.code, p.name, p.kind, p.total_qty, p.maintenance_qty, p.min_qty, c.name AS category
+         FROM products p LEFT JOIN categories c ON c.id = p.category_id
+        WHERE p.active = 1 AND p.kind <> 'kit'
+        ORDER BY c.name, p.name`,
+    ),
+    all<Hold & { product_id: number }>(
     `SELECT ric.product_id, r.id AS reservation_id, r.number, c.name AS customer, r.status,
             ric.qty, ${HOLD_START} AS hold_start, ${HOLD_END} AS hold_end
        FROM reservation_item_components ric
@@ -304,8 +307,9 @@ export async function availabilityAll(
         AND (? IS NULL OR r.id <> ?)
         AND ${HOLD_START} < ?
         AND ${HOLD_END} > ?`,
-    [excludeReservationId ?? null, excludeReservationId ?? -1, to, from],
-  );
+      [excludeReservationId ?? null, excludeReservationId ?? -1, to, from],
+    ),
+  ]);
   const byProduct = new Map<number, Hold[]>();
   for (const r of rows) {
     const list = byProduct.get(r.product_id) ?? [];
@@ -537,20 +541,20 @@ export type ConflictScanRow = {
  * as reservas ativas naquele instante entram no resultado.
  */
 export async function scanConflicts(fromDate: string): Promise<ConflictScanRow[]> {
-  const holds = await all<any>(
-    `SELECT ric.product_id, ric.qty, r.id AS reservation_id, r.number, c.name AS customer,
+  const [holds, produtos] = await Promise.all([
+    all<any>(
+      `SELECT ric.product_id, ric.qty, r.id AS reservation_id, r.number, c.name AS customer,
             ${HOLD_START} AS hold_start, ${HOLD_END} AS hold_end
        FROM reservation_item_components ric
        JOIN reservations r ON r.id = ric.reservation_id
        JOIN customers c ON c.id = r.customer_id
-      WHERE r.status IN (${HOLD}) AND r.stock_override = 0 AND r.event_date >= ?`,
-    [fromDate],
-  );
+        WHERE r.status IN (${HOLD}) AND r.stock_override = 0 AND r.event_date >= ?`,
+      [fromDate],
+    ),
+    all<any>(`SELECT id, name, total_qty, maintenance_qty FROM products WHERE kind <> 'kit'`),
+  ]);
   if (!holds.length) return [];
 
-  const produtos = await all<any>(
-    `SELECT id, name, total_qty, maintenance_qty FROM products WHERE kind <> 'kit'`,
-  );
   const estoque = new Map(produtos.map((p) => [p.id, { name: p.name, efetivo: Math.max(0, p.total_qty - p.maintenance_qty) }]));
 
   const porProduto = new Map<number, any[]>();

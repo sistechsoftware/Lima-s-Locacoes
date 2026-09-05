@@ -69,7 +69,21 @@ export type AgendaEvent = {
 
 /** Une operacoes, fretes e eventos de reserva numa linha do tempo unica. */
 export async function agendaEvents(from: string, to: string): Promise<AgendaEvent[]> {
-  const ops = (await operationsBetween(from, to)).map<AgendaEvent>((o) => ({
+  const [opsRaw, freightsRaw, eventsRaw] = await Promise.all([
+    operationsBetween(from, to),
+    all<any>(
+      `SELECT f.*, c.name AS customer_name FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
+        WHERE f.date BETWEEN ? AND ? AND f.status <> 'cancelado' ORDER BY f.date, f.time`,
+      [from, to],
+    ),
+    all<any>(
+      `SELECT r.*, c.name AS customer_name FROM reservations r JOIN customers c ON c.id = r.customer_id
+        WHERE r.event_date BETWEEN ? AND ? AND r.status <> 'cancelada' ORDER BY r.event_date`,
+      [from, to],
+    ),
+  ]);
+
+  const ops = opsRaw.map<AgendaEvent>((o) => ({
     id: `op-${o.id}`,
     kind: o.kind,
     label: o.kind[0].toUpperCase() + o.kind.slice(1),
@@ -81,11 +95,7 @@ export async function agendaEvents(from: string, to: string): Promise<AgendaEven
     status: o.status,
   }));
 
-  const freights = (await all<any>(
-    `SELECT f.*, c.name AS customer_name FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
-      WHERE f.date BETWEEN ? AND ? AND f.status <> 'cancelado' ORDER BY f.date, f.time`,
-    [from, to],
-  )).map<AgendaEvent>((f) => ({
+  const freights = freightsRaw.map<AgendaEvent>((f) => ({
     id: `frt-${f.id}`,
     kind: "frete",
     label: "Frete",
@@ -97,11 +107,7 @@ export async function agendaEvents(from: string, to: string): Promise<AgendaEven
     status: f.status,
   }));
 
-  const events = (await all<any>(
-    `SELECT r.*, c.name AS customer_name FROM reservations r JOIN customers c ON c.id = r.customer_id
-      WHERE r.event_date BETWEEN ? AND ? AND r.status <> 'cancelada' ORDER BY r.event_date`,
-    [from, to],
-  )).map<AgendaEvent>((r) => ({
+  const events = eventsRaw.map<AgendaEvent>((r) => ({
     id: `evt-${r.id}`,
     kind: "evento",
     label: "Evento",
@@ -127,95 +133,93 @@ export async function dashboardStats() {
   const mStart = startOfMonth(d0);
   const mEnd = endOfMonth(d0);
 
-  const count = async (sql: string, p: any[] = []) => await scalar<number>(sql, p);
-
-  const reservasHoje = await count(
-    `SELECT COUNT(*) FROM reservations WHERE event_date = ? AND status <> 'cancelada'`,
-    [d0],
-  );
-  const reservasSemana = await count(
-    `SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status <> 'cancelada'`,
-    [weekStart, weekEnd],
-  );
-  const proximas = await count(
-    `SELECT COUNT(*) FROM reservations WHERE event_date > ? AND status IN (${HOLD})`,
-    [d0],
-  );
-  const confirmadas = await count(`SELECT COUNT(*) FROM reservations WHERE status = 'confirmada'`);
-  const orcamentosPendentes = await count(
-    `SELECT COUNT(*) FROM quotes WHERE status IN ('rascunho','enviado','aguardando')`,
-  );
-
-  const opCount = (kind: string) =>
-    count(
-      `SELECT COUNT(*) FROM operations WHERE kind = ? AND substr(scheduled_at,1,10) = ? AND status <> 'cancelada'`,
-      [kind, d0],
-    );
-  const opLate = (kind: string) =>
-    count(
-      `SELECT COUNT(*) FROM operations WHERE kind = ? AND substr(scheduled_at,1,10) < ? AND status IN (${OPEN_OPS})`,
-      [kind, d0],
-    );
-
-  const recebidoMes = await count(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ? AND ?`, [
-    mStart,
-    mEnd,
-  ]);
-  const faturamentoMes = await count(
-    `SELECT COALESCE(SUM(total_cents),0) FROM reservations WHERE event_date BETWEEN ? AND ? AND status IN (${ACTIVE})`,
-    [mStart, mEnd],
-  );
-  // Frete agendado ja e faturamento previsto, do mesmo jeito que uma reserva
-  // confirmada. So orcamento e cancelado ficam de fora.
-  const fretesMes = await count(
-    `SELECT COALESCE(SUM(amount_cents),0) FROM freights
-      WHERE date BETWEEN ? AND ? AND status IN ('agendado','em_rota','concluido')`,
-    [mStart, mEnd],
-  );
-  const aReceber =
-    (await count(
-      `SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)),0)
-       FROM reservations r WHERE r.status IN (${ACTIVE})`,
-    )) +
-    (await count(
-      `SELECT COALESCE(SUM(f.amount_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.freight_id = f.id),0)),0)
-       FROM freights f WHERE f.status IN ('agendado','em_rota','concluido')`,
-    ));
-  const despesasMes = await count(`SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ? AND ?`, [
-    mStart,
-    mEnd,
+  /*
+   * Cada consulta ao D1 e uma ida e volta pela rede, e o banco nao fica
+   * necessariamente perto do usuario. Por isso os indicadores do painel sao
+   * agrupados em poucas consultas com subselects, em vez de uma por numero:
+   * o custo passa a ser dominado pela latencia de uma chamada, e nao de vinte.
+   */
+  const [contagens, financeiro, ops, stock] = await Promise.all([
+    one<any>(
+    `SELECT
+       (SELECT COUNT(*) FROM reservations WHERE event_date = ?1 AND status <> 'cancelada') AS reservas_hoje,
+       (SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ?2 AND ?3 AND status <> 'cancelada') AS reservas_semana,
+       (SELECT COUNT(*) FROM reservations WHERE event_date > ?1 AND status IN (${HOLD})) AS proximas,
+       (SELECT COUNT(*) FROM reservations WHERE status = 'confirmada') AS confirmadas,
+       (SELECT COUNT(*) FROM quotes WHERE status IN ('rascunho','enviado','aguardando')) AS orcamentos_pendentes,
+       (SELECT COUNT(*) FROM notifications WHERE type = 'conflito') AS conflitos,
+       (SELECT COUNT(*) FROM notifications WHERE type = 'pagamento') AS pagamentos_pendentes,
+       (SELECT COUNT(*) FROM notifications WHERE type = 'contrato') AS contratos_pendentes`,
+      [d0, weekStart, weekEnd],
+    ),
+    one<any>(
+    `SELECT
+       (SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ?1 AND ?2) AS recebido,
+       (SELECT COALESCE(SUM(total_cents),0) FROM reservations
+         WHERE event_date BETWEEN ?1 AND ?2 AND status IN (${ACTIVE})) AS faturamento,
+       (SELECT COALESCE(SUM(amount_cents),0) FROM freights
+         WHERE date BETWEEN ?1 AND ?2 AND status IN ('agendado','em_rota','concluido')) AS fretes,
+       (SELECT COALESCE(SUM(amount_cents),0) FROM expenses WHERE date BETWEEN ?1 AND ?2) AS despesas,
+       (SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)),0)
+          FROM reservations r WHERE r.status IN (${ACTIVE})) AS receber_reservas,
+       (SELECT COALESCE(SUM(f.amount_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.freight_id = f.id),0)),0)
+          FROM freights f WHERE f.status IN ('agendado','em_rota','concluido')) AS receber_fretes`,
+      [mStart, mEnd],
+    ),
+    /* uma unica leitura resolve as seis contagens de operacao */
+    all<{ kind: string; hoje: number; atrasadas: number }>(
+    `SELECT kind,
+            SUM(CASE WHEN substr(scheduled_at,1,10) = ?1 AND status <> 'cancelada' THEN 1 ELSE 0 END) AS hoje,
+            SUM(CASE WHEN substr(scheduled_at,1,10) < ?1 AND status IN (${OPEN_OPS}) THEN 1 ELSE 0 END) AS atrasadas
+       FROM operations GROUP BY kind`,
+      [d0],
+    ),
+    availabilityAll(`${d0}T00:00`, `${d0}T23:59`),
   ]);
 
-  const stock = await availabilityAll(`${d0}T00:00`, `${d0}T23:59`);
+  const porTipo = new Map(ops.map((o) => [o.kind, o]));
+  const opHoje = (kind: string) => Number(porTipo.get(kind)?.hoje ?? 0);
+  const opAtrasadas = (kind: string) => Number(porTipo.get(kind)?.atrasadas ?? 0);
+
   const disponiveis = stock.reduce((s, p) => s + Math.max(0, p.available), 0);
   const reservados = stock.reduce((s, p) => s + p.reserved, 0);
   const manutencao = stock.reduce((s, p) => s + p.maintenance, 0);
   const baixos = stock.filter((p) => p.low).length;
 
-  const conflitos = await count(`SELECT COUNT(*) FROM notifications WHERE type = 'conflito'`);
-  const pagamentosPendentes = await count(`SELECT COUNT(*) FROM notifications WHERE type = 'pagamento'`);
-  const contratosPendentes = await count(`SELECT COUNT(*) FROM notifications WHERE type = 'contrato'`);
+  const faturamentoMes = Number(financeiro?.faturamento ?? 0) + Number(financeiro?.fretes ?? 0);
+  const despesasMes = Number(financeiro?.despesas ?? 0);
 
   return {
     hoje: d0,
-    reservas: { hoje: reservasHoje, semana: reservasSemana, proximas, confirmadas, orcamentosPendentes, conflitos },
+    reservas: {
+      hoje: Number(contagens?.reservas_hoje ?? 0),
+      semana: Number(contagens?.reservas_semana ?? 0),
+      proximas: Number(contagens?.proximas ?? 0),
+      confirmadas: Number(contagens?.confirmadas ?? 0),
+      orcamentosPendentes: Number(contagens?.orcamentos_pendentes ?? 0),
+      conflitos: Number(contagens?.conflitos ?? 0),
+    },
     operacao: {
-      entregas: await opCount("entrega"),
-      retiradas: await opCount("retirada"),
-      montagens: await opCount("montagem"),
-      desmontagens: await opCount("desmontagem"),
-      entregasAtrasadas: await opLate("entrega"),
-      retiradasAtrasadas: await opLate("retirada"),
+      entregas: opHoje("entrega"),
+      retiradas: opHoje("retirada"),
+      montagens: opHoje("montagem"),
+      desmontagens: opHoje("desmontagem"),
+      entregasAtrasadas: opAtrasadas("entrega"),
+      retiradasAtrasadas: opAtrasadas("retirada"),
     },
     financeiro: {
-      faturamentoMes: faturamentoMes + fretesMes,
-      recebidoMes,
-      aReceber,
+      faturamentoMes,
+      recebidoMes: Number(financeiro?.recebido ?? 0),
+      aReceber: Number(financeiro?.receber_reservas ?? 0) + Number(financeiro?.receber_fretes ?? 0),
       despesasMes,
-      lucro: faturamentoMes + fretesMes - despesasMes,
+      lucro: faturamentoMes - despesasMes,
     },
     estoque: { disponiveis, reservados, manutencao, baixos },
-    alertas: { pagamentosPendentes, contratosPendentes, conflitos },
+    alertas: {
+      pagamentosPendentes: Number(contagens?.pagamentos_pendentes ?? 0),
+      contratosPendentes: Number(contagens?.contratos_pendentes ?? 0),
+      conflitos: Number(contagens?.conflitos ?? 0),
+    },
   };
 }
 

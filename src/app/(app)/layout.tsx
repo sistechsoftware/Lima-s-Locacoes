@@ -7,10 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const settings = await getSettings();
   // Os alertas sao recalculados no dashboard e na tela de notificacoes, e nao
   // aqui: rodar a varredura em toda navegacao deixava cada clique lento.
-  const unread = await unreadCount();
+  const [settings, unread] = await Promise.all([getSettings(), unreadCount()]);
 
   return (
     <div className="flex min-h-screen">
