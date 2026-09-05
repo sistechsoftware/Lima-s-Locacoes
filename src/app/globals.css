@@ -132,8 +132,30 @@ label.rotulo {
   /* evita quebrar cliente, itens ou assinatura no meio da pagina */
   .imprimivel pre,
   .imprimivel h1,
-  .imprimivel h2 {
+  .imprimivel h2,
+  .imprimivel section,
+  .imprimivel footer {
     break-inside: avoid;
+  }
+
+  /* em documento longo, o cabecalho da tabela se repete a cada pagina e
+     nenhuma linha e cortada ao meio */
+  .imprimivel thead {
+    display: table-header-group;
+  }
+  .imprimivel tr {
+    break-inside: avoid;
+  }
+
+  /* fundos e cores precisam sair na impressao, senao o documento vira so texto */
+  .imprimivel * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* a tabela nao rola no papel */
+  .imprimivel .scroll-x {
+    overflow: visible !important;
   }
 
   @page {

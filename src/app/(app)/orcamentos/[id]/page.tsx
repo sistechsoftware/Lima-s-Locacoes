@@ -43,11 +43,19 @@ export default async function OrcamentoPage({
         subtitle={`${q.customer_name}${q.event_date ? ` - evento em ${dateBR(q.event_date)}` : ""}`}
         action={
           q.status !== "convertido" ? (
-            <LinkButton href={`/orcamentos/${q.id}/editar`}>Editar</LinkButton>
+            <>
+              <LinkButton href={`/orcamentos/${q.id}/imprimir`} variant="primario">
+                Gerar PDF
+              </LinkButton>
+              <LinkButton href={`/orcamentos/${q.id}/editar`}>Editar</LinkButton>
+            </>
           ) : (
-            <LinkButton href={`/reservas/${q.reservation_id}`} variant="primario">
-              Ver reserva
-            </LinkButton>
+            <>
+              <LinkButton href={`/orcamentos/${q.id}/imprimir`} variant="primario">
+                Gerar PDF
+              </LinkButton>
+              <LinkButton href={`/reservas/${q.reservation_id}`}>Ver reserva</LinkButton>
+            </>
           )
         }
       />
