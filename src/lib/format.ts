@@ -93,23 +93,38 @@ export function utcParaLocal(s: string | null | undefined): string {
   return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
 }
 
-/** Interpreta "YYYY-MM-DD" ou "YYYY-MM-DDTHH:MM" como horario local. */
+/**
+ * Interpreta "YYYY-MM-DD" ou "YYYY-MM-DDTHH:MM" como DATA DE CALENDARIO.
+ *
+ * Estas strings sao datas de agenda ("o evento e dia 10/10"), nao instantes:
+ * nao carregam fuso nenhum. Por isso a ancora e criada em UTC e toda a
+ * aritmetica abaixo usa os getters UTC. Montar em fuso do servidor e depois
+ * formatar no fuso do negocio somava a diferenca entre os dois e deslocava a
+ * data em um dia.
+ */
 export function parseLocal(s: string | null | undefined): Date | null {
   if (!s) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(s);
   if (!m) return null;
-  return new Date(+m[1], +m[2] - 1, +m[3], m[4] ? +m[4] : 0, m[5] ? +m[5] : 0);
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], m[4] ? +m[4] : 0, m[5] ? +m[5] : 0));
+}
+
+/** YYYY-MM-DD de uma ancora de calendario (sempre pelos campos UTC). */
+function calendarioISO(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
 }
 
 export function addDays(dateISO: string, days: number): string {
-  const d = parseLocal(dateISO) ?? new Date();
-  d.setDate(d.getDate() + days);
-  return toISODate(d);
+  const d = parseLocal(dateISO);
+  if (!d) return dateISO;
+  d.setUTCDate(d.getUTCDate() + days);
+  return calendarioISO(d);
 }
 
 export const dateBR = (s: string | null | undefined) => {
   const d = parseLocal(s);
-  return d ? d.toLocaleDateString("pt-BR") : "-";
+  return d ? d.toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "-";
 };
 
 export const timeBR = (s: string | null | undefined) => {
@@ -122,21 +137,28 @@ export const timeBR = (s: string | null | undefined) => {
 export const dateTimeBR = (s: string | null | undefined) => {
   const d = parseLocal(s);
   if (!d) return "-";
-  return `${d.toLocaleDateString("pt-BR")} ${timeBR(s)}`;
+  return `${d.toLocaleDateString("pt-BR", { timeZone: "UTC" })} ${timeBR(s)}`;
 };
 
 export const weekdayBR = (s: string) =>
-  (parseLocal(s) ?? new Date()).toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+  (parseLocal(s) ?? new Date())
+    .toLocaleDateString("pt-BR", { weekday: "short", timeZone: "UTC" })
+    .replace(".", "");
 
 export const monthLabel = (s: string) =>
-  (parseLocal(s + "-01") ?? new Date()).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  (parseLocal(s + "-01") ?? new Date()).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
 /** Segunda-feira da semana da data informada. */
 export function startOfWeek(dateISO: string): string {
-  const d = parseLocal(dateISO) ?? new Date();
-  const wd = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - wd);
-  return toISODate(d);
+  const d = parseLocal(dateISO);
+  if (!d) return dateISO;
+  const wd = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - wd);
+  return calendarioISO(d);
 }
 
 export function startOfMonth(dateISO: string): string {
@@ -144,10 +166,11 @@ export function startOfMonth(dateISO: string): string {
 }
 
 export function endOfMonth(dateISO: string): string {
-  const d = parseLocal(startOfMonth(dateISO))!;
-  d.setMonth(d.getMonth() + 1);
-  d.setDate(0);
-  return toISODate(d);
+  const d = parseLocal(startOfMonth(dateISO));
+  if (!d) return dateISO;
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  d.setUTCDate(0);
+  return calendarioISO(d);
 }
 
 export function daysBetween(a: string, b: string): number {

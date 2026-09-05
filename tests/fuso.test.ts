@@ -7,7 +7,7 @@
  */
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { today, nowLocal, toISODate, utcParaLocal } from "../src/lib/format.ts";
+import { addDays, dateBR, endOfMonth, nowLocal, startOfWeek, toISODate, today, utcParaLocal } from "../src/lib/format.ts";
 
 describe("datas no fuso do negocio", () => {
   before(() => {
@@ -44,5 +44,47 @@ describe("datas no fuso do negocio", () => {
     const instante = new Date("2026-09-05T00:30:00Z");
     assert.notEqual(toISODate(instante), instante.toISOString().slice(0, 10));
     assert.equal(toISODate(instante), "2026-09-04");
+  });
+});
+
+/**
+ * Datas de agenda ("o evento e dia 10/10") sao datas de calendario, nao
+ * instantes. A aritmetica montava a data no fuso do servidor e formatava no
+ * fuso do negocio, somando a diferenca entre os dois e deslocando um dia:
+ * addDays(hoje, 0) devolvia ontem, e a tela de operacao filtrava
+ * BETWEEN hoje AND ontem, sem trazer nada.
+ */
+describe("aritmetica de datas de calendario", () => {
+  it("somar zero dias devolve o mesmo dia", () => {
+    for (const d of ["2026-09-05", "2026-01-01", "2026-12-31", "2028-02-29"]) {
+      assert.equal(addDays(d, 0), d);
+    }
+  });
+
+  it("o filtro de um unico dia nao fica invertido", () => {
+    const d = "2026-09-05";
+    assert.ok(addDays(d, 0) >= d, "o fim do periodo nao pode ser antes do inicio");
+  });
+
+  it("soma e subtrai atravessando mes e ano", () => {
+    assert.equal(addDays("2026-09-30", 1), "2026-10-01");
+    assert.equal(addDays("2026-12-31", 1), "2027-01-01");
+    assert.equal(addDays("2026-01-01", -1), "2025-12-31");
+  });
+
+  it("fim de mes cobre o ultimo dia, inclusive em ano bissexto", () => {
+    assert.equal(endOfMonth("2026-09-05"), "2026-09-30");
+    assert.equal(endOfMonth("2026-02-10"), "2026-02-28");
+    assert.equal(endOfMonth("2028-02-10"), "2028-02-29");
+  });
+
+  it("semana comeca na segunda-feira", () => {
+    assert.equal(startOfWeek("2026-09-05"), "2026-08-31"); // sabado
+    assert.equal(startOfWeek("2026-08-31"), "2026-08-31"); // a propria segunda
+  });
+
+  it("nao desloca a data exibida", () => {
+    assert.equal(dateBR("2026-09-05"), "05/09/2026");
+    assert.equal(dateBR("2026-01-01"), "01/01/2026");
   });
 });
