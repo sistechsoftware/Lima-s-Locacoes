@@ -18,9 +18,9 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
     <div className="cartao overflow-hidden">
       <Link href={`/operacao/${op.id}`} className="block p-3">
         <div className="flex items-start gap-3">
-          <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-areia-100 py-2">
+          <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-nuvem-100 py-2">
             <span className="text-base leading-none">{kind.icon}</span>
-            <span className="mt-1 text-sm font-bold leading-none text-carvao-900">
+            <span className="mt-1 text-sm font-bold leading-none text-tinta-900">
               {timeBR(op.scheduled_at)}
             </span>
             {showDate && (
@@ -36,7 +36,7 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
               <StatusBadge defs={OPERATION_STATUS} value={op.status} />
               {late && <Badge tone="vermelho">Atrasada</Badge>}
             </div>
-            <p className="mt-1 truncate text-sm font-bold text-carvao-900">{op.customer ?? "Sem cliente"}</p>
+            <p className="mt-1 truncate text-sm font-bold text-tinta-900">{op.customer ?? "Sem cliente"}</p>
             {op.items && <p className="truncate text-xs text-stone-600">{op.items}</p>}
             {endereco && <p className="truncate text-xs text-stone-500">{endereco}</p>}
             <p className="mt-0.5 text-xs text-stone-400">
@@ -48,13 +48,13 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
         </div>
       </Link>
 
-      <div className="flex gap-1 border-t border-areia-200 bg-areia-50 px-2 py-1.5">
+      <div className="flex gap-1 border-t border-nuvem-200 bg-nuvem-50 px-2 py-1.5">
         {maps && (
           <a
             href={maps}
             target="_blank"
             rel="noreferrer"
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-carvao-700 hover:bg-white"
+            className="flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-tinta-700 hover:bg-white"
           >
             <Icon name="operacao" className="h-4 w-4" /> Rota
           </a>
@@ -71,7 +71,7 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
         )}
         <Link
           href={`/operacao/${op.id}`}
-          className="flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-terra-600 hover:bg-white"
+          className="flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-marca-600 hover:bg-white"
         >
           <Icon name="ok" className="h-4 w-4" /> Detalhes
         </Link>

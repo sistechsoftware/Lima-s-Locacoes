@@ -63,16 +63,16 @@ export default async function DashboardPage({
           <Link
             key={a.href}
             href={a.href}
-            className="flex shrink-0 items-center gap-2 rounded-xl border border-areia-300 bg-white px-3 py-2.5 text-sm font-semibold text-carvao-900"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-3 py-2.5 text-sm font-semibold text-tinta-900"
           >
-            <Icon name={a.icon} className="h-4 w-4 text-terra-500" />+ {a.label}
+            <Icon name={a.icon} className="h-4 w-4 text-marca-600" />+ {a.label}
           </Link>
         ))}
       </div>
 
       {/* ------------------------- OPERACAO DE HOJE ------------------------- */}
-      <section className="cartao overflow-hidden border-terra-200">
-        <header className="flex items-center justify-between bg-terra-500 px-4 py-3 text-white">
+      <section className="cartao overflow-hidden border-marca-200">
+        <header className="flex items-center justify-between bg-marca-600 px-4 py-3 text-white">
           <h2 className="text-sm font-black uppercase tracking-wide">Operacao de hoje</h2>
           <Link href="/operacao" className="text-xs font-semibold underline underline-offset-2">
             ver tudo
@@ -98,7 +98,7 @@ export default async function DashboardPage({
           <BlocoOperacao titulo="Desmontagens" icone="🧰" ops={desmontagens} />
 
           <div>
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-carvao-900">
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-tinta-900">
               <span>🚨</span> Alertas
             </h3>
             {alertas.length === 0 ? (
@@ -116,14 +116,14 @@ export default async function DashboardPage({
                         ? "border-red-200 bg-red-50 text-red-800"
                         : a.severity === "aviso"
                           ? "border-amber-200 bg-amber-50 text-amber-900"
-                          : "border-areia-300 bg-areia-50 text-carvao-700"
+                          : "border-nuvem-300 bg-nuvem-50 text-tinta-700"
                     }`}
                   >
                     <span className="font-semibold">{a.title}</span>
                     {a.body && <span className="block text-xs opacity-80">{a.body}</span>}
                   </Link>
                 ))}
-                <Link href="/notificacoes" className="block pt-1 text-xs font-semibold text-terra-600">
+                <Link href="/notificacoes" className="block pt-1 text-xs font-semibold text-marca-600">
                   Ver todas as notificacoes
                 </Link>
               </div>
@@ -136,7 +136,7 @@ export default async function DashboardPage({
       <Section
         title="Agenda de hoje"
         action={
-          <Link href="/agenda" className="text-xs font-semibold text-terra-600">
+          <Link href="/agenda" className="text-xs font-semibold text-marca-600">
             abrir agenda
           </Link>
         }
@@ -144,14 +144,14 @@ export default async function DashboardPage({
         {agenda.length === 0 ? (
           <p className="py-4 text-center text-sm text-stone-500">Nenhum compromisso para hoje.</p>
         ) : (
-          <ul className="divide-y divide-areia-200">
+          <ul className="divide-y divide-nuvem-200">
             {agenda.map((e) => (
               <li key={e.id}>
                 <Link href={e.href} className="flex items-center gap-3 py-2.5">
-                  <span className="w-12 shrink-0 text-sm font-bold text-carvao-900">{e.time || "--:--"}</span>
+                  <span className="w-12 shrink-0 text-sm font-bold text-tinta-900">{e.time || "--:--"}</span>
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotFor(e.kind)}`} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-carvao-900">
+                    <span className="block truncate text-sm font-semibold text-tinta-900">
                       {e.label} - {e.title}
                     </span>
                     <span className="block truncate text-xs text-stone-500">{e.subtitle}</span>
@@ -251,12 +251,12 @@ export default async function DashboardPage({
 function BlocoOperacao({ titulo, icone, ops }: { titulo: string; icone: string; ops: any[] }) {
   return (
     <div>
-      <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-carvao-900">
+      <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-tinta-900">
         <span>{icone}</span> {titulo}
-        <span className="rounded-full bg-areia-200 px-2 py-0.5 text-xs font-bold text-stone-600">{ops.length}</span>
+        <span className="rounded-full bg-nuvem-200 px-2 py-0.5 text-xs font-bold text-stone-600">{ops.length}</span>
       </h3>
       {ops.length === 0 ? (
-        <p className="rounded-xl bg-areia-50 px-3 py-2.5 text-sm text-stone-500">Nada agendado para hoje.</p>
+        <p className="rounded-xl bg-nuvem-50 px-3 py-2.5 text-sm text-stone-500">Nada agendado para hoje.</p>
       ) : (
         <div className="space-y-2">
           {ops.map((o) => (
@@ -276,7 +276,7 @@ function dotFor(kind: string) {
       montagem: "bg-amber-500",
       desmontagem: "bg-violet-500",
       frete: "bg-fuchsia-500",
-      evento: "bg-[#A85C42]",
+      evento: "bg-marca-600",
     }[kind] ?? "bg-stone-400"
   );
 }

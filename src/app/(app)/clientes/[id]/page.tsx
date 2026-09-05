@@ -103,7 +103,7 @@ export default async function ClientePage({
                 href={maps}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-areia-300 bg-white px-4 py-2.5 text-sm font-semibold"
+                className="inline-flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
               >
                 <Icon name="operacao" className="h-4 w-4" /> Ver rota
               </a>
@@ -111,7 +111,7 @@ export default async function ClientePage({
             {c.phone && (
               <a
                 href={`tel:${c.phone}`}
-                className="inline-flex items-center gap-2 rounded-xl border border-areia-300 bg-white px-4 py-2.5 text-sm font-semibold"
+                className="inline-flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
               >
                 Ligar
               </a>
@@ -169,7 +169,7 @@ export default async function ClientePage({
           {pagamentos.length === 0 ? (
             <Empty>Nenhum pagamento registrado.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {pagamentos.map((p) => (
                 <li key={p.id} className="flex items-center justify-between py-2 text-sm">
                   <span>
@@ -200,7 +200,7 @@ export default async function ClientePage({
       {user.role === "admin" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-carvao-900">Area do administrador</p>
+            <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
             <p className="text-xs text-stone-500">
               Clientes com historico sao inativados em vez de excluidos, para preservar as reservas.
             </p>
@@ -221,7 +221,7 @@ export default async function ClientePage({
       )}
 
       <p className="text-center">
-        <Link href="/clientes" className="text-sm font-semibold text-terra-600">
+        <Link href="/clientes" className="text-sm font-semibold text-marca-600">
           Voltar para clientes
         </Link>
       </p>

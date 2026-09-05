@@ -50,7 +50,7 @@ export default async function DisponibilidadePage({
             <span className="rotulo">Data final</span>
             <input type="date" name="ate" defaultValue={ate} className="campo" />
           </label>
-          <button className="rounded-xl bg-terra-500 px-5 py-2.5 text-sm font-semibold text-white">Consultar</button>
+          <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Consultar</button>
         </form>
         <p className="mt-2 text-xs text-stone-500">
           O calculo considera o pico de uso simultaneo entre a entrega e a retirada de cada reserva.
@@ -67,13 +67,13 @@ export default async function DisponibilidadePage({
 
       {grupos.map((g) => (
         <section key={g.category} className="cartao overflow-hidden">
-          <header className="flex items-center justify-between border-b border-areia-200 bg-areia-50 px-4 py-2.5">
+          <header className="flex items-center justify-between border-b border-nuvem-200 bg-nuvem-50 px-4 py-2.5">
             <h2 className="text-sm font-bold uppercase tracking-wide text-stone-600">{g.category}</h2>
             <span className="text-xs text-stone-500">
               {g.available} disponivel de {g.total}
             </span>
           </header>
-          <div className="divide-y divide-areia-200">
+          <div className="divide-y divide-nuvem-200">
             {g.products.map((p) => {
               const livre = Math.max(0, p.available);
               const pct = p.effective > 0 ? Math.round((p.reserved / p.effective) * 100) : 0;
@@ -81,9 +81,9 @@ export default async function DisponibilidadePage({
                 <Link key={p.product_id} href={`/estoque/${p.product_id}`} className="block px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 truncate text-sm font-bold text-carvao-900">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-bold text-tinta-900">
                         {p.kind === "kit" && (
-                          <span className="shrink-0 rounded bg-terra-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-terra-700">
+                          <span className="shrink-0 rounded bg-destaque-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-destaque-700">
                             kit
                           </span>
                         )}
@@ -110,7 +110,7 @@ export default async function DisponibilidadePage({
                       </p>
                     </div>
                   </div>
-                  <div className={`mt-2 h-1.5 overflow-hidden rounded-full bg-areia-200 ${p.kind === "kit" ? "hidden" : ""}`}>
+                  <div className={`mt-2 h-1.5 overflow-hidden rounded-full bg-nuvem-200 ${p.kind === "kit" ? "hidden" : ""}`}>
                     <div
                       className={`h-full ${pct >= 100 ? "bg-red-500" : pct > 70 ? "bg-amber-500" : "bg-emerald-500"}`}
                       style={{ width: `${Math.min(100, pct)}%` }}
@@ -131,8 +131,8 @@ export default async function DisponibilidadePage({
         aria-hidden="true"
       />
       <Card>
-        <h3 className="mb-2 text-sm font-bold text-carvao-900">Resumo para copiar</h3>
-        <pre className="scroll-x whitespace-pre-wrap rounded-xl bg-areia-100 p-3 text-xs text-carvao-800">
+        <h3 className="mb-2 text-sm font-bold text-tinta-900">Resumo para copiar</h3>
+        <pre className="scroll-x whitespace-pre-wrap rounded-xl bg-nuvem-100 p-3 text-xs text-tinta-800">
           {resumoTexto}
         </pre>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-500">

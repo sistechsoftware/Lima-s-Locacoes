@@ -95,7 +95,7 @@ export default async function OrcamentoPage({
           <Row
             label="Cliente"
             value={
-              <Link href={`/clientes/${q.customer_id}`} className="text-terra-600">
+              <Link href={`/clientes/${q.customer_id}`} className="text-marca-600">
                 {q.customer_name}
               </Link>
             }
@@ -112,7 +112,7 @@ export default async function OrcamentoPage({
           {items.length === 0 ? (
             <Empty>Nenhum item.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {items.map((i) => (
                 <li key={i.id} className="flex items-center justify-between py-2 text-sm">
                   <span>
@@ -124,7 +124,7 @@ export default async function OrcamentoPage({
               ))}
             </ul>
           )}
-          <div className="mt-3 space-y-1 rounded-xl bg-areia-100 p-3 text-sm">
+          <div className="mt-3 space-y-1 rounded-xl bg-nuvem-100 p-3 text-sm">
             <Row label="Produtos" value={money(q.items_cents)} />
             <Row label="Frete" value={money(q.freight_cents)} />
             <Row label="Montagem" value={money(q.assembly_cents)} />
@@ -156,7 +156,7 @@ export default async function OrcamentoPage({
         ) : (
           <Empty>Cliente sem telefone cadastrado.</Empty>
         )}
-        <pre className="mt-3 whitespace-pre-wrap rounded-xl bg-areia-100 p-3 text-xs text-carvao-800">{msg.text}</pre>
+        <pre className="mt-3 whitespace-pre-wrap rounded-xl bg-nuvem-100 p-3 text-xs text-tinta-800">{msg.text}</pre>
       </Section>
 
       {historico.length > 0 && (
@@ -174,7 +174,7 @@ export default async function OrcamentoPage({
 
       {user.role === "admin" && q.status !== "convertido" && (
         <Card className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-carvao-900">Area do administrador</p>
+          <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
           <form action={deleteQuote}>
             <input type="hidden" name="id" value={q.id} />
             <SubmitButton variant="perigo" confirm={`Excluir o orcamento ${q.number}?`}>

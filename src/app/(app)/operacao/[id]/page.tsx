@@ -116,7 +116,7 @@ export default async function OperacaoDetalhePage({
               href={maps}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-carvao-900 px-4 py-2.5 text-sm font-semibold text-white"
+              className="inline-flex items-center gap-2 rounded-xl bg-marca-600 px-4 py-2.5 text-sm font-semibold text-white"
             >
               <Icon name="operacao" className="h-4 w-4" /> Abrir rota
             </a>
@@ -134,7 +134,7 @@ export default async function OperacaoDetalhePage({
           {op.phone && (
             <a
               href={`tel:${op.phone}`}
-              className="inline-flex items-center gap-2 rounded-xl border border-areia-300 bg-white px-4 py-2.5 text-sm font-semibold"
+              className="inline-flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
             >
               Ligar
             </a>
@@ -196,10 +196,10 @@ export default async function OperacaoDetalhePage({
           {itens.length === 0 ? (
             <Empty>Operacao sem itens vinculados.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {itens.map((i) => (
                 <li key={i.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-semibold text-carvao-900">
+                  <span className="font-semibold text-tinta-900">
                     {i.qty} x {i.product_name}
                   </span>
                   <span className="text-stone-500">{money(i.subtotal_cents)}</span>
@@ -217,13 +217,13 @@ export default async function OperacaoDetalhePage({
             {itensChecklist.map((item) => (
               <label
                 key={item}
-                className="flex items-center gap-3 rounded-xl border border-areia-300 bg-white px-3 py-3 text-sm font-medium"
+                className="flex items-center gap-3 rounded-xl border border-nuvem-300 bg-white px-3 py-3 text-sm font-medium"
               >
                 <input
                   type="checkbox"
                   name={`chk:${item}`}
                   defaultChecked={!!marcados[item]}
-                  className="h-5 w-5 accent-[#A85C42]"
+                  className="h-5 w-5 accent-[#051094]"
                 />
                 {item}
               </label>
@@ -336,7 +336,7 @@ export default async function OperacaoDetalhePage({
       )}
 
       <p className="text-center">
-        <Link href="/operacao" className="text-sm font-semibold text-terra-600">
+        <Link href="/operacao" className="text-sm font-semibold text-marca-600">
           Voltar para operacao
         </Link>
       </p>

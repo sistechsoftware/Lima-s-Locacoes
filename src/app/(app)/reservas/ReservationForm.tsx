@@ -138,7 +138,7 @@ export default function ReservationForm({
               </select>
               <Link
                 href="/clientes/novo?next=reserva"
-                className="flex items-center rounded-xl border border-areia-300 bg-white px-3 text-sm font-semibold"
+                className="flex items-center rounded-xl border border-nuvem-300 bg-white px-3 text-sm font-semibold"
               >
                 Novo
               </Link>
@@ -206,7 +206,7 @@ export default function ReservationForm({
           ].map(([name, label, checked]) => (
             <label
               key={name as string}
-              className="flex items-center gap-2 rounded-xl border border-areia-300 bg-white px-3 py-2.5 text-sm font-medium"
+              className="flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-3 py-2.5 text-sm font-medium"
             >
               <input type="checkbox" name={name as string} defaultChecked={checked as boolean} className="h-4 w-4" />
               {label as string}
@@ -280,14 +280,14 @@ export default function ReservationForm({
           </Field>
         </Grid>
 
-        <div className="mt-3 space-y-1 rounded-xl bg-areia-100 p-3 text-sm">
+        <div className="mt-3 space-y-1 rounded-xl bg-nuvem-100 p-3 text-sm">
           <Linha label="Produtos" value={money(itemsTotal)} />
           <Linha label="Frete" value={money(parseMoney(freight))} />
           <Linha label="Montagem" value={money(parseMoney(assembly))} />
           <Linha label="Desmontagem" value={money(parseMoney(disassembly))} />
           <Linha label="Outros" value={money(parseMoney(other))} />
           <Linha label="Desconto" value={"- " + money(parseMoney(discount))} />
-          <div className="flex items-center justify-between border-t border-areia-300 pt-2 text-base font-bold">
+          <div className="flex items-center justify-between border-t border-nuvem-300 pt-2 text-base font-bold">
             <span>Total da reserva</span>
             <span>{money(total)}</span>
           </div>
@@ -328,7 +328,7 @@ function Linha({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between text-stone-600">
       <span>{label}</span>
-      <span className="font-medium text-carvao-900">{value}</span>
+      <span className="font-medium text-tinta-900">{value}</span>
     </div>
   );
 }

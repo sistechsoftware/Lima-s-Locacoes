@@ -181,7 +181,7 @@ export default async function ReservaPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="Dados da reserva">
-          <Row label="Cliente" value={<Link href={`/clientes/${r.customer_id}`} className="text-terra-600">{r.customer_name}</Link>} />
+          <Row label="Cliente" value={<Link href={`/clientes/${r.customer_id}`} className="text-marca-600">{r.customer_name}</Link>} />
           <Row label="Telefone" value={phoneBR(r.customer_phone) || "-"} />
           <Row label="Data do evento" value={`${dateBR(r.event_date)}${r.event_time ? ` as ${r.event_time}` : ""}`} />
           <Row label="Endereco" value={[r.address, r.district, r.city].filter(Boolean).join(", ") || "-"} />
@@ -208,7 +208,7 @@ export default async function ReservaPage({
               href={maps}
               target="_blank"
               rel="noreferrer"
-              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-areia-300 bg-white px-4 py-2.5 text-sm font-semibold"
+              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
             >
               <Icon name="operacao" className="h-4 w-4" /> Abrir rota no Google Maps
             </a>
@@ -219,14 +219,14 @@ export default async function ReservaPage({
           {items.length === 0 ? (
             <Empty>Nenhum item.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {items.map((i) => (
                 <li key={i.id} className="flex items-center justify-between gap-3 py-2">
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-carvao-900">
+                    <span className="block truncate text-sm font-semibold text-tinta-900">
                       {i.qty} x {i.product_name}
                       {i.product_kind === "kit" && (
-                        <span className="ml-1.5 rounded bg-terra-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-terra-700">
+                        <span className="ml-1.5 rounded bg-destaque-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-destaque-700">
                           kit
                         </span>
                       )}
@@ -241,7 +241,7 @@ export default async function ReservaPage({
               ))}
             </ul>
           )}
-          <div className="mt-3 space-y-1 rounded-xl bg-areia-100 p-3 text-sm">
+          <div className="mt-3 space-y-1 rounded-xl bg-nuvem-100 p-3 text-sm">
             <Row label="Produtos" value={money(r.items_cents)} />
             <Row label="Frete" value={money(r.freight_cents)} />
             <Row label="Montagem" value={money(r.assembly_cents)} />
@@ -261,13 +261,13 @@ export default async function ReservaPage({
           <p className="mb-2 text-sm text-stone-600">
             Itens fisicos que esta reserva ocupa. Kits aparecem expandidos nos seus componentes.
           </p>
-          <ul className="divide-y divide-areia-200">
+          <ul className="divide-y divide-nuvem-200">
             {consumoFisico.map((c: any) => (
               <li key={c.product_id} className="flex items-center justify-between py-2 text-sm">
-                <Link href={`/estoque/${c.product_id}`} className="truncate text-terra-600">
+                <Link href={`/estoque/${c.product_id}`} className="truncate text-marca-600">
                   {c.product_name}
                 </Link>
-                <span className="shrink-0 font-bold text-carvao-900">{c.qty} un.</span>
+                <span className="shrink-0 font-bold text-tinta-900">{c.qty} un.</span>
               </li>
             ))}
           </ul>
@@ -277,7 +277,7 @@ export default async function ReservaPage({
       {/* operacoes */}
       <Section
         title="Agenda operacional"
-        action={<Link href="/operacao" className="text-xs font-semibold text-terra-600">ver operacao</Link>}
+        action={<Link href="/operacao" className="text-xs font-semibold text-marca-600">ver operacao</Link>}
       >
         {ops.length === 0 ? (
           <Empty>Nenhuma operacao agendada. Marque entrega, retirada ou montagem ao editar a reserva.</Empty>
@@ -289,11 +289,11 @@ export default async function ReservaPage({
                 <Link
                   key={o.id}
                   href={`/operacao/${o.id}`}
-                  className="flex items-center gap-3 rounded-xl border border-areia-300 bg-white p-3"
+                  className="flex items-center gap-3 rounded-xl border border-nuvem-300 bg-white p-3"
                 >
                   <span className="text-lg">{kind.icon}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold text-carvao-900">
+                    <span className="block text-sm font-bold text-tinta-900">
                       {kind.label} - {dateBR(o.scheduled_at)} {timeBR(o.scheduled_at)}
                     </span>
                     <span className="block text-xs text-stone-500">
@@ -333,7 +333,7 @@ export default async function ReservaPage({
             {payments.length === 0 ? (
               <Empty>Nenhum pagamento registrado.</Empty>
             ) : (
-              <ul className="divide-y divide-areia-200">
+              <ul className="divide-y divide-nuvem-200">
                 {payments.map((p) => (
                   <li key={p.id} className="flex items-center justify-between gap-2 py-2">
                     <span className="min-w-0">
@@ -355,7 +355,7 @@ export default async function ReservaPage({
                 ))}
               </ul>
             )}
-            <div className="mt-2 flex items-center justify-between rounded-xl bg-areia-100 px-3 py-2 text-sm font-bold">
+            <div className="mt-2 flex items-center justify-between rounded-xl bg-nuvem-100 px-3 py-2 text-sm font-bold">
               <span>Saldo</span>
               <span className={m.balance > 0 ? "text-red-600" : "text-emerald-600"}>{money(m.balance)}</span>
             </div>
@@ -446,7 +446,7 @@ export default async function ReservaPage({
                 <Link
                   key={c.id}
                   href={`/contratos/${c.id}`}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-areia-300 bg-white p-3"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-nuvem-300 bg-white p-3"
                 >
                   <span>
                     <span className="block text-sm font-bold">{c.number}</span>
@@ -500,7 +500,7 @@ export default async function ReservaPage({
       {user.role === "admin" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-carvao-900">Area do administrador</p>
+            <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
             <p className="text-xs text-stone-500">
               Prefira cancelar a reserva: o cancelamento preserva o historico e libera o estoque.
             </p>

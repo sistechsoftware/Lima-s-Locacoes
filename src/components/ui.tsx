@@ -16,7 +16,7 @@ export function PageHeader({
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-xl font-bold text-carvao-900 sm:text-2xl">{title}</h1>
+        <h1 className="text-xl font-bold text-tinta-900 sm:text-2xl">{title}</h1>
         {subtitle && <p className="mt-0.5 text-sm text-stone-500">{subtitle}</p>}
       </div>
       {action && <div className="flex flex-wrap gap-2">{action}</div>}
@@ -49,7 +49,7 @@ export function Section({
 }) {
   return (
     <section className={`cartao overflow-hidden ${className}`}>
-      <header className="flex items-center justify-between gap-2 border-b border-areia-200 bg-areia-50 px-4 py-3">
+      <header className="flex items-center justify-between gap-2 border-b border-nuvem-200 bg-nuvem-50 px-4 py-3">
         <h2 className="text-sm font-bold uppercase tracking-wide text-stone-600">{title}</h2>
         {action}
       </header>
@@ -60,7 +60,7 @@ export function Section({
 
 export function Empty({ children = "Nenhum registro encontrado." }: { children?: ReactNode }) {
   return (
-    <p className="rounded-xl border border-dashed border-areia-300 bg-areia-50 px-4 py-8 text-center text-sm text-stone-500">
+    <p className="rounded-xl border border-dashed border-nuvem-300 bg-nuvem-50 px-4 py-8 text-center text-sm text-stone-500">
       {children}
     </p>
   );
@@ -102,12 +102,12 @@ const BTN_BASE =
   "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50";
 
 export const BTN: Record<string, string> = {
-  primario: `${BTN_BASE} bg-terra-500 text-white hover:bg-terra-600`,
-  secundario: `${BTN_BASE} border border-areia-300 bg-white text-carvao-900 hover:bg-areia-50`,
-  escuro: `${BTN_BASE} bg-carvao-900 text-white hover:bg-carvao-800`,
+  primario: `${BTN_BASE} bg-marca-600 text-white hover:bg-marca-500`,
+  secundario: `${BTN_BASE} border border-nuvem-300 bg-white text-tinta-900 hover:bg-nuvem-50`,
+  escuro: `${BTN_BASE} bg-marca-600 text-white hover:bg-marca-500`,
   perigo: `${BTN_BASE} border border-red-300 bg-red-50 text-red-700 hover:bg-red-100`,
   sucesso: `${BTN_BASE} bg-emerald-600 text-white hover:bg-emerald-700`,
-  fantasma: `${BTN_BASE} text-terra-600 hover:bg-terra-50`,
+  fantasma: `${BTN_BASE} text-marca-600 hover:bg-marca-50`,
 };
 
 export function LinkButton({
@@ -148,14 +148,14 @@ export function Stat({
   icon?: ReactNode;
 }) {
   const body = (
-    <div className="cartao h-full p-3 transition hover:border-terra-300 sm:p-4">
+    <div className="cartao h-full p-3 transition hover:border-marca-300 sm:p-4">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[0.7rem] font-semibold uppercase leading-tight tracking-wide text-stone-500">{label}</p>
         {icon && <span className="text-base leading-none">{icon}</span>}
       </div>
       <p
         className={`mt-1.5 text-xl font-bold leading-tight sm:text-2xl ${
-          tone === "vermelho" ? "text-red-600" : tone === "verde" ? "text-emerald-600" : "text-carvao-900"
+          tone === "vermelho" ? "text-red-600" : tone === "verde" ? "text-emerald-600" : "text-tinta-900"
         }`}
       >
         {value}
@@ -174,9 +174,9 @@ export function Stat({
 
 export function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-areia-200 py-2 last:border-0">
+    <div className="flex items-start justify-between gap-3 border-b border-nuvem-200 py-2 last:border-0">
       <span className="text-sm text-stone-500">{label}</span>
-      <span className="text-right text-sm font-medium text-carvao-900">{value}</span>
+      <span className="text-right text-sm font-medium text-tinta-900">{value}</span>
     </div>
   );
 }

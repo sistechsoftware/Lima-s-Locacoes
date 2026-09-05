@@ -1,26 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  --color-terra-50: #FBF4F0;
-  --color-terra-100: #F4E3DB;
-  --color-terra-200: #E7C6B8;
-  --color-terra-300: #D5A28D;
-  --color-terra-400: #C07C62;
-  --color-terra-500: #A85C42;
-  --color-terra-600: #8E4A34;
-  --color-terra-700: #723A29;
-  --color-terra-800: #562C1F;
-  --color-terra-900: #3A1E15;
+  /*
+   * Paleta da marca. A hierarquia pretendida e 60% azul (navegacao, acoes
+   * primarias, identidade), 30% neutro (fundos e superficies) e 10% amarelo,
+   * usado so como destaque pontual.
+   *
+   * A escala segue a convencao do Tailwind: quanto maior o numero, mais
+   * escuro. O azul principal e o 600; o 500, mais claro, e o estado de hover.
+   */
+  --color-marca-50: #EEF1FF;
+  --color-marca-100: #DDE4FF;
+  --color-marca-200: #B9C4FF;
+  --color-marca-300: #8E9BF0;
+  --color-marca-400: #3B4AD6;
+  --color-marca-500: #0715C7;
+  --color-marca-600: #051094;
+  --color-marca-700: #040C75;
+  --color-marca-800: #030957;
+  --color-marca-900: #02063A;
 
-  --color-areia-50: #FDFBF7;
-  --color-areia-100: #F7F2E9;
-  --color-areia-200: #EEE6D9;
-  --color-areia-300: #E0D4C0;
-  --color-areia-400: #CBBBA0;
+  /* Neutros: 100 e o fundo da aplicacao, o branco fica nos cartoes. */
+  --color-nuvem-50: #FBFCFF;
+  --color-nuvem-100: #F5F7FF;
+  --color-nuvem-200: #E8ECFA;
+  --color-nuvem-300: #D7DEF2;
+  --color-nuvem-400: #AEB8D6;
 
-  --color-carvao-700: #3A3733;
-  --color-carvao-800: #26231F;
-  --color-carvao-900: #1A1816;
+  /* Destaque, sempre com texto escuro por causa do contraste. */
+  --color-destaque-100: #FDF1D8;
+  --color-destaque-300: #F9DA9A;
+  --color-destaque-500: #F4B942;
+  --color-destaque-600: #DDA22A;
+  --color-destaque-700: #8A6314;
+
+  /* Texto. */
+  --color-tinta-700: #4A4A52;
+  --color-tinta-800: #2A2A31;
+  --color-tinta-900: #1A1816;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -31,8 +48,8 @@
 
 html,
 body {
-  background: var(--color-areia-100);
-  color: var(--color-carvao-900);
+  background: var(--color-nuvem-100);
+  color: var(--color-tinta-900);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -53,20 +70,20 @@ body {
 .campo {
   width: 100%;
   border-radius: 0.75rem;
-  border: 1px solid var(--color-areia-300);
+  border: 1px solid var(--color-nuvem-300);
   background: #fff;
   padding: 0.7rem 0.85rem;
   font-size: 1rem;
-  color: var(--color-carvao-900);
+  color: var(--color-tinta-900);
   outline: none;
 }
 .campo:focus {
-  border-color: var(--color-terra-400);
-  box-shadow: 0 0 0 3px rgba(168, 92, 66, 0.15);
+  border-color: var(--color-marca-400);
+  box-shadow: 0 0 0 3px rgba(5, 16, 148, 0.14);
 }
 .campo:disabled {
-  background: var(--color-areia-100);
-  color: #78716c;
+  background: var(--color-nuvem-100);
+  color: #6B7280;
 }
 label.rotulo {
   display: block;
@@ -74,13 +91,13 @@ label.rotulo {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #78716c;
+  color: #6B7280;
   margin-bottom: 0.3rem;
 }
 
 .cartao {
   background: #fff;
-  border: 1px solid var(--color-areia-300);
+  border: 1px solid var(--color-nuvem-300);
   border-radius: 1rem;
 }
 

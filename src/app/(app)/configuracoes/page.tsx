@@ -97,7 +97,7 @@ export default async function ConfiguracoesPage({
               <div className="flex items-center gap-3">
                 {s.company_logo && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.company_logo} alt="Logo" className="h-14 w-14 rounded-xl border border-areia-300 object-contain" />
+                  <img src={s.company_logo} alt="Logo" className="h-14 w-14 rounded-xl border border-nuvem-300 object-contain" />
                 )}
                 <ImageInput name="logo_file" disabled={user.role !== "admin"} />
               </div>
@@ -157,7 +157,7 @@ export default async function ConfiguracoesPage({
           ) : (
             <ul className="space-y-1.5">
               {categorias.map((c) => (
-                <li key={c.id} className="flex items-center justify-between rounded-xl border border-areia-300 bg-white px-3 py-2.5">
+                <li key={c.id} className="flex items-center justify-between rounded-xl border border-nuvem-300 bg-white px-3 py-2.5">
                   <span className="text-sm font-medium">
                     {c.name} <span className="text-xs text-stone-400">({c.produtos} produto(s))</span>
                   </span>
@@ -195,7 +195,7 @@ export default async function ConfiguracoesPage({
           ) : (
             <ul className="space-y-1.5">
               {vehicles.map((v) => (
-                <li key={v.id} className="flex items-center justify-between rounded-xl border border-areia-300 bg-white px-3 py-2.5">
+                <li key={v.id} className="flex items-center justify-between rounded-xl border border-nuvem-300 bg-white px-3 py-2.5">
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold">
                       {v.name} {!v.active && <Badge tone="cinza">Inativo</Badge>}
@@ -227,10 +227,10 @@ export default async function ConfiguracoesPage({
           <Section title="Usuarios do sistema">
             <ul className="space-y-1.5">
               {users.map((u: any) => (
-                <li key={u.id} className="rounded-xl border border-areia-300 bg-white p-3">
+                <li key={u.id} className="rounded-xl border border-nuvem-300 bg-white p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
-                      <span className="text-sm font-bold text-carvao-900">{u.name}</span>
+                      <span className="text-sm font-bold text-tinta-900">{u.name}</span>
                       <span className="ml-2 text-xs text-stone-500">@{u.username}</span>
                       <Badge tone={u.role === "admin" ? "terracota" : "cinza"} className="ml-2">
                         {u.role}
@@ -247,7 +247,7 @@ export default async function ConfiguracoesPage({
                     )}
                   </div>
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-xs font-semibold text-terra-600">Redefinir senha</summary>
+                    <summary className="cursor-pointer text-xs font-semibold text-marca-600">Redefinir senha</summary>
                     <form action={resetPassword} className="mt-2 flex gap-2">
                       <input type="hidden" name="id" value={u.id} />
                       <input name="password" type="password" placeholder="Nova senha" minLength={6} className="campo" required />

@@ -42,7 +42,7 @@ export default async function ContratoPage({
               <PrintButton />
               <Link
                 href={`/reservas/${c.reservation_id}`}
-                className="inline-flex items-center rounded-xl border border-areia-300 bg-white px-4 py-2.5 text-sm font-semibold"
+                className="inline-flex items-center rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
               >
                 Ver reserva
               </Link>
@@ -91,7 +91,7 @@ export default async function ContratoPage({
             {user.role === "admin" && (
               <Link
                 href={`/contratos/${c.id}?editar=1`}
-                className="inline-flex items-center rounded-xl border border-areia-300 bg-white px-4 py-2.5 text-sm font-semibold"
+                className="inline-flex items-center rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
               >
                 Editar texto
               </Link>
@@ -112,27 +112,27 @@ export default async function ContratoPage({
 
       {/* documento imprimivel */}
       <article className="cartao imprimivel p-6 sm:p-10">
-        <header className="mb-6 flex items-center gap-3 border-b border-areia-300 pb-4">
+        <header className="mb-6 flex items-center gap-3 border-b border-nuvem-300 pb-4">
           {s.company_logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={s.company_logo} alt="" className="h-14 w-14 rounded-xl object-contain" />
           ) : (
-            <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-terra-500 text-2xl font-black text-white">
+            <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-marca-600 text-2xl font-black text-white">
               L
             </span>
           )}
           <div>
-            <p className="text-lg font-black text-carvao-900">{s.company_name}</p>
+            <p className="text-lg font-black text-tinta-900">{s.company_name}</p>
             <p className="text-xs text-stone-500">
               {[s.company_doc, s.company_phone, s.company_city].filter(Boolean).join(" - ")}
             </p>
           </div>
           <span className="ml-auto text-right text-xs text-stone-500">
-            <span className="block font-bold text-carvao-900">{c.number}</span>
+            <span className="block font-bold text-tinta-900">{c.number}</span>
             {dateBR(c.created_at)}
           </span>
         </header>
-        <pre className="whitespace-pre-wrap font-sans text-[0.82rem] leading-relaxed text-carvao-900">{c.body}</pre>
+        <pre className="whitespace-pre-wrap font-sans text-[0.82rem] leading-relaxed text-tinta-900">{c.body}</pre>
       </article>
     </div>
   );

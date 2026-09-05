@@ -87,7 +87,7 @@ export default function ItemsEditor({
       </div>
 
       {items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-areia-300 bg-areia-50 px-3 py-6 text-center text-sm text-stone-500">
+        <p className="rounded-xl border border-dashed border-nuvem-300 bg-nuvem-50 px-3 py-6 text-center text-sm text-stone-500">
           Nenhum item adicionado ainda.
         </p>
       ) : (
@@ -99,13 +99,13 @@ export default function ItemsEditor({
             return (
               <div
                 key={item.product_id}
-                className={`rounded-xl border p-3 ${info ? "border-red-300 bg-red-50" : "border-areia-300 bg-white"}`}
+                className={`rounded-xl border p-3 ${info ? "border-red-300 bg-red-50" : "border-nuvem-300 bg-white"}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-1.5 truncate text-sm font-bold text-carvao-900">
+                    <p className="flex items-center gap-1.5 truncate text-sm font-bold text-tinta-900">
                       {p?.kind === "kit" && (
-                        <span className="shrink-0 rounded bg-terra-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-terra-700">
+                        <span className="shrink-0 rounded bg-destaque-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-destaque-700">
                           kit
                         </span>
                       )}
@@ -132,7 +132,7 @@ export default function ItemsEditor({
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   <label className="block">
                     <span className="mb-0.5 block text-[0.68rem] font-semibold uppercase text-stone-500">Qtd</span>
-                    <div className="flex items-stretch overflow-hidden rounded-lg border border-areia-300 bg-white">
+                    <div className="flex items-stretch overflow-hidden rounded-lg border border-nuvem-300 bg-white">
                       <button
                         type="button"
                         onClick={() => patch(index, { qty: Math.max(1, item.qty - 1) })}
@@ -145,7 +145,7 @@ export default function ItemsEditor({
                         min={1}
                         value={item.qty}
                         onChange={(e) => patch(index, { qty: Math.max(1, Number(e.target.value) || 1) })}
-                        className="w-full min-w-0 border-x border-areia-200 px-1 py-2 text-center text-sm outline-none"
+                        className="w-full min-w-0 border-x border-nuvem-200 px-1 py-2 text-center text-sm outline-none"
                       />
                       <button
                         type="button"
@@ -163,7 +163,7 @@ export default function ItemsEditor({
                       defaultValue={(item.unit_price_cents / 100).toFixed(2)}
                       onBlur={(e) => patch(index, { unit_price_cents: parseMoney(e.target.value) })}
                       inputMode="decimal"
-                      className="w-full rounded-lg border border-areia-300 px-2 py-2 text-sm outline-none"
+                      className="w-full rounded-lg border border-nuvem-300 px-2 py-2 text-sm outline-none"
                     />
                   </label>
 
@@ -173,7 +173,7 @@ export default function ItemsEditor({
                       defaultValue={(item.discount_cents / 100).toFixed(2)}
                       onBlur={(e) => patch(index, { discount_cents: parseMoney(e.target.value) })}
                       inputMode="decimal"
-                      className="w-full rounded-lg border border-areia-300 px-2 py-2 text-sm outline-none"
+                      className="w-full rounded-lg border border-nuvem-300 px-2 py-2 text-sm outline-none"
                     />
                   </label>
                 </div>
@@ -187,7 +187,7 @@ export default function ItemsEditor({
                   ) : (
                     <span className="text-xs text-stone-400">Subtotal</span>
                   )}
-                  <span className="text-sm font-bold text-carvao-900">{money(line)}</span>
+                  <span className="text-sm font-bold text-tinta-900">{money(line)}</span>
                 </div>
               </div>
             );
@@ -195,9 +195,9 @@ export default function ItemsEditor({
         </div>
       )}
 
-      <div className="flex items-center justify-between rounded-xl bg-areia-100 px-3 py-2.5">
+      <div className="flex items-center justify-between rounded-xl bg-nuvem-100 px-3 py-2.5">
         <span className="text-sm font-semibold text-stone-600">Subtotal dos produtos</span>
-        <span className="text-base font-bold text-carvao-900">{money(subtotal)}</span>
+        <span className="text-base font-bold text-tinta-900">{money(subtotal)}</span>
       </div>
     </div>
   );

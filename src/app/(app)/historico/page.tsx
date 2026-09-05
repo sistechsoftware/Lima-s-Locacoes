@@ -55,7 +55,7 @@ export default async function HistoricoPage({
             const href = h.entity_id && LINK[h.entity] ? LINK[h.entity](h.entity_id) : null;
             const conteudo = (
               <>
-                <span className="block text-sm text-carvao-900">{h.summary}</span>
+                <span className="block text-sm text-tinta-900">{h.summary}</span>
                 <span className="block text-xs text-stone-400">
                   {utcParaLocal(h.created_at)} - {h.user_name} - {h.action} em {h.entity}
                 </span>

@@ -170,7 +170,7 @@ export default async function RelatoriosPage({
               <span className="rotulo">Ate</span>
               <input type="date" name="ate" defaultValue={ate} className="campo" />
             </label>
-            <button className="rounded-xl bg-carvao-900 px-5 py-2.5 text-sm font-semibold text-white">Aplicar</button>
+            <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Aplicar</button>
           </form>
         </Card>
       )}
@@ -212,13 +212,13 @@ export default async function RelatoriosPage({
             {meses.map((m) => (
               <li key={m.mes}>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold text-carvao-900">{m.mes}</span>
+                  <span className="font-semibold text-tinta-900">{m.mes}</span>
                   <span className="text-stone-500">
-                    {m.reservas} reserva(s) - <b className="text-carvao-900">{money(m.total)}</b>
+                    {m.reservas} reserva(s) - <b className="text-tinta-900">{money(m.total)}</b>
                   </span>
                 </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-areia-200">
-                  <div className="h-full bg-terra-500" style={{ width: `${(m.total / maxMes) * 100}%` }} />
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-nuvem-200">
+                  <div className="h-full bg-marca-600" style={{ width: `${(m.total / maxMes) * 100}%` }} />
                 </div>
               </li>
             ))}
@@ -231,18 +231,18 @@ export default async function RelatoriosPage({
           {produtos.filter((x) => x.unidades > 0).length === 0 ? (
             <Empty>Nenhuma locacao no periodo.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {produtos
                 .filter((x) => x.unidades > 0)
                 .slice(0, 10)
                 .map((x) => (
                   <li key={x.id} className="flex items-center justify-between py-2 text-sm">
-                    <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-terra-600">
+                    <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-marca-600">
                       {x.kind === "kit" ? "[KIT] " : ""}
                       {x.name}
                     </Link>
                     <span className="shrink-0 text-right">
-                      <b className="text-carvao-900">{x.unidades} un.</b>
+                      <b className="text-tinta-900">{x.unidades} un.</b>
                       <span className="block text-xs text-stone-500">{money(x.receita)}</span>
                     </span>
                   </li>
@@ -259,14 +259,14 @@ export default async function RelatoriosPage({
               <p className="mb-2 text-xs text-stone-500">
                 Kits ja expandidos nos componentes: e o que realmente saiu do estoque.
               </p>
-              <ul className="divide-y divide-areia-200">
+              <ul className="divide-y divide-nuvem-200">
                 {consumoFisico.slice(0, 10).map((x) => (
                   <li key={x.id} className="flex items-center justify-between py-2 text-sm">
-                    <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-terra-600">
+                    <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-marca-600">
                       {x.name}
                     </Link>
                     <span className="shrink-0 text-right">
-                      <b className="text-carvao-900">{x.unidades} un.</b>
+                      <b className="text-tinta-900">{x.unidades} un.</b>
                       <span className="block text-xs text-stone-500">{x.reservas} reserva(s)</span>
                     </span>
                   </li>
@@ -277,14 +277,14 @@ export default async function RelatoriosPage({
         </Section>
 
         <Section title="Produtos menos alugados">
-          <ul className="divide-y divide-areia-200">
+          <ul className="divide-y divide-nuvem-200">
             {produtos
               .slice()
               .sort((a, b) => a.unidades - b.unidades)
               .slice(0, 10)
               .map((x) => (
                 <li key={x.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-terra-600">
+                  <Link href={`/estoque/${x.id}`} className="min-w-0 truncate text-marca-600">
                     {x.name}
                   </Link>
                   <span className="shrink-0 text-stone-500">{x.unidades} un.</span>
@@ -297,14 +297,14 @@ export default async function RelatoriosPage({
           {melhores.length === 0 ? (
             <Empty>Sem dados no periodo.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {melhores.map((c) => (
                 <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-terra-600">
+                  <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-marca-600">
                     {c.name}
                   </Link>
                   <span className="shrink-0 text-right">
-                    <b className="text-carvao-900">{money(c.total)}</b>
+                    <b className="text-tinta-900">{money(c.total)}</b>
                     <span className="block text-xs text-stone-500">{c.locacoes} locacao(oes)</span>
                   </span>
                 </li>
@@ -317,10 +317,10 @@ export default async function RelatoriosPage({
           {recorrentes.length === 0 ? (
             <Empty>Nenhum cliente com duas ou mais locacoes.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {recorrentes.map((c) => (
                 <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-terra-600">
+                  <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-marca-600">
                     {c.name}
                   </Link>
                   <span className="shrink-0 text-stone-500">{c.locacoes} locacoes</span>
@@ -334,10 +334,10 @@ export default async function RelatoriosPage({
           {inativos.length === 0 ? (
             <Empty>Nenhum cliente inativo.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {inativos.map((c) => (
                 <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-terra-600">
+                  <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-marca-600">
                     {c.name}
                   </Link>
                   <span className="shrink-0 text-stone-500">ultima em {dateBR(c.ultima)}</span>

@@ -42,7 +42,7 @@ export default async function ClientesPage({
       />
 
       <SearchForm action="/clientes" placeholder="Nome, telefone, CPF, bairro..." defaultValue={q}>
-        <label className="flex items-center gap-2 rounded-xl border border-areia-300 bg-white px-3 py-2.5 text-sm">
+        <label className="flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-3 py-2.5 text-sm">
           <input type="checkbox" name="inativos" value="1" defaultChecked={inativos} className="h-4 w-4" />
           Incluir inativos
         </label>

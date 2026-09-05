@@ -25,7 +25,7 @@ export function SearchForm({
         <input name="q" defaultValue={defaultValue} placeholder={placeholder} className="campo pl-9" />
       </div>
       {children}
-      <button className="rounded-xl bg-carvao-900 px-4 py-2.5 text-sm font-semibold text-white">Buscar</button>
+      <button className="rounded-xl bg-marca-600 px-4 py-2.5 text-sm font-semibold text-white">Buscar</button>
     </form>
   );
 }
@@ -53,8 +53,8 @@ export function Tabs({
             href={`${base}${sep}${param}=${t.value}`}
             className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
               active
-                ? "border-terra-500 bg-terra-500 text-white"
-                : "border-areia-300 bg-white text-carvao-700 hover:bg-areia-50"
+                ? "border-marca-600 bg-marca-600 text-white"
+                : "border-nuvem-300 bg-white text-tinta-700 hover:bg-nuvem-50"
             }`}
           >
             {t.label}
@@ -84,7 +84,7 @@ export function Pagination({
   return (
     <nav className="flex items-center justify-between gap-2 pt-1">
       {page > 1 ? (
-        <Link href={build(page - 1)} className="rounded-xl border border-areia-300 bg-white px-4 py-2 text-sm font-semibold">
+        <Link href={build(page - 1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
           Anterior
         </Link>
       ) : (
@@ -94,7 +94,7 @@ export function Pagination({
         Pagina {page} de {pages} - {total} registro(s)
       </span>
       {page < pages ? (
-        <Link href={build(page + 1)} className="rounded-xl border border-areia-300 bg-white px-4 py-2 text-sm font-semibold">
+        <Link href={build(page + 1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
           Proxima
         </Link>
       ) : (
@@ -121,10 +121,10 @@ export function ListRow({
   badges?: React.ReactNode;
 }) {
   return (
-    <Link href={href} className="cartao flex items-center gap-3 p-3 transition hover:border-terra-300">
+    <Link href={href} className="cartao flex items-center gap-3 p-3 transition hover:border-marca-300">
       <div className="min-w-0 flex-1">
         {badges && <div className="mb-1 flex flex-wrap gap-1.5">{badges}</div>}
-        <p className="truncate text-sm font-bold text-carvao-900">{title}</p>
+        <p className="truncate text-sm font-bold text-tinta-900">{title}</p>
         {subtitle && <p className="truncate text-xs text-stone-600">{subtitle}</p>}
         {meta && <p className="truncate text-xs text-stone-400">{meta}</p>}
       </div>

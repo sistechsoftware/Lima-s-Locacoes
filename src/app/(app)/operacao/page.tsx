@@ -70,7 +70,7 @@ export default async function OperacaoPage({
               <option value="30">+30 dias</option>
             </select>
           </label>
-          <button className="rounded-xl bg-carvao-900 px-5 py-2.5 text-sm font-semibold text-white">Filtrar</button>
+          <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Filtrar</button>
         </form>
       </Card>
 

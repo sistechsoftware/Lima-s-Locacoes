@@ -40,7 +40,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
       <Card>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge defs={FREIGHT_STATUS} value={f.status} />
-          <span className="text-sm font-bold text-carvao-900">{money(f.amount_cents)}</span>
+          <span className="text-sm font-bold text-tinta-900">{money(f.amount_cents)}</span>
           {pago > 0 && <span className="text-xs text-emerald-600">pago {money(pago)}</span>}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -63,7 +63,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
               href={maps}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-carvao-900 px-4 py-2.5 text-sm font-semibold text-white"
+              className="inline-flex items-center gap-2 rounded-xl bg-marca-600 px-4 py-2.5 text-sm font-semibold text-white"
             >
               <Icon name="operacao" className="h-4 w-4" /> Rota ate o destino
             </a>
@@ -87,7 +87,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
             label="Cliente"
             value={
               f.customer_id ? (
-                <Link href={`/clientes/${f.customer_id}`} className="text-terra-600">
+                <Link href={`/clientes/${f.customer_id}`} className="text-marca-600">
                   {f.customer_name}
                 </Link>
               ) : (
@@ -131,7 +131,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
             {pagamentos.length === 0 ? (
               <Empty>Nenhum pagamento registrado.</Empty>
             ) : (
-              <ul className="divide-y divide-areia-200">
+              <ul className="divide-y divide-nuvem-200">
                 {pagamentos.map((p) => (
                   <li key={p.id} className="flex items-center justify-between py-2 text-sm">
                     <span>
@@ -142,7 +142,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
                 ))}
               </ul>
             )}
-            <div className="mt-2 flex items-center justify-between rounded-xl bg-areia-100 px-3 py-2 text-sm font-bold">
+            <div className="mt-2 flex items-center justify-between rounded-xl bg-nuvem-100 px-3 py-2 text-sm font-bold">
               <span>Saldo</span>
               <span className={f.amount_cents - pago > 0 ? "text-red-600" : "text-emerald-600"}>
                 {money(f.amount_cents - pago)}
@@ -167,7 +167,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
 
       {user.role === "admin" && (
         <Card className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-carvao-900">Area do administrador</p>
+          <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
           <form action={deleteFreight}>
             <input type="hidden" name="id" value={f.id} />
             <SubmitButton variant="perigo" confirm={`Excluir o frete ${f.number}?`}>

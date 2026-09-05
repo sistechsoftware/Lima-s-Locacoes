@@ -167,7 +167,7 @@ export const TONE_CLASS: Record<Tone, string> = {
   azul: "bg-sky-100 text-sky-800 border-sky-300",
   roxo: "bg-violet-100 text-violet-800 border-violet-300",
   vermelho: "bg-red-100 text-red-800 border-red-300",
-  terracota: "bg-[#F4E3DB] text-[#8A4630] border-[#E0BCAB]",
+  terracota: "bg-destaque-100 text-destaque-700 border-destaque-300",
 };
 
 export const TONE_DOT: Record<Tone, string> = {
@@ -177,7 +177,7 @@ export const TONE_DOT: Record<Tone, string> = {
   azul: "bg-sky-500",
   roxo: "bg-violet-500",
   vermelho: "bg-red-500",
-  terracota: "bg-[#A85C42]",
+  terracota: "bg-marca-600",
 };
 
 /** Rotulo de pagamento a partir do total e do valor pago. */

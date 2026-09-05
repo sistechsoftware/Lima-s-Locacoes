@@ -86,7 +86,7 @@ export default async function FinanceiroPage({
             <span className="rotulo">Ate</span>
             <input type="date" name="ate" defaultValue={ate} className="campo" />
           </label>
-          <button className="rounded-xl bg-carvao-900 px-5 py-2.5 text-sm font-semibold text-white">Filtrar</button>
+          <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Filtrar</button>
         </form>
       </Card>
 
@@ -114,7 +114,7 @@ export default async function FinanceiroPage({
             {porMetodo.length === 0 ? (
               <Empty>Nenhuma entrada no periodo.</Empty>
             ) : (
-              <ul className="divide-y divide-areia-200">
+              <ul className="divide-y divide-nuvem-200">
                 {porMetodo.map((m) => (
                   <li key={m.method} className="flex items-center justify-between py-2 text-sm">
                     <span>{PAYMENT_METHOD_LABEL[m.method]}</span>
@@ -128,7 +128,7 @@ export default async function FinanceiroPage({
             {porCategoria.length === 0 ? (
               <Empty>Nenhuma saida no periodo.</Empty>
             ) : (
-              <ul className="divide-y divide-areia-200">
+              <ul className="divide-y divide-nuvem-200">
                 {porCategoria.map((c) => (
                   <li key={c.category} className="flex items-center justify-between py-2 text-sm">
                     <span>{c.category}</span>
@@ -140,7 +140,7 @@ export default async function FinanceiroPage({
           </Section>
           <Section title="Caucoes">
             <p className="text-sm text-stone-600">
-              Total retido por danos ate hoje: <b className="text-carvao-900">{money(caucaoRetida)}</b>
+              Total retido por danos ate hoje: <b className="text-tinta-900">{money(caucaoRetida)}</b>
             </p>
             <p className="mt-1 text-xs text-stone-500">
               A caucao nao entra no faturamento: e devolvida ao cliente, exceto na parte retida.
@@ -154,18 +154,18 @@ export default async function FinanceiroPage({
           {entradas.length === 0 ? (
             <Empty>Nenhuma entrada no periodo.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {entradas.map((e) => (
                 <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-carvao-900">
+                    <p className="truncate text-sm font-semibold text-tinta-900">
                       {e.customer_name ?? e.notes ?? "Entrada"}
                     </p>
                     <p className="text-xs text-stone-500">
                       {dateBR(e.paid_at)} - {PAYMENT_METHOD_LABEL[e.method] ?? e.method}
                       {e.reservation_number ? ` - ` : ""}
                       {e.reservation_number && (
-                        <Link href={`/reservas/${e.reservation_id}`} className="text-terra-600">
+                        <Link href={`/reservas/${e.reservation_id}`} className="text-marca-600">
                           {e.reservation_number}
                         </Link>
                       )}
@@ -219,11 +219,11 @@ export default async function FinanceiroPage({
             {saidas.length === 0 ? (
               <Empty>Nenhuma saida no periodo.</Empty>
             ) : (
-              <ul className="divide-y divide-areia-200">
+              <ul className="divide-y divide-nuvem-200">
                 {saidas.map((e) => (
                   <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-carvao-900">
+                      <p className="truncate text-sm font-semibold text-tinta-900">
                         {e.category}
                         {e.description ? ` - ${e.description}` : ""}
                       </p>
@@ -256,11 +256,11 @@ export default async function FinanceiroPage({
           {aReceber.length === 0 ? (
             <Empty>Nenhum saldo em aberto.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {aReceber.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
                   <Link href={`/reservas/${r.id}`} className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-terra-600">
+                    <span className="block truncate text-sm font-semibold text-marca-600">
                       {r.number} - {r.customer_name}
                     </span>
                     <span className="block text-xs text-stone-500">

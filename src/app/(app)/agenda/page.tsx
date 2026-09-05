@@ -13,7 +13,7 @@ const CORES: Record<string, { dot: string; chip: string; label: string; icon: st
   montagem: { dot: "bg-amber-500", chip: "bg-amber-100 text-amber-800", label: "Montagem", icon: "🟠" },
   desmontagem: { dot: "bg-violet-500", chip: "bg-violet-100 text-violet-800", label: "Desmontagem", icon: "🟣" },
   frete: { dot: "bg-fuchsia-500", chip: "bg-fuchsia-100 text-fuchsia-800", label: "Frete", icon: "🟣" },
-  evento: { dot: "bg-terra-500", chip: "bg-terra-100 text-terra-700", label: "Evento", icon: "🟤" },
+  evento: { dot: "bg-marca-600", chip: "bg-marca-100 text-marca-700", label: "Evento", icon: "🟤" },
 };
 
 export default async function AgendaPage({
@@ -72,16 +72,16 @@ export default async function AgendaPage({
 
       <Card padded={false}>
         <div className="flex items-center justify-between gap-2 p-2">
-          <Link href={nav(-1)} className="rounded-xl border border-areia-300 bg-white px-4 py-2 text-sm font-semibold">
+          <Link href={nav(-1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
             Anterior
           </Link>
           <form className="flex items-center gap-2">
             <input type="hidden" name="view" value={view} />
             {tipo && <input type="hidden" name="tipo" value={tipo} />}
             <input type="date" name="data" defaultValue={data} className="campo py-2" />
-            <button className="rounded-xl bg-carvao-900 px-3 py-2 text-sm font-semibold text-white">Ir</button>
+            <button className="rounded-xl bg-marca-600 px-3 py-2 text-sm font-semibold text-white">Ir</button>
           </form>
-          <Link href={nav(1)} className="rounded-xl border border-areia-300 bg-white px-4 py-2 text-sm font-semibold">
+          <Link href={nav(1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
             Proximo
           </Link>
         </div>
@@ -91,7 +91,7 @@ export default async function AgendaPage({
         <Link
           href={`/agenda?view=${view}&data=${data}`}
           className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-            !tipo ? "border-carvao-900 bg-carvao-900 text-white" : "border-areia-300 bg-white"
+            !tipo ? "border-marca-600 bg-marca-600 text-white" : "border-nuvem-300 bg-white"
           }`}
         >
           Tudo
@@ -101,7 +101,7 @@ export default async function AgendaPage({
             key={k}
             href={`/agenda?view=${view}&data=${data}&tipo=${k}`}
             className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              tipo === k ? "border-carvao-900 bg-carvao-900 text-white" : "border-areia-300 bg-white"
+              tipo === k ? "border-marca-600 bg-marca-600 text-white" : "border-nuvem-300 bg-white"
             }`}
           >
             <span className={`h-2 w-2 rounded-full ${c.dot}`} /> {c.label}
@@ -117,8 +117,8 @@ export default async function AgendaPage({
         <div className="space-y-4">
           {[...porDia.entries()].map(([dia, lista]) => (
             <section key={dia}>
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-carvao-900">
-                <span className="rounded-lg bg-carvao-900 px-2 py-1 text-xs uppercase text-white">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-tinta-900">
+                <span className="rounded-lg bg-marca-600 px-2 py-1 text-xs uppercase text-white">
                   {weekdayBR(dia)} {dia.slice(8, 10)}/{dia.slice(5, 7)}
                 </span>
                 <span className="text-xs font-normal text-stone-500">{lista.length} compromisso(s)</span>
@@ -128,14 +128,14 @@ export default async function AgendaPage({
                   const c = CORES[e.kind] ?? CORES.evento;
                   return (
                     <Link key={e.id} href={e.href} className="cartao flex items-center gap-3 p-3">
-                      <span className="w-12 shrink-0 text-sm font-bold text-carvao-900">{e.time || "--:--"}</span>
+                      <span className="w-12 shrink-0 text-sm font-bold text-tinta-900">{e.time || "--:--"}</span>
                       <span className={`h-8 w-1 shrink-0 rounded-full ${c.dot}`} />
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-1.5">
                           <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${c.chip}`}>
                             {c.label}
                           </span>
-                          <span className="truncate text-sm font-bold text-carvao-900">{e.title}</span>
+                          <span className="truncate text-sm font-bold text-tinta-900">{e.title}</span>
                         </span>
                         <span className="block truncate text-xs text-stone-500">{e.subtitle}</span>
                       </span>
@@ -165,7 +165,7 @@ function MesGrid({ from, to, eventos, data }: { from: string; to: string; evento
 
   return (
     <Card padded={false}>
-      <div className="grid grid-cols-7 border-b border-areia-200 text-center text-[0.65rem] font-bold uppercase text-stone-400">
+      <div className="grid grid-cols-7 border-b border-nuvem-200 text-center text-[0.65rem] font-bold uppercase text-stone-400">
         {["seg", "ter", "qua", "qui", "sex", "sab", "dom"].map((d) => (
           <span key={d} className="py-2">
             {d}
@@ -180,13 +180,13 @@ function MesGrid({ from, to, eventos, data }: { from: string; to: string; evento
             <Link
               key={d}
               href={`/agenda?view=dia&data=${d}`}
-              className={`min-h-14 border-b border-r border-areia-200 p-1.5 text-center ${
-                outOfMonth ? "bg-areia-50 text-stone-300" : "text-carvao-900"
-              } ${d === data ? "ring-2 ring-inset ring-terra-400" : ""}`}
+              className={`min-h-14 border-b border-r border-nuvem-200 p-1.5 text-center ${
+                outOfMonth ? "bg-nuvem-50 text-stone-300" : "text-tinta-900"
+              } ${d === data ? "ring-2 ring-inset ring-marca-400" : ""}`}
             >
               <span className="block text-xs font-semibold">{Number(d.slice(8, 10))}</span>
               {n > 0 && (
-                <span className="mt-0.5 inline-block rounded-full bg-terra-500 px-1.5 text-[0.6rem] font-bold text-white">
+                <span className="mt-0.5 inline-block rounded-full bg-marca-600 px-1.5 text-[0.6rem] font-bold text-white">
                   {n}
                 </span>
               )}

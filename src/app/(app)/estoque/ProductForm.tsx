@@ -137,11 +137,11 @@ export default function ProductForm({
       </Grid>
 
       {kind === "kit" && (
-        <section className="rounded-xl border border-areia-300 bg-areia-50 p-3">
+        <section className="rounded-xl border border-nuvem-300 bg-nuvem-50 p-3">
           <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-600">Composicao do kit</h3>
 
           {components.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-areia-300 bg-white px-3 py-5 text-center text-sm text-stone-500">
+            <p className="rounded-xl border border-dashed border-nuvem-300 bg-white px-3 py-5 text-center text-sm text-stone-500">
               Nenhum componente. Adicione ao menos um produto simples.
             </p>
           ) : (
@@ -149,9 +149,9 @@ export default function ProductForm({
               {components.map((c, index) => {
                 const p = byId.get(c.product_id);
                 return (
-                  <div key={c.product_id} className="flex items-center gap-2 rounded-xl border border-areia-300 bg-white p-2.5">
+                  <div key={c.product_id} className="flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white p-2.5">
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-carvao-900">
+                      <span className="block truncate text-sm font-semibold text-tinta-900">
                         {p?.name ?? `Produto ${c.product_id}`}
                       </span>
                       <span className="block text-xs text-stone-500">
@@ -166,7 +166,7 @@ export default function ProductForm({
                         step={1}
                         value={c.quantity}
                         onChange={(e) => patch(index, Math.max(1, Number(e.target.value) || 1))}
-                        className="w-20 rounded-lg border border-areia-300 px-2 py-2 text-center text-sm outline-none"
+                        className="w-20 rounded-lg border border-nuvem-300 px-2 py-2 text-center text-sm outline-none"
                       />
                     </label>
                     <button
@@ -238,18 +238,18 @@ function TipoOpcao({
       type="button"
       onClick={onSelect}
       className={`rounded-xl border p-3 text-left transition ${
-        checked ? "border-terra-500 bg-terra-50" : "border-areia-300 bg-white hover:bg-areia-50"
+        checked ? "border-marca-600 bg-marca-50" : "border-nuvem-300 bg-white hover:bg-nuvem-50"
       }`}
     >
       <span className="flex items-center gap-2">
         <span
           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-            checked ? "border-terra-500" : "border-stone-300"
+            checked ? "border-marca-600" : "border-stone-300"
           }`}
         >
-          {checked && <span className="h-2 w-2 rounded-full bg-terra-500" />}
+          {checked && <span className="h-2 w-2 rounded-full bg-marca-600" />}
         </span>
-        <span className="text-sm font-bold text-carvao-900">{titulo}</span>
+        <span className="text-sm font-bold text-tinta-900">{titulo}</span>
       </span>
       <span className="mt-1 block text-xs leading-snug text-stone-500">{descricao}</span>
     </button>

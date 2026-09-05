@@ -111,7 +111,7 @@ export default function QuoteForm({
               </select>
               <Link
                 href="/clientes/novo"
-                className="flex items-center rounded-xl border border-areia-300 bg-white px-3 text-sm font-semibold"
+                className="flex items-center rounded-xl border border-nuvem-300 bg-white px-3 text-sm font-semibold"
               >
                 Novo
               </Link>
@@ -211,7 +211,7 @@ export default function QuoteForm({
           </Field>
         </Grid>
 
-        <div className="mt-3 flex items-center justify-between rounded-xl bg-areia-100 px-3 py-3 text-base font-bold">
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-nuvem-100 px-3 py-3 text-base font-bold">
           <span>Total do orcamento</span>
           <span>{money(total)}</span>
         </div>

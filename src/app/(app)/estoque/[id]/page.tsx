@@ -99,16 +99,16 @@ export default async function ProdutoPage({
               Kit sem composicao definida. Edite o produto e informe os componentes.
             </Alerta>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {componentes.map((c: any) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 py-2">
                   <Link href={`/estoque/${c.component_product_id}`} className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-terra-600">{c.component_name}</span>
+                    <span className="block truncate text-sm font-semibold text-marca-600">{c.component_name}</span>
                     <span className="block text-xs text-stone-500">
                       {c.component_code} - estoque total {c.total_qty} un.
                     </span>
                   </Link>
-                  <span className="shrink-0 text-sm font-bold text-carvao-900">{c.quantity} por kit</span>
+                  <span className="shrink-0 text-sm font-bold text-tinta-900">{c.quantity} por kit</span>
                 </li>
               ))}
             </ul>
@@ -118,10 +118,10 @@ export default async function ProdutoPage({
 
       {!ehKit && kitsQueUsam.length > 0 && (
         <Section title={`Kits que usam este produto (${kitsQueUsam.length})`}>
-          <ul className="divide-y divide-areia-200">
+          <ul className="divide-y divide-nuvem-200">
             {kitsQueUsam.map((k: any) => (
               <li key={k.id} className="flex items-center justify-between gap-3 py-2">
-                <Link href={`/estoque/${k.id}`} className="min-w-0 truncate text-sm font-semibold text-terra-600">
+                <Link href={`/estoque/${k.id}`} className="min-w-0 truncate text-sm font-semibold text-marca-600">
                   {k.name}
                 </Link>
                 <span className="shrink-0 text-sm text-stone-500">{k.quantity} un. por kit</span>
@@ -171,11 +171,11 @@ export default async function ProdutoPage({
           {holds.length === 0 ? (
             <Empty>Nenhuma reserva futura ocupa este produto.</Empty>
           ) : (
-            <ul className="divide-y divide-areia-200">
+            <ul className="divide-y divide-nuvem-200">
               {holds.slice(0, 15).map((h, i) => (
                 <li key={`${h.reservation_id}-${i}`} className="flex items-center justify-between py-2 text-sm">
                   <Link href={`/reservas/${h.reservation_id}`} className="min-w-0">
-                    <span className="block truncate font-semibold text-terra-600">{h.number} - {h.customer}</span>
+                    <span className="block truncate font-semibold text-marca-600">{h.number} - {h.customer}</span>
                     <span className="block text-xs text-stone-500">
                       {dateBR(h.hold_start)} ate {dateBR(h.hold_end)}
                     </span>
@@ -205,12 +205,12 @@ export default async function ProdutoPage({
           ) : (
             <div className="max-h-96 space-y-1.5 overflow-y-auto">
               {units.map((u) => (
-                <div key={u.id} className="flex items-center gap-2 rounded-xl border border-areia-300 bg-white p-2">
+                <div key={u.id} className="flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white p-2">
                   <span className="w-24 shrink-0 font-mono text-xs font-bold">{u.code}</span>
                   <StatusBadge defs={UNIT_STATUS} value={u.status} />
                   <form action={setUnitStatus} className="ml-auto flex items-center gap-1">
                     <input type="hidden" name="unit_id" value={u.id} />
-                    <select name="status" defaultValue={u.status} className="rounded-lg border border-areia-300 px-2 py-1 text-xs">
+                    <select name="status" defaultValue={u.status} className="rounded-lg border border-nuvem-300 px-2 py-1 text-xs">
                       {UNIT_STATUS.map((s) => (
                         <option key={s.value} value={s.value}>
                           {s.label}
@@ -262,7 +262,7 @@ export default async function ProdutoPage({
             {maint.length === 0 ? (
               <Empty>Nenhuma manutencao registrada.</Empty>
             ) : (
-              <ul className="divide-y divide-areia-200">
+              <ul className="divide-y divide-nuvem-200">
                 {maint.map((mt) => (
                   <li key={mt.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                     <span className="min-w-0">
@@ -308,7 +308,7 @@ export default async function ProdutoPage({
 
       {user.role === "admin" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-carvao-900">Area do administrador</p>
+          <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
           <div className="flex gap-2">
             <form action={toggleProduct}>
               <input type="hidden" name="id" value={p.id} />
