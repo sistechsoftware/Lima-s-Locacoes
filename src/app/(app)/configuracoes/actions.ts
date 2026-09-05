@@ -145,3 +145,21 @@ export async function removeCategory(fd: FormData) {
   await logAction(user, "excluir", "categoria", id, `${user.name} removeu a categoria ${c?.name}`);
   revalidatePath("/configuracoes");
 }
+
+/** Parametros usados pela calculadora de frete. */
+export async function saveFreightSettings(fd: FormData) {
+  const user = await assertAdmin();
+  await setSettings({
+    freight_fuel_type: String(fd.get("fuel_type") ?? "").trim() || "Combustivel",
+    freight_fuel_price_cents: String(parseMoney(String(fd.get("fuel_price") ?? ""))),
+    freight_consumption: String(Math.max(0, Number(String(fd.get("consumption") ?? "").replace(",", ".")) || 0)),
+    freight_cost_per_km_cents: String(parseMoney(String(fd.get("cost_per_km") ?? ""))),
+    freight_margin_percent: String(Math.max(0, Math.min(95, Number(fd.get("margin")) || 0))),
+    freight_minimum_cents: String(parseMoney(String(fd.get("minimum") ?? ""))),
+    freight_rounding_cents: String(parseMoney(String(fd.get("rounding") ?? ""))),
+    freight_labor_cents: String(parseMoney(String(fd.get("labor") ?? ""))),
+  });
+  await logAction(user, "editar", "configuracao", null, `${user.name} atualizou os parametros do frete`);
+  revalidatePath("/configuracoes");
+  revalidatePath("/fretes/calculadora");
+}

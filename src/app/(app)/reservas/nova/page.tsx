@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function NovaReservaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cliente?: string }>;
+  searchParams: Promise<{ cliente?: string; frete?: string }>;
 }) {
   const user = await requireUser();
-  const { cliente } = await searchParams;
+  const { cliente, frete } = await searchParams;
 
   const products = await sellableProducts();
   const customers = await all<any>(
@@ -29,6 +29,7 @@ export default async function NovaReservaPage({
         customers={customers}
         isAdmin={user.role === "admin"}
         defaultCustomerId={cliente ? Number(cliente) : undefined}
+        freteInicial={frete}
         submitLabel="Criar reserva"
       />
     </div>

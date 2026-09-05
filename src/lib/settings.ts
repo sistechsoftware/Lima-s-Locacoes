@@ -64,6 +64,19 @@ export const DEFAULT_SETTINGS: Settings = {
   bank_info: "",
   contract_template: DEFAULT_CONTRACT,
   default_deposit_cents: "0",
+
+  /*
+   * Calculadora de frete. Ficam aqui, na tabela settings, em vez de numa tabela
+   * nova: sao parametros unicos da empresa, o mesmo formato dos demais ajustes.
+   */
+  freight_fuel_type: "Etanol",
+  freight_fuel_price_cents: "332",
+  freight_consumption: "10",
+  freight_cost_per_km_cents: "50",
+  freight_margin_percent: "30",
+  freight_minimum_cents: "3000",
+  freight_rounding_cents: "500",
+  freight_labor_cents: "0",
   wa_confirm:
     "Ola, {{cliente}}! Sua locacao na {{empresa}} esta confirmada para o dia {{data_evento}}. Reserva {{reserva}}. Qualquer duvida e so chamar!",
   wa_delivery:

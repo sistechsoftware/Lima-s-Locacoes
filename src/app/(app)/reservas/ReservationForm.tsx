@@ -20,6 +20,7 @@ export default function ReservationForm({
   items: initialItems = [],
   isAdmin,
   defaultCustomerId,
+  freteInicial,
   submitLabel = "Salvar reserva",
 }: {
   action: Action;
@@ -29,6 +30,8 @@ export default function ReservationForm({
   items?: ItemRow[];
   isAdmin: boolean;
   defaultCustomerId?: number;
+  /** Preenche o frete quando vem da calculadora. */
+  freteInicial?: string;
   submitLabel?: string;
 }) {
   const [error, formAction] = useActionState(action, null);
@@ -41,7 +44,7 @@ export default function ReservationForm({
   const [district, setDistrict] = useState(reservation?.district ?? "");
   const [city, setCity] = useState(reservation?.city ?? "");
 
-  const [freight, setFreight] = useState(cents(reservation?.freight_cents));
+  const [freight, setFreight] = useState(freteInicial ?? cents(reservation?.freight_cents));
   const [assembly, setAssembly] = useState(cents(reservation?.assembly_cents));
   const [disassembly, setDisassembly] = useState(cents(reservation?.disassembly_cents));
   const [other, setOther] = useState(cents(reservation?.other_cents));

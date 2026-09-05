@@ -11,12 +11,15 @@ export default function FreightForm({
   customers,
   vehicles,
   freight,
+  valorInicial,
   submitLabel = "Salvar frete",
 }: {
   action: Action;
   customers: { id: number; name: string; phone: string }[];
   vehicles: { id: number; name: string }[];
   freight?: any;
+  /** Preenche o valor quando vem da calculadora de frete. */
+  valorInicial?: string;
   submitLabel?: string;
 }) {
   const [error, formAction] = useActionState(action, null);
@@ -73,7 +76,7 @@ export default function FreightForm({
         <Field label="Valor (R$)">
           <input
             name="amount"
-            defaultValue={((v.amount_cents ?? 0) / 100).toFixed(2)}
+            defaultValue={valorInicial ?? ((v.amount_cents ?? 0) / 100).toFixed(2)}
             inputMode="decimal"
             className="campo"
           />

@@ -5,6 +5,7 @@ import { insert, nextNumber, one, run } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { money, parseMoney } from "@/lib/format";
+import { setSettings } from "@/lib/settings";
 
 function read(fd: FormData) {
   return {
@@ -126,4 +127,15 @@ export async function deleteFreight(fd: FormData) {
   await run(`DELETE FROM freights WHERE id = ?`, [id]);
   await logAction(user, "excluir", "frete", id, `${user.name} excluiu o frete ${f?.number}`);
   redirect("/fretes");
+}
+
+/** Guarda o preco do litro usado na calculadora como novo padrao. */
+export async function salvarPrecoCombustivel(fd: FormData) {
+  const user = await requireUser();
+  const cents = parseMoney(String(fd.get("preco") ?? ""));
+  if (cents <= 0) return;
+  await setSettings({ freight_fuel_price_cents: String(cents) });
+  await logAction(user, "editar", "configuracao", null, `${user.name} atualizou o preco do combustivel para ${money(cents)}/L`);
+  revalidatePath("/fretes/calculadora");
+  revalidatePath("/configuracoes");
 }

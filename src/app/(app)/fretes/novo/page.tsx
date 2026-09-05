@@ -6,15 +6,21 @@ import { createFreight } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function NovoFretePage() {
+export default async function NovoFretePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ valor?: string }>;
+}) {
   await requireUser();
+  // valor vindo da calculadora de frete, quando o usuario clica em usar
+  const { valor } = await searchParams;
   const customers = await all<any>(`SELECT id, name, phone FROM customers WHERE active = 1 ORDER BY name`);
   const vehicles = await all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader title="Novo frete" subtitle="Servico de transporte avulso" />
       <Card>
-        <FreightForm action={createFreight} customers={customers} vehicles={vehicles} />
+        <FreightForm action={createFreight} customers={customers} vehicles={vehicles} valorInicial={valor} />
       </Card>
     </div>
   );

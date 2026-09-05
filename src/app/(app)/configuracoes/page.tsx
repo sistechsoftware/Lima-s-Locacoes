@@ -6,7 +6,7 @@ import { Alerta, Badge, Card, Empty, Field, Grid, PageHeader, Section } from "@/
 import { Tabs } from "@/components/List";
 import { SubmitButton } from "@/components/SubmitButton";
 import ImageInput from "@/components/ImageInput";
-import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveTemplates, toggleUser } from "./actions";
+import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveFreightSettings, saveTemplates, toggleUser } from "./actions";
 import { saveVehicle, deleteVehicle } from "../operacao/actions";
 import UserForm from "./UserForm";
 import PasswordForm from "./PasswordForm";
@@ -32,6 +32,7 @@ export default async function ConfiguracoesPage({
     { value: "modelos", label: "Modelos" },
     { value: "categorias", label: "Categorias" },
     { value: "veiculos", label: "Veiculos" },
+    { value: "frete", label: "Frete" },
     ...(user.role === "admin" ? [{ value: "usuarios", label: "Usuarios" }] : []),
     { value: "conta", label: "Minha conta" },
   ];
@@ -216,6 +217,84 @@ export default async function ConfiguracoesPage({
               ))}
             </ul>
           )}
+        </Section>
+      )}
+
+      {aba === "frete" && (
+        <Section title="Configuracao da calculadora de frete">
+          <form action={saveFreightSettings} className="space-y-3">
+            <Grid>
+              <Field label="Tipo de combustivel">
+                <input name="fuel_type" defaultValue={s.freight_fuel_type} className="campo" disabled={user.role !== "admin"} />
+              </Field>
+              <Field label="Preco por litro (R$)">
+                <input
+                  name="fuel_price"
+                  defaultValue={(Number(s.freight_fuel_price_cents || 0) / 100).toFixed(2)}
+                  inputMode="decimal"
+                  className="campo"
+                  disabled={user.role !== "admin"}
+                />
+              </Field>
+              <Field label="Consumo do veiculo (km/L)">
+                <input
+                  name="consumption"
+                  defaultValue={s.freight_consumption}
+                  inputMode="decimal"
+                  className="campo"
+                  disabled={user.role !== "admin"}
+                />
+              </Field>
+              <Field label="Custo operacional por km (R$)" hint="Manutencao, pneus, oleo e desgaste.">
+                <input
+                  name="cost_per_km"
+                  defaultValue={(Number(s.freight_cost_per_km_cents || 0) / 100).toFixed(2)}
+                  inputMode="decimal"
+                  className="campo"
+                  disabled={user.role !== "admin"}
+                />
+              </Field>
+              <Field label="Margem de lucro (%)" hint="Sobre o preco de venda, nao sobre o custo.">
+                <input
+                  name="margin"
+                  type="number"
+                  min={0}
+                  max={95}
+                  defaultValue={s.freight_margin_percent}
+                  className="campo"
+                  disabled={user.role !== "admin"}
+                />
+              </Field>
+              <Field label="Valor minimo do frete (R$)">
+                <input
+                  name="minimum"
+                  defaultValue={(Number(s.freight_minimum_cents || 0) / 100).toFixed(2)}
+                  inputMode="decimal"
+                  className="campo"
+                  disabled={user.role !== "admin"}
+                />
+              </Field>
+              <Field label="Arredondar para multiplos de (R$)" hint="0 desliga o arredondamento.">
+                <input
+                  name="rounding"
+                  defaultValue={(Number(s.freight_rounding_cents || 0) / 100).toFixed(2)}
+                  inputMode="decimal"
+                  className="campo"
+                  disabled={user.role !== "admin"}
+                />
+              </Field>
+              <Field label="Mao de obra padrao (R$)" hint="Deixe zero para cobrar dentro da margem.">
+                <input
+                  name="labor"
+                  defaultValue={(Number(s.freight_labor_cents || 0) / 100).toFixed(2)}
+                  inputMode="decimal"
+                  className="campo"
+                  disabled={user.role !== "admin"}
+                />
+              </Field>
+            </Grid>
+            {user.role === "admin" && <SubmitButton>Salvar configuracao do frete</SubmitButton>}
+          </form>
         </Section>
       )}
 

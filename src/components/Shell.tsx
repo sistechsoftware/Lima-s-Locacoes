@@ -223,6 +223,7 @@ const ACOES = [
   { href: "/clientes/novo", label: "Novo cliente", icon: "clientes" },
   { href: "/operacao/nova", label: "Nova entrega", icon: "operacao" },
   { href: "/fretes/novo", label: "Novo frete", icon: "fretes" },
+  { href: "/fretes/calculadora", label: "Calcular frete", icon: "financeiro" },
 ];
 
 export function FloatingAction() {
