@@ -110,6 +110,60 @@ export async function setSettings(values: Settings) {
 }
 
 /** Substitui {{chave}} pelos valores fornecidos. */
-export function renderTemplate(template: string, vars: Record<string, string | number | null | undefined>) {
-  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => String(vars[k] ?? ""));
+/**
+ * Largura da linha de preenchimento manual, por variavel.
+ *
+ * Serve tambem de lista explicita: so as variaveis daqui viram linha quando
+ * nao ha dado cadastrado. Qualquer outra continua com o comportamento antigo,
+ * para nao transformar em linha algo calculado, como itens ou totais.
+ */
+const LARGURA_LINHA: Record<string, number> = {
+  cnpj: 32,
+  cliente_doc: 32,
+  cliente_rg: 28,
+  cliente: 46,
+  empresa: 46,
+  cliente_telefone: 22,
+  telefone_empresa: 22,
+  cliente_email: 34,
+  cliente_cep: 14,
+  cliente_endereco: 58,
+  endereco_empresa: 58,
+  endereco_evento: 58,
+  cidade_empresa: 30,
+  cliente_cidade: 30,
+  cliente_bairro: 30,
+  cliente_numero: 12,
+};
+
+/** Ha dado utilizavel? Nulo, ausente, vazio ou so espacos contam como vazio. */
+function temValor(v: string | number | null | undefined): boolean {
+  return v !== null && v !== undefined && String(v).trim() !== "";
 }
+
+export type EstrategiaVazio = "vazio" | "linha";
+
+/**
+ * Substitui {{variavel}} pelos valores informados.
+ *
+ * Com a estrategia "linha", uma variavel conhecida e sem dado cadastrado vira
+ * um espaco sublinhado para preencher a mao no documento impresso, em vez de
+ * sair em branco ou como "-". Isso vale so na renderizacao: o modelo salvo em
+ * configuracoes continua guardando {{variavel}} e pode ser reaproveitado.
+ *
+ * A estrategia padrao continua sendo "vazio", que e o comportamento usado
+ * pelas mensagens de WhatsApp, onde uma linha de underscores nao faria sentido.
+ */
+export function renderTemplate(
+  template: string,
+  vars: Record<string, string | number | null | undefined>,
+  opts: { vazio?: EstrategiaVazio } = {},
+) {
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => {
+    const v = vars[k];
+    if (temValor(v)) return String(v);
+    if (opts.vazio === "linha" && k in LARGURA_LINHA) return "_".repeat(LARGURA_LINHA[k]);
+    return "";
+  });
+}
+

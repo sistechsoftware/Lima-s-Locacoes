@@ -146,7 +146,8 @@ export async function reservationMoney(id: number): Promise<ReservationMoney> {
 
 export const RESERVATION_SELECT = `
   SELECT r.*, c.name AS customer_name, c.phone AS customer_phone, c.whatsapp AS customer_whatsapp,
-         c.doc AS customer_doc,
+         c.doc AS customer_doc, c.email AS customer_email,
+         c.district AS customer_district, c.city AS customer_city,
          (SELECT COALESCE(SUM(amount_cents),0) FROM payments p WHERE p.reservation_id = r.id) AS paid_cents,
          (SELECT COUNT(*) FROM reservation_items i WHERE i.reservation_id = r.id) AS item_count,
          (SELECT COALESCE(SUM(qty),0) FROM reservation_items i WHERE i.reservation_id = r.id) AS item_qty,
