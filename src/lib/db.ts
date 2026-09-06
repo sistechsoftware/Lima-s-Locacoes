@@ -319,7 +319,11 @@ CREATE TABLE IF NOT EXISTS payments (
   paid_at        TEXT NOT NULL,
   notes          TEXT,
   created_by     INTEGER REFERENCES users(id),
-  created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  /* ligacao opcional com a parcela prevista (ver financial_entries) */
+  entry_id       INTEGER REFERENCES financial_entries(id) ON DELETE SET NULL,
+  account_id     INTEGER REFERENCES financial_accounts(id) ON DELETE SET NULL,
+  reconciled_at  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_pay_res ON payments(reservation_id);
 CREATE INDEX IF NOT EXISTS idx_pay_date ON payments(paid_at);
@@ -350,7 +354,14 @@ CREATE TABLE IF NOT EXISTS expenses (
   status         TEXT NOT NULL DEFAULT 'pago',
   is_demo        INTEGER NOT NULL DEFAULT 0,
   created_by     INTEGER REFERENCES users(id),
-  created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  entry_id       INTEGER REFERENCES financial_entries(id) ON DELETE SET NULL,
+  account_id     INTEGER REFERENCES financial_accounts(id) ON DELETE SET NULL,
+  supplier_id    INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+  purchase_id    INTEGER REFERENCES purchases(id) ON DELETE SET NULL,
+  reconciled_at  TEXT,
+  /* separa investimento na estrutura de gasto para manter a operacao */
+  kind           TEXT NOT NULL DEFAULT 'operacional'
 );
 CREATE INDEX IF NOT EXISTS idx_exp_date ON expenses(date);
 
@@ -509,10 +520,117 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity, entity_id);
+
+CREATE TABLE IF NOT EXISTS financial_accounts (
+  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+  name                  TEXT NOT NULL,
+  kind                  TEXT NOT NULL DEFAULT 'banco'
+                        CHECK (kind IN ('banco','dinheiro','digital','poupanca','outro')),
+  bank                  TEXT,
+  initial_balance_cents INTEGER NOT NULL DEFAULT 0,
+  notes                 TEXT,
+  active                INTEGER NOT NULL DEFAULT 1,
+  created_at            TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS suppliers (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,
+  doc        TEXT,
+  phone      TEXT,
+  email      TEXT,
+  notes      TEXT,
+  active     INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
+
+CREATE TABLE IF NOT EXISTS purchases (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  number         TEXT NOT NULL UNIQUE,
+  supplier_id    INTEGER REFERENCES suppliers(id),
+  purchase_date  TEXT NOT NULL,
+  items_cents    INTEGER NOT NULL DEFAULT 0,
+  discount_cents INTEGER NOT NULL DEFAULT 0,
+  total_cents    INTEGER NOT NULL DEFAULT 0,
+  affects_stock  INTEGER NOT NULL DEFAULT 0,
+  kind           TEXT NOT NULL DEFAULT 'investimento'
+                 CHECK (kind IN ('investimento','operacional')),
+  status         TEXT NOT NULL DEFAULT 'aberta'
+                 CHECK (status IN ('aberta','cancelada')),
+  notes          TEXT,
+  created_by     INTEGER REFERENCES users(id),
+  created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(purchase_date);
+CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id);
+
+CREATE TABLE IF NOT EXISTS purchase_items (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  purchase_id        INTEGER NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+  product_id         INTEGER NOT NULL REFERENCES products(id),
+  qty                INTEGER NOT NULL DEFAULT 1,
+  unit_price_cents   INTEGER NOT NULL DEFAULT 0,
+  discount_cents     INTEGER NOT NULL DEFAULT 0,
+  subtotal_cents     INTEGER NOT NULL DEFAULT 0,
+  -- quanto deste item ja foi somado ao estoque; a diferenca e o que falta
+  stock_applied_qty  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_pitems_purchase ON purchase_items(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_pitems_product ON purchase_items(product_id);
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id  INTEGER NOT NULL REFERENCES products(id),
+  qty_delta   INTEGER NOT NULL,
+  reason      TEXT NOT NULL,
+  purchase_id INTEGER REFERENCES purchases(id) ON DELETE SET NULL,
+  notes       TEXT,
+  created_by  INTEGER REFERENCES users(id),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_stockmov_product ON stock_movements(product_id);
+CREATE INDEX IF NOT EXISTS idx_stockmov_purchase ON stock_movements(purchase_id);
+
+CREATE TABLE IF NOT EXISTS financial_entries (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  number             TEXT NOT NULL UNIQUE,
+  direction          TEXT NOT NULL CHECK (direction IN ('receber','pagar')),
+  origin             TEXT NOT NULL DEFAULT 'outro'
+                     CHECK (origin IN ('locacao','frete','compra','despesa','outro')),
+  customer_id        INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+  supplier_id        INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+  reservation_id     INTEGER REFERENCES reservations(id) ON DELETE CASCADE,
+  freight_id         INTEGER REFERENCES freights(id) ON DELETE CASCADE,
+  purchase_id        INTEGER REFERENCES purchases(id) ON DELETE CASCADE,
+  category           TEXT,
+  description        TEXT,
+  amount_cents       INTEGER NOT NULL,
+  due_date           TEXT NOT NULL,
+  installment        INTEGER NOT NULL DEFAULT 1,
+  installments_total INTEGER NOT NULL DEFAULT 1,
+  account_id         INTEGER REFERENCES financial_accounts(id) ON DELETE SET NULL,
+  status             TEXT NOT NULL DEFAULT 'aberta'
+                     CHECK (status IN ('aberta','quitada','cancelada')),
+  notes              TEXT,
+  created_by         INTEGER REFERENCES users(id),
+  created_at         TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at         TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_entries_direction ON financial_entries(direction, status);
+CREATE INDEX IF NOT EXISTS idx_entries_due ON financial_entries(due_date);
+CREATE INDEX IF NOT EXISTS idx_entries_purchase ON financial_entries(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_entries_reservation ON financial_entries(reservation_id);
+
+
 `;
 
 /** Gera o proximo numero sequencial de um documento (LIMA-001, FRT-001, ...). */
-export async function nextNumber(table: "reservations" | "quotes" | "freights" | "contracts", prefix: string): Promise<string> {
+export async function nextNumber(
+  table: "reservations" | "quotes" | "freights" | "contracts" | "purchases" | "financial_entries",
+  prefix: string,
+): Promise<string> {
   const row = await one<{ n: string }>(
     `SELECT number AS n FROM ${table} WHERE number LIKE ? ORDER BY LENGTH(number) DESC, number DESC LIMIT 1`,
     [prefix + "-%"],
