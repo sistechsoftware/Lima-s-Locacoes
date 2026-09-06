@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { createTestDb, resetTestDb } from "./helpers/d1";
 import { all, getDb, insert, one, run, scalar } from "../src/lib/db";
 import { eligible, safePushEndpoint, validOffsets, validateSubscription } from "../src/lib/push-rules";
-import { explicaFalha, runNotificationScheduler, sanitizeError } from "../src/lib/push-scheduler";
+import { createECDH, randomBytes } from "node:crypto";
+import { explicaFalha, runNotificationScheduler, sanitizeError, webPushSender } from "../src/lib/push-scheduler";
 import { montarCenario, criarReserva } from "./helpers/fixtures";
 
 const NOW = Math.floor(Date.now()/1000);
@@ -94,5 +95,68 @@ describe("diagnostico de falha de envio", () => {
   it("mensagem de erro nunca fica vazia", () => {
     assert.ok(explicaFalha(0, "").length > 0);
     assert.ok(sanitizeError(new Error("")).length > 0);
+  });
+});
+
+describe("envio real ao servico de push", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  /** Par VAPID valido, no mesmo formato que scripts/setup-push.mjs grava. */
+  function credenciais() {
+    const ec = createECDH("prime256v1"); ec.generateKeys();
+    return {
+      publicKey: ec.getPublicKey().toString("base64url"),
+      privateKey: ec.getPrivateKey().toString("base64url"),
+      subject: "mailto:teste@exemplo.com",
+    };
+  }
+
+  function inscricao() {
+    const ec = createECDH("prime256v1"); ec.generateKeys();
+    return {
+      endpoint: "https://web.push.apple.com/QA-teste",
+      keys: { p256dh: ec.getPublicKey().toString("base64url"), auth: randomBytes(16).toString("base64url") },
+    };
+  }
+
+  it("so usa opcao de redirect que o Workers implementa", async () => {
+    // redirect:"error" nao existe na borda e lancava TypeError em todo envio,
+    // o que aparecia como se fosse queda de rede
+    let visto: RequestInit | undefined;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      visto = init;
+      return new Response(null, { status: 201 });
+    }) as typeof fetch;
+
+    const status = await webPushSender(credenciais())(inscricao(), { id: 1, title: "t", body: "b", url: "/x" });
+    assert.equal(status, 201);
+    assert.ok(
+      ["follow", "manual", undefined].includes(visto?.redirect as string),
+      `redirect ${String(visto?.redirect)} nao e aceito no Workers`,
+    );
+  });
+
+  it("nao segue redirect, para nao levar a credencial VAPID a outro host", async () => {
+    let visto: RequestInit | undefined;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      visto = init;
+      return new Response(null, { status: 301 });
+    }) as typeof fetch;
+
+    const status = await webPushSender(credenciais())(inscricao(), { id: 1, title: "t", body: "b", url: "/x" });
+    assert.equal(visto?.redirect, "manual");
+    assert.equal(status, 301, "o 3xx volta como falha normal, sem seguir");
+  });
+
+  it("recusa endpoint fora dos servicos conhecidos sem chamar a rede", async () => {
+    let chamou = false;
+    globalThis.fetch = (async () => { chamou = true; return new Response(null, { status: 201 }); }) as typeof fetch;
+    const status = await webPushSender(credenciais())(
+      { ...inscricao(), endpoint: "https://atacante.example.com/roubar" },
+      { id: 1, title: "t", body: "b", url: "/x" },
+    );
+    assert.equal(status, 410);
+    assert.equal(chamou, false, "nao pode sair requisicao para host desconhecido");
   });
 });

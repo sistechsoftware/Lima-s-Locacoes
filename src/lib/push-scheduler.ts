@@ -45,7 +45,11 @@ export function webPushSender(credentials: Credentials): Sender {
   return async (subscription, message) => {
     if (!safePushEndpoint(subscription.endpoint)) return 410;
     const request = await buildPushPayload({ data: JSON.stringify(message), options: { ttl: 300 } }, { ...subscription, expirationTime: null }, credentials);
-    const response = await fetch(subscription.endpoint, { ...request, redirect: "error", signal: AbortSignal.timeout(10000) });
+    // "manual" e nao "follow": um redirect nunca deve levar as credenciais VAPID
+    // para outro host. O Workers nao implementa redirect:"error" e lanca
+    // TypeError se ele for usado, entao o 3xx volta como resposta e cai no
+    // tratamento de falha normal, que e o mesmo efeito pretendido.
+    const response = await fetch(subscription.endpoint, { ...request, redirect: "manual", signal: AbortSignal.timeout(10000) });
     await response.body?.cancel();
     return response.status;
   };
