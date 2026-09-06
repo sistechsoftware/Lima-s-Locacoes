@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { availabilityByCategory } from "@/lib/stock";
+import { availabilityByCategory, disponivelAPartirDe, timelinesByProduct } from "@/lib/stock";
+import { timeBR } from "@/lib/format";
 import { dateBR, today, waLink } from "@/lib/format";
 import { Alerta, Card, PageHeader, Stat } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -17,7 +18,10 @@ export default async function DisponibilidadePage({
   const data = sp.data || today();
   const ate = sp.ate || data;
 
-  const grupos = await availabilityByCategory(`${data}T00:00`, `${ate}T23:59`);
+  const [grupos, linhas] = await Promise.all([
+    availabilityByCategory(`${data}T00:00`, `${ate}T23:59`),
+    timelinesByProduct(`${data}T00:00`, `${ate}T23:59`),
+  ]);
   const totalDisponivel = grupos.reduce((s, g) => s + g.available, 0);
   const totalReservado = grupos.reduce((s, g) => s + g.reserved, 0);
 
@@ -96,6 +100,26 @@ export default async function DisponibilidadePage({
                               p.maintenance > 0 ? ` - manutencao ${p.maintenance}` : ""
                             }`}
                       </p>
+                      {(() => {
+                        // o numero grande e o pior momento do periodo. quando a
+                        // disponibilidade muda no meio (uma devolucao, uma saida),
+                        // mostra os degraus, senao a tela esconde o que libera
+                        if (p.kind === "kit") return null;
+                        const trechos = linhas.get(p.product_id) ?? [];
+                        if (trechos.length < 2) return null;
+                        return (
+                          <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs">
+                            {trechos.map((t) => (
+                              <span
+                                key={t.from}
+                                className={t.available > 0 ? "text-emerald-700" : "text-red-600"}
+                              >
+                                <b>{Math.max(0, t.available)}</b> das {timeBR(t.from)} as {timeBR(t.to)}
+                              </span>
+                            ))}
+                          </p>
+                        );
+                      })()}
                     </div>
                     <div className="shrink-0 text-right">
                       <p

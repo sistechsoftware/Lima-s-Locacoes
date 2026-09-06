@@ -732,6 +732,47 @@ export async function findOverbookings(reservationId: number): Promise<Overbooki
   return out;
 }
 
+/**
+ * Linha do tempo por produto fisico dentro da janela.
+ *
+ * Serve as telas de consulta: o numero unico responde "cabe?", enquanto os
+ * trechos respondem "a partir de que hora libera?". Reusa as mesmas ocupacoes
+ * do resto do motor, sem uma segunda regra de estoque.
+ */
+export async function timelinesByProduct(
+  from: string,
+  to: string,
+): Promise<Map<number, Trecho[]>> {
+  const [produtos, rows] = await Promise.all([
+    all<any>(
+      `SELECT id, total_qty, maintenance_qty FROM products WHERE active = 1 AND kind <> 'kit'`,
+    ),
+    all<Hold & { product_id: number }>(
+      `SELECT ric.product_id, r.id AS reservation_id, r.number, c.name AS customer, r.status,
+              ric.qty, ${HOLD_START} AS hold_start, ${HOLD_END} AS hold_end
+         FROM reservation_item_components ric
+         JOIN reservations r ON r.id = ric.reservation_id
+         JOIN customers c ON c.id = r.customer_id
+        WHERE r.status IN (${HOLD}) AND ${HOLD_START} < ? AND ${HOLD_END} > ?`,
+      [to, from],
+    ),
+  ]);
+
+  const porProduto = new Map<number, Hold[]>();
+  for (const r of rows) {
+    const lista = porProduto.get(r.product_id) ?? [];
+    lista.push(r);
+    porProduto.set(r.product_id, lista);
+  }
+
+  const saida = new Map<number, Trecho[]>();
+  for (const p of produtos) {
+    const efetivo = Math.max(0, p.total_qty - p.maintenance_qty);
+    saida.set(p.id, availabilityTimeline(porProduto.get(p.id) ?? [], efetivo, from, to));
+  }
+  return saida;
+}
+
 /* ------------------------------------------------------------------ */
 /* Agrupamentos para telas de consulta                                 */
 /* ------------------------------------------------------------------ */
