@@ -139,6 +139,16 @@ export default async function ConfiguracoesPage({
                 disabled={user.role !== "admin"}
               />
             </Field>
+            <p className="text-xs text-stone-500">
+              Campos do contrato: {"{{cliente}}"}, {"{{cliente_doc}}"} (CPF/CNPJ), {"{{cliente_telefone}}"},{" "}
+              {"{{cliente_email}}"}, {"{{cliente_endereco}}"}, {"{{cliente_bairro}}"}, {"{{cliente_cidade}}"},{" "}
+              {"{{empresa}}"}, {"{{cnpj}}"}, {"{{endereco_empresa}}"}, {"{{telefone_empresa}}"},{" "}
+              {"{{cidade_empresa}}"}, {"{{contrato}}"}, {"{{reserva}}"}, {"{{data_evento}}"},{" "}
+              {"{{endereco_evento}}"}, {"{{itens}}"}, {"{{data_entrega}}"}, {"{{data_retirada}}"},{" "}
+              {"{{valor_itens}}"}, {"{{valor_frete}}"}, {"{{valor_montagem}}"}, {"{{valor_desmontagem}}"},{" "}
+              {"{{valor_outros}}"}, {"{{valor_desconto}}"}, {"{{valor_total}}"}, {"{{valor_caucao}}"},{" "}
+              {"{{data_hoje}}"}. Um campo sem cadastro vira uma linha para preencher a mao no impresso.
+            </p>
             <Grid>
               <Field label="Mensagem de confirmacao">
                 <textarea name="wa_confirm" defaultValue={s.wa_confirm} rows={3} className="campo" disabled={user.role !== "admin"} />
@@ -157,9 +167,9 @@ export default async function ConfiguracoesPage({
               </Field>
             </Grid>
             <p className="text-xs text-stone-500">
-              Campos disponiveis: {"{{cliente}}"}, {"{{empresa}}"}, {"{{reserva}}"}, {"{{data_evento}}"},{" "}
-              {"{{hora_entrega}}"}, {"{{hora_retirada}}"}, {"{{endereco_evento}}"}, {"{{itens}}"}, {"{{valor_total}}"},{" "}
-              {"{{saldo}}"}, {"{{pix}}"}.
+              Campos das mensagens de WhatsApp: {"{{cliente}}"}, {"{{empresa}}"}, {"{{reserva}}"},{" "}
+              {"{{orcamento}}"}, {"{{data_evento}}"}, {"{{hora_entrega}}"}, {"{{hora_retirada}}"},{" "}
+              {"{{endereco_evento}}"}, {"{{itens}}"}, {"{{valor_total}}"}, {"{{saldo}}"}, {"{{pix}}"}.
             </p>
             {user.role === "admin" && <SubmitButton>Salvar modelos</SubmitButton>}
           </form>
