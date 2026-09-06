@@ -217,6 +217,75 @@ export function peakUsage(holds: Hold[], from: string, to: string): number {
   return peak;
 }
 
+export type Trecho = {
+  /** Inicio do trecho, no formato YYYY-MM-DDTHH:MM. */
+  from: string;
+  to: string;
+  reserved: number;
+  available: number;
+};
+
+/**
+ * Linha do tempo da disponibilidade dentro da janela.
+ *
+ * peakUsage responde "qual o pior momento da janela", que e a pergunta certa
+ * para saber se uma reserva cabe. Mas responder so isso esconde a informacao
+ * util do dia a dia: consultar o dia inteiro devolve zero quando ha uma
+ * devolucao ao meio-dia, mesmo havendo equipamento livre a tarde.
+ *
+ * Esta funcao quebra a janela nos instantes em que a ocupacao muda e diz
+ * quanto fica livre em cada trecho. Usa exatamente as mesmas ocupacoes de
+ * peakUsage, entao nao introduz uma segunda regra de estoque.
+ */
+export function availabilityTimeline(
+  holds: Hold[],
+  effective: number,
+  from: string,
+  to: string,
+): Trecho[] {
+  const marcos = new Set<string>([from, to]);
+  for (const h of holds) {
+    const s = h.hold_start < from ? from : h.hold_start;
+    const e = h.hold_end > to ? to : h.hold_end;
+    if (e <= s) continue;
+    marcos.add(s);
+    marcos.add(e);
+  }
+  const pontos = [...marcos].filter((t) => t >= from && t <= to).sort();
+
+  const trechos: Trecho[] = [];
+  for (let i = 0; i < pontos.length - 1; i++) {
+    const ini = pontos[i];
+    const fim = pontos[i + 1];
+    if (fim <= ini) continue;
+    // ocupacao vigente no meio do trecho: entre dois marcos ela nao muda
+    const reserved = holds.reduce((soma, h) => {
+      const s = h.hold_start < from ? from : h.hold_start;
+      const e = h.hold_end > to ? to : h.hold_end;
+      return s <= ini && e >= fim ? soma + h.qty : soma;
+    }, 0);
+    trechos.push({ from: ini, to: fim, reserved, available: effective - reserved });
+  }
+
+  // junta trechos vizinhos com a mesma disponibilidade, para nao poluir a tela
+  const juntos: Trecho[] = [];
+  for (const t of trechos) {
+    const ultimo = juntos[juntos.length - 1];
+    if (ultimo && ultimo.reserved === t.reserved) ultimo.to = t.to;
+    else juntos.push({ ...t });
+  }
+  return juntos;
+}
+
+/**
+ * Primeiro momento da janela em que passa a haver `qty` unidades livres.
+ * Devolve null quando nao ha esse momento dentro da janela.
+ */
+export function disponivelAPartirDe(trechos: Trecho[], qty: number): string | null {
+  const t = trechos.find((x) => x.available >= qty);
+  return t ? t.from : null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Disponibilidade                                                     */
 /* ------------------------------------------------------------------ */
