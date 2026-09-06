@@ -61,6 +61,8 @@ export type Availability = {
   available: number;
   min_qty: number;
   low: boolean;
+  /** Preenchido so para kit: o que ele consome por unidade. */
+  components?: { product_id: number; name: string; quantity: number }[];
 };
 
 /** Normaliza para o formato comparavel YYYY-MM-DDTHH:MM. */
@@ -423,6 +425,7 @@ export async function kitsFromPhysical(physical: Availability[]): Promise<Availa
     loadSpecs(),
   ]);
 
+  const nomes = new Map(physical.map((r) => [r.product_id, r.name]));
   return kits.map((p) => {
     const spec = specs.get(p.id);
     const capacity = spec ? kitCapacity(spec, disponivel) : 0;
@@ -439,6 +442,11 @@ export async function kitsFromPhysical(physical: Availability[]): Promise<Availa
       available: capacity,
       min_qty: p.min_qty,
       low: capacity < p.min_qty,
+      components: (spec?.components ?? []).map((c) => ({
+        product_id: c.product_id,
+        name: nomes.get(c.product_id) ?? `#${c.product_id}`,
+        quantity: c.quantity,
+      })),
     };
   });
 }

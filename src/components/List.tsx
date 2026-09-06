@@ -112,6 +112,7 @@ export function ListRow({
   meta,
   right,
   badges,
+  body,
 }: {
   href: string;
   title: React.ReactNode;
@@ -119,9 +120,14 @@ export function ListRow({
   meta?: React.ReactNode;
   right?: React.ReactNode;
   badges?: React.ReactNode;
+  /** Bloco livre abaixo da linha. Fica fora do link para aceitar clique proprio. */
+  body?: React.ReactNode;
 }) {
-  return (
-    <Link href={href} className="cartao flex items-center gap-3 p-3 transition hover:border-marca-300">
+  const linha = (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 p-3 transition ${body ? "" : "cartao hover:border-marca-300"}`}
+    >
       <div className="min-w-0 flex-1">
         {badges && <div className="mb-1 flex flex-wrap gap-1.5">{badges}</div>}
         <p className="truncate text-sm font-bold text-tinta-900">{title}</p>
@@ -131,5 +137,12 @@ export function ListRow({
       {right && <div className="shrink-0 text-right">{right}</div>}
       <Icon name="seta" className="h-4 w-4 shrink-0 text-stone-300" />
     </Link>
+  );
+  if (!body) return linha;
+  return (
+    <div className="cartao overflow-hidden transition hover:border-marca-300">
+      {linha}
+      <div className="border-t border-nuvem-200 px-3 py-2">{body}</div>
+    </div>
   );
 }

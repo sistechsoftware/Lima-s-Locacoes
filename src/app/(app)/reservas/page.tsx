@@ -1,9 +1,10 @@
 import { all, scalar } from "@/lib/db";
-import { RESERVATION_SELECT } from "@/lib/reservations";
+import { RESERVATION_SELECT, itemsForReservations } from "@/lib/reservations";
 import { RESERVATION_STATUS } from "@/lib/domain";
 import { addDays, dateBR, money, startOfWeek, today } from "@/lib/format";
 import { Badge, Empty, LinkButton, PageHeader, StatusBadge } from "@/components/ui";
 import { ListRow, Pagination, SearchForm, Tabs } from "@/components/List";
+import { ReservationItems } from "@/components/ReservationItems";
 
 export const dynamic = "force-dynamic";
 const PER_PAGE = 20;
@@ -64,6 +65,9 @@ export default async function ReservasPage({
     [...params, PER_PAGE, (page - 1) * PER_PAGE],
   );
 
+  // itens de todas as reservas da pagina em duas consultas, nao uma por cartao
+  const itensPorReserva = await itemsForReservations(rows.map((r) => r.id));
+
   const base = `/reservas?${new URLSearchParams({ ...(q ? { q } : {}), ...(status ? { status } : {}) }).toString()}`;
 
   return (
@@ -105,9 +109,10 @@ export default async function ReservasPage({
                   </>
                 }
                 title={`${r.number} - ${r.customer_name}`}
-                subtitle={`${dateBR(r.event_date)}${r.event_time ? ` as ${r.event_time}` : ""} - ${r.item_qty} item(ns)`}
+                subtitle={`${dateBR(r.event_date)}${r.event_time ? ` as ${r.event_time}` : ""}`}
                 meta={[r.address, r.district].filter(Boolean).join(", ")}
                 right={<p className="text-sm font-bold">{money(r.total_cents)}</p>}
+                body={<ReservationItems items={itensPorReserva.get(r.id) ?? []} />}
               />
             );
           })}

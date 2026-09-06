@@ -196,3 +196,86 @@ export async function itemsSummary(id: number): Promise<string> {
   const items = await reservationItems(id);
   return items.map((i) => `${i.qty}x ${i.product_name}`).join(", ");
 }
+
+/* ------------------------------------------------------------------ */
+/* Itens comerciais para as listagens                                  */
+/* ------------------------------------------------------------------ */
+
+export type ComponenteResumo = { product_id: number; name: string; qty: number };
+export type ItemResumo = {
+  item_id: number;
+  product_id: number;
+  name: string;
+  qty: number;
+  kind: string;
+  /** So para kit: o que sai do galpao. Vem do que foi gravado na reserva. */
+  componentes: ComponenteResumo[];
+};
+
+/**
+ * Itens de varias reservas de uma vez.
+ *
+ * A listagem mostra o produto comercial que o cliente contratou ("5x Kit Mesa
+ * + 4 Cadeiras"), nao a soma de pecas. A composicao vem de
+ * reservation_item_components, que e o retrato do kit no dia da reserva: se a
+ * receita do kit mudar depois, a reserva antiga continua exibindo o que foi
+ * realmente separado. Duas consultas para a pagina inteira, nunca uma por
+ * reserva.
+ */
+export async function itemsForReservations(ids: number[]): Promise<Map<number, ItemResumo[]>> {
+  const porReserva = new Map<number, ItemResumo[]>();
+  if (ids.length === 0) return porReserva;
+  const marcas = ids.map(() => "?").join(",");
+
+  const [itens, componentes] = await Promise.all([
+    all<any>(
+      `SELECT i.id AS item_id, i.reservation_id, i.product_id, i.qty,
+              p.name AS product_name, p.kind AS product_kind
+         FROM reservation_items i JOIN products p ON p.id = i.product_id
+        WHERE i.reservation_id IN (${marcas})
+        ORDER BY i.reservation_id, i.id`,
+      ids,
+    ),
+    all<any>(
+      `SELECT c.reservation_item_id, c.product_id, c.qty, p.name AS product_name
+         FROM reservation_item_components c JOIN products p ON p.id = c.product_id
+        WHERE c.reservation_id IN (${marcas})
+        ORDER BY c.id`,
+      ids,
+    ),
+  ]);
+
+  const porItem = new Map<number, ComponenteResumo[]>();
+  for (const c of componentes) {
+    const lista = porItem.get(c.reservation_item_id) ?? [];
+    lista.push({ product_id: c.product_id, name: c.product_name, qty: c.qty });
+    porItem.set(c.reservation_item_id, lista);
+  }
+
+  for (const i of itens) {
+    const brutos = porItem.get(i.item_id) ?? [];
+    // produto simples tem uma linha 1:1 apontando para ele mesmo; isso nao e
+    // composicao, e repetir "2x Mesa - composicao: 2x Mesa" so poluiria a tela
+    const componentesReais =
+      brutos.length === 1 && brutos[0].product_id === i.product_id ? [] : brutos;
+    const lista = porReserva.get(i.reservation_id) ?? [];
+    lista.push({
+      item_id: i.item_id,
+      product_id: i.product_id,
+      name: i.product_name,
+      qty: i.qty,
+      kind: i.product_kind,
+      componentes: componentesReais,
+    });
+    porReserva.set(i.reservation_id, lista);
+  }
+  return porReserva;
+}
+
+/** Total de pecas fisicas que saem do galpao, util para carga e conferencia. */
+export function pecasFisicas(itens: ItemResumo[]): number {
+  return itens.reduce(
+    (soma, i) => soma + (i.componentes.length > 0 ? i.componentes.reduce((s, c) => s + c.qty, 0) : i.qty),
+    0,
+  );
+}
