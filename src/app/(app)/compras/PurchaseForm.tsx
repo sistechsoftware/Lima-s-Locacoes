@@ -41,13 +41,15 @@ export default function PurchaseForm({
   const byId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos]);
   const { itensTotal, total } = subtotaisCompra(itens, parseMoney(desconto));
 
-  const add = (productId: number) => {
-    if (!productId || itens.some((i) => i.product_id === productId)) return;
-    setItens([...itens, { product_id: productId, qty: 1, unit_price_cents: 0, discount_cents: 0 }]);
-  };
+  const add = (productId: number) =>
+    setItens((atuais) =>
+      !productId || atuais.some((i) => i.product_id === productId)
+        ? atuais
+        : [...atuais, { product_id: productId, qty: 1, unit_price_cents: 0, discount_cents: 0 }],
+    );
   const patch = (idx: number, mud: Partial<Item>) =>
-    setItens(itens.map((i, k) => (k === idx ? { ...i, ...mud } : i)));
-  const remove = (idx: number) => setItens(itens.filter((_, k) => k !== idx));
+    setItens((atuais) => atuais.map((i, k) => (k === idx ? { ...i, ...mud } : i)));
+  const remove = (idx: number) => setItens((atuais) => atuais.filter((_, k) => k !== idx));
 
   const nParcelas = Math.max(1, Number(parcelas) || 1);
   const previa =

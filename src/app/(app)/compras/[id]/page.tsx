@@ -49,7 +49,8 @@ export default async function CompraPage({
 
   const d0 = today();
   const totalPago = pagamentos.reduce((s: number, p: any) => s + p.amount_cents, 0);
-  const saldo = compra.total_cents - totalPago;
+  // compra cancelada nao deve mais nada: o estoque voltou e as parcelas foram canceladas
+  const saldo = compra.status === "cancelada" ? 0 : compra.total_cents - totalPago;
   // editar o valor de uma compra ja paga nao refaz o parcelamento, para nao
   // apagar pagamento registrado; quando isso deixa uma diferenca a descoberto,
   // ela precisa aparecer em vez de sumir na conta

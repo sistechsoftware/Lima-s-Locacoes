@@ -3,8 +3,12 @@ import { all, scalar } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { ACTIVE_STATUSES, EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYMENT_METHOD_LABEL } from "@/lib/domain";
 import { dateBR, endOfMonth, money, startOfMonth, today } from "@/lib/format";
-import { Card, Empty, PageHeader, Section, Stat } from "@/components/ui";
+import { Badge, Card, Empty, PageHeader, Section, Stat } from "@/components/ui";
 import { Tabs } from "@/components/List";
+import { listarEntries, totaisEntries } from "@/lib/receber";
+import { situacaoParcela } from "@/lib/financeiro";
+import { receberParcela } from "./receber-actions";
+import { payEntry } from "../compras/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addExpense, deleteExpense } from "./actions";
 
@@ -57,6 +61,14 @@ export default async function FinanceiroPage({
     ),
   ]);
 
+  const [parcelasReceber, parcelasPagar, totReceber, totPagar, contasAtivas] = await Promise.all([
+    listarEntries({ direction: "receber", situacao: "todas" }),
+    listarEntries({ direction: "pagar", situacao: "todas" }),
+    totaisEntries("receber"),
+    totaisEntries("pagar"),
+    all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`),
+  ]);
+
   const totalEntradas = entradas.reduce((s, e) => s + e.amount_cents, 0);
   const totalSaidas = saidas.reduce((s, e) => s + e.amount_cents, 0);
   const totalReceber = aReceber.reduce((s, r) => s + (r.total_cents - r.paid), 0);
@@ -102,7 +114,8 @@ export default async function FinanceiroPage({
           { value: "resumo", label: "Resumo" },
           { value: "entradas", label: "Entradas", count: entradas.length },
           { value: "saidas", label: "Saidas", count: saidas.length },
-          { value: "receber", label: "A receber", count: aReceber.length },
+          { value: "receber", label: "A receber", count: parcelasReceber.filter((p) => p.situacao !== "quitada").length },
+          { value: "pagar", label: "A pagar", count: parcelasPagar.filter((p) => p.situacao !== "quitada").length },
         ]}
         current={aba}
         base={`/financeiro?de=${de}&ate=${ate}`}
@@ -251,29 +264,132 @@ export default async function FinanceiroPage({
         </div>
       )}
 
-      {aba === "receber" && (
-        <Section title={`A receber (${aReceber.length})`}>
-          {aReceber.length === 0 ? (
-            <Empty>Nenhum saldo em aberto.</Empty>
-          ) : (
-            <ul className="divide-y divide-nuvem-200">
-              {aReceber.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <Link href={`/reservas/${r.id}`} className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-marca-600">
-                      {r.number} - {r.customer_name}
-                    </span>
-                    <span className="block text-xs text-stone-500">
-                      Evento em {dateBR(r.event_date)} - total {money(r.total_cents)}, pago {money(r.paid)}
-                    </span>
-                  </Link>
-                  <span className="shrink-0 font-bold text-red-600">{money(r.total_cents - r.paid)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
+      {(aba === "receber" || aba === "pagar") && (
+        <ListaParcelas
+          direcao={aba}
+          parcelas={aba === "receber" ? parcelasReceber : parcelasPagar}
+          totais={aba === "receber" ? totReceber : totPagar}
+          contas={contasAtivas}
+        />
       )}
+
+    </div>
+  );
+}
+
+const TOM: Record<string, "verde" | "ambar" | "vermelho" | "cinza"> = {
+  quitada: "verde",
+  parcial: "ambar",
+  vencida: "vermelho",
+  aberta: "cinza",
+  cancelada: "cinza",
+};
+
+/**
+ * Parcelas previstas de uma direcao.
+ *
+ * Previsto e realizado ficam lado a lado de proposito: o total contratado nao
+ * e dinheiro em caixa, e a tela precisa deixar isso obvio.
+ */
+function ListaParcelas({
+  direcao,
+  parcelas,
+  totais,
+  contas,
+}: {
+  direcao: "receber" | "pagar";
+  parcelas: any[];
+  totais: { previsto: number; liquidado: number; saldo: number; atrasado: number };
+  contas: { id: number; name: string }[];
+}) {
+  const receber = direcao === "receber";
+  const abertas = parcelas.filter((p) => p.situacao !== "quitada" && p.situacao !== "cancelada");
+  const acao = receber ? receberParcela : payEntry;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <Stat label={receber ? "Contratado" : "Previsto"} value={money(totais.previsto)} />
+        <Stat label={receber ? "Recebido" : "Pago"} value={money(totais.liquidado)} tone="verde" />
+        <Stat
+          label={receber ? "A receber" : "A pagar"}
+          value={money(totais.saldo)}
+          tone={totais.saldo > 0 ? "vermelho" : "verde"}
+        />
+        <Stat label="Vencido" value={money(totais.atrasado)} tone={totais.atrasado > 0 ? "vermelho" : undefined} />
+      </div>
+
+      <Section title={`${receber ? "Contas a receber" : "Contas a pagar"} (${abertas.length} em aberto)`}>
+        {abertas.length === 0 ? (
+          <Empty>
+            {receber
+              ? "Nenhuma parcela a receber. Gere o parcelamento na tela da reserva ou do frete."
+              : "Nenhuma parcela a pagar. As parcelas aparecem aqui quando voce registra uma compra."}
+          </Empty>
+        ) : (
+          <ul className="space-y-2">
+            {abertas.map((p) => (
+              <li key={p.id} className="rounded-xl border border-nuvem-300 bg-white p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold text-tinta-900">{p.description}</span>
+                    <span className="block text-xs text-stone-500">
+                      {p.number} - vence {dateBR(p.due_date)}
+                      {p.installments_total > 1 ? ` - ${p.installment}/${p.installments_total}` : ""}
+                      {p.customer_name ? ` - ${p.customer_name}` : ""}
+                      {p.supplier_name ? ` - ${p.supplier_name}` : ""}
+                    </span>
+                    {p.liquidado_cents > 0 && (
+                      <span className="block text-xs text-stone-500">
+                        {receber ? "Recebido" : "Pago"} {money(p.liquidado_cents)}, faltam {money(p.saldo_cents)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-sm font-bold">{money(p.amount_cents)}</span>
+                    <Badge tone={TOM[p.situacao]}>{p.situacao}</Badge>
+                  </span>
+                </div>
+
+                <form action={acao} className="mt-2 grid grid-cols-2 gap-2">
+                  <input type="hidden" name="entry_id" value={p.id} />
+                  <input
+                    name="amount"
+                    defaultValue={(p.saldo_cents / 100).toFixed(2)}
+                    inputMode="decimal"
+                    className="campo"
+                    aria-label="Valor"
+                  />
+                  <input name="paid_at" type="date" defaultValue={today()} className="campo" />
+                  <select name="method" className="campo">
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m} value={m}>
+                        {PAYMENT_METHOD_LABEL[m]}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="account_id" defaultValue={p.account_id ?? ""} className="campo">
+                    <option value="">Conta...</option>
+                    {contas.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="col-span-2">
+                    <SubmitButton className="w-full">
+                      {receber ? "Registrar recebimento" : "Registrar pagamento"}
+                    </SubmitButton>
+                  </div>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-2 text-xs text-stone-500">
+          O caixa registra apenas o valor efetivamente movimentado, nunca o total contratado de uma vez.
+        </p>
+      </Section>
     </div>
   );
 }

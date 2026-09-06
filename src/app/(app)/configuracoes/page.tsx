@@ -8,6 +8,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import ImageInput from "@/components/ImageInput";
 import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveFreightSettings, saveTemplates, toggleUser } from "./actions";
 import { saveVehicle, deleteVehicle } from "../operacao/actions";
+import { createAccount, createSupplier } from "../compras/actions";
+import { money } from "@/lib/format";
 import UserForm from "./UserForm";
 import PasswordForm from "./PasswordForm";
 
@@ -25,6 +27,21 @@ export default async function ConfiguracoesPage({
     `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS produtos FROM categories c ORDER BY c.name`,
   );
   const vehicles = await all<any>(`SELECT * FROM vehicles ORDER BY active DESC, name`);
+  const fornecedores = await all<any>(
+    `SELECT s.*, (SELECT COUNT(*) FROM purchases p WHERE p.supplier_id = s.id) AS compras
+       FROM suppliers s ORDER BY s.active DESC, s.name`,
+  );
+  // o saldo de cada conta e sempre recalculado a partir das movimentacoes,
+  // nunca um numero guardado que pode divergir do extrato
+  const contas =
+    user.role === "admin"
+      ? await all<any>(
+          `SELECT a.*,
+                  COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.account_id = a.id),0) AS entradas,
+                  COALESCE((SELECT SUM(e.amount_cents) FROM expenses e WHERE e.account_id = a.id),0) AS saidas
+             FROM financial_accounts a ORDER BY a.active DESC, a.name`,
+        )
+      : [];
   const users = user.role === "admin" ? await listUsers() : [];
 
   const ABAS = [
@@ -32,6 +49,8 @@ export default async function ConfiguracoesPage({
     { value: "modelos", label: "Modelos" },
     { value: "categorias", label: "Categorias" },
     { value: "veiculos", label: "Veiculos" },
+    { value: "fornecedores", label: "Fornecedores" },
+    ...(user.role === "admin" ? [{ value: "contas", label: "Contas" }] : []),
     { value: "frete", label: "Frete" },
     ...(user.role === "admin" ? [{ value: "usuarios", label: "Usuarios" }] : []),
     { value: "conta", label: "Minha conta" },
@@ -295,6 +314,103 @@ export default async function ConfiguracoesPage({
             </Grid>
             {user.role === "admin" && <SubmitButton>Salvar configuracao do frete</SubmitButton>}
           </form>
+        </Section>
+      )}
+
+      {aba === "fornecedores" && (
+        <Section title="Fornecedores">
+          <form action={createSupplier} className="mb-4 grid grid-cols-2 gap-2">
+            <input name="name" placeholder="Nome do fornecedor *" className="campo col-span-2" required />
+            <input name="doc" placeholder="CNPJ / CPF" className="campo" />
+            <input name="phone" placeholder="Telefone" className="campo" />
+            <input name="email" placeholder="E-mail" className="campo" />
+            <input name="notes" placeholder="Observacoes" className="campo" />
+            <div className="col-span-2">
+              <SubmitButton variant="secundario" className="w-full">
+                Adicionar fornecedor
+              </SubmitButton>
+            </div>
+          </form>
+          {fornecedores.length === 0 ? (
+            <Empty>Nenhum fornecedor cadastrado. Eles aparecem no seletor da compra.</Empty>
+          ) : (
+            <ul className="space-y-1.5">
+              {fornecedores.map((f: any) => (
+                <li
+                  key={f.id}
+                  className="flex items-center justify-between rounded-xl border border-nuvem-300 bg-white px-3 py-2.5"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-tinta-900">
+                      {f.name} {!f.active && <Badge tone="cinza">Inativo</Badge>}
+                    </span>
+                    <span className="block text-xs text-stone-500">
+                      {[f.doc, f.phone, f.email].filter(Boolean).join(" - ") || "sem contato"}
+                      {f.compras > 0 ? ` - ${f.compras} compra(s)` : ""}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+
+      {aba === "contas" && user.role === "admin" && (
+        <Section title="Contas financeiras">
+          <form action={createAccount} className="mb-4 grid grid-cols-2 gap-2">
+            <input name="name" placeholder="Nome da conta *" className="campo col-span-2" required />
+            <select name="kind" defaultValue="banco" className="campo">
+              <option value="banco">Conta corrente</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="digital">Conta digital</option>
+              <option value="poupanca">Poupanca</option>
+              <option value="outro">Outra</option>
+            </select>
+            <input name="bank" placeholder="Banco" className="campo" />
+            <input name="initial_balance" placeholder="Saldo inicial (R$)" inputMode="decimal" className="campo" />
+            <input name="notes" placeholder="Observacoes" className="campo" />
+            <div className="col-span-2">
+              <SubmitButton variant="secundario" className="w-full">
+                Adicionar conta
+              </SubmitButton>
+            </div>
+          </form>
+          {contas.length === 0 ? (
+            <Empty>
+              Nenhuma conta cadastrada. Cadastre ao menos uma para saber de qual conta cada pagamento saiu.
+            </Empty>
+          ) : (
+            <ul className="space-y-1.5">
+              {contas.map((c: any) => {
+                const saldo = c.initial_balance_cents + c.entradas - c.saidas;
+                return (
+                  <li key={c.id} className="rounded-xl border border-nuvem-300 bg-white px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-tinta-900">
+                          {c.name} {!c.active && <Badge tone="cinza">Inativa</Badge>}
+                        </span>
+                        <span className="block text-xs text-stone-500">
+                          {c.kind}
+                          {c.bank ? ` - ${c.bank}` : ""} - inicial {money(c.initial_balance_cents)}
+                        </span>
+                      </span>
+                      <span className={`shrink-0 text-sm font-bold ${saldo < 0 ? "text-red-600" : "text-tinta-900"}`}>
+                        {money(saldo)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-stone-500">
+                      entradas {money(c.entradas)} - saidas {money(c.saidas)}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-stone-500">
+            O saldo e recalculado a partir das movimentacoes, nunca guardado, para nao divergir do extrato.
+          </p>
         </Section>
       )}
 

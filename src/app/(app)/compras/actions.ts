@@ -170,6 +170,8 @@ export async function cancelPurchase(fd: FormData) {
   await logAction(user, "cancelar", "compra", id, `${user.name} cancelou a compra ${compra.number} e estornou o estoque`);
   revalidatePath(`/compras/${id}`);
   revalidatePath("/financeiro");
+  // volta para a URL limpa: senao um aviso de uma tentativa anterior fica na tela
+  redirect(`/compras/${id}`);
 }
 
 /* ------------------------------------------------------------------ */

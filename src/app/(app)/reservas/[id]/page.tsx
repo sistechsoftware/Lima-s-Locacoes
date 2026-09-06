@@ -30,6 +30,9 @@ import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addPayment, changeStatus, deletePayment, deleteReservation, refreshComposition, saveDeposit } from "../actions";
 import { generateContract } from "../../contratos/actions";
+import { parcelarReserva, receberParcela } from "../../financeiro/receber-actions";
+import { recebiveisDe } from "@/lib/receber";
+import { situacaoParcela } from "@/lib/financeiro";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +60,7 @@ export default async function ReservaPage({
     [r.id],
   );
   const historico = await logsFor("reserva", r.id);
+  const parcelasReceber = await recebiveisDe({ tipo: "locacao", reservationId: r.id });
   const consumoFisico = await reservationPhysicalUsage(r.id);
   const divergencia = r.status === "cancelada" ? [] : await compositionDrift(r.id);
   const temKit = items.some((i: any) => i.product_kind === "kit");
@@ -306,6 +310,81 @@ export default async function ReservaPage({
               );
             })}
           </div>
+        )}
+      </Section>
+
+      <Section title={`Parcelamento (${parcelasReceber.length})`}>
+        {parcelasReceber.length === 0 ? (
+          <>
+            <p className="mb-2 text-sm text-stone-600">
+              Sem parcelamento.{" "}
+              {m.paid > 0
+                ? `Ja recebidos ${money(m.paid)}; as parcelas dividem o saldo de ${money(Math.max(0, m.total - m.paid))}.`
+                : `O total de ${money(m.total)} vira uma conta a receber so, ou divida em parcelas com vencimento proprio.`}{" "}
+              O caixa registra apenas o que for efetivamente recebido.
+            </p>
+            <form action={parcelarReserva} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <input type="hidden" name="reservation_id" value={r.id} />
+              <label className="block">
+                <span className="rotulo">Parcelas</span>
+                <input name="parcelas" type="number" min={1} max={60} defaultValue={1} className="campo" />
+              </label>
+              <label className="block">
+                <span className="rotulo">1o vencimento</span>
+                <input name="primeiro_vencimento" type="date" defaultValue={r.event_date} className="campo" />
+              </label>
+              <div className="flex items-end">
+                <SubmitButton className="w-full">Gerar parcelas</SubmitButton>
+              </div>
+            </form>
+          </>
+        ) : (
+          <ul className="space-y-2">
+            {parcelasReceber.map((p: any) => {
+              const sit = situacaoParcela(p, p.recebido_cents, today());
+              const falta = Math.max(0, p.amount_cents - p.recebido_cents);
+              return (
+                <li key={p.id} className="rounded-xl border border-nuvem-300 bg-white p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-tinta-900">
+                      {p.installment}/{p.installments_total} - {money(p.amount_cents)}
+                      <span className="ml-2 text-xs font-normal text-stone-500">vence {dateBR(p.due_date)}</span>
+                    </span>
+                    <Badge
+                      tone={
+                        sit === "quitada" ? "verde" : sit === "vencida" ? "vermelho" : sit === "parcial" ? "ambar" : "cinza"
+                      }
+                    >
+                      {sit}
+                    </Badge>
+                  </div>
+                  {sit !== "quitada" && (
+                    <form action={receberParcela} className="mt-2 grid grid-cols-2 gap-2">
+                      <input type="hidden" name="entry_id" value={p.id} />
+                      <input
+                        name="amount"
+                        defaultValue={(falta / 100).toFixed(2)}
+                        inputMode="decimal"
+                        className="campo"
+                        aria-label="Valor"
+                      />
+                      <input name="paid_at" type="date" defaultValue={today()} className="campo" />
+                      <select name="method" className="campo col-span-2">
+                        {PAYMENT_METHODS.map((mth) => (
+                          <option key={mth} value={mth}>
+                            {PAYMENT_METHOD_LABEL[mth]}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="col-span-2">
+                        <SubmitButton className="w-full">Registrar recebimento</SubmitButton>
+                      </div>
+                    </form>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </Section>
 
