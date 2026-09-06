@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import RouteEstimate from "@/components/RouteEstimate";
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import ItemsEditor, { type ItemRow, type Product, type StockInfo } from "@/components/ItemsEditor";
 import ConflictList from "@/components/ConflictList";
@@ -178,6 +179,7 @@ export default function ReservationForm({
         </div>
       </section>
 
+      <RouteEstimate tipo="locacao" destination={[address, district, city].filter(Boolean).join(", ")} onApply={setFreight} />
       <section className="cartao p-4">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Entrega e retirada</h2>
         <Grid>

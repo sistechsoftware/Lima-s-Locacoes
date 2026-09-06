@@ -329,7 +329,7 @@ function ListaParcelas({
         ) : (
           <ul className="space-y-2">
             {abertas.map((p) => (
-              <li key={p.id} className="rounded-xl border border-nuvem-300 bg-white p-3">
+              <li key={p.id} id={`parcela-${p.id}`} className="rounded-xl border border-nuvem-300 bg-white p-3 scroll-mt-20">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-tinta-900">{p.description}</span>

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import RouteEstimate from "@/components/RouteEstimate";
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import ItemsEditor, { type ItemRow, type Product, type StockInfo } from "@/components/ItemsEditor";
 import ConflictList from "@/components/ConflictList";
@@ -86,6 +87,7 @@ export default function QuoteForm({
       {quote && <input type="hidden" name="id" value={quote.id} />}
       <input type="hidden" name="items" value={JSON.stringify(items)} />
       <input type="hidden" name="freight" value={freight} />
+      <RouteEstimate tipo="locacao" destination={[address,district,city].filter(Boolean).join(", ")} onApply={setFreight}/>
       <input type="hidden" name="assembly" value={assembly} />
       <input type="hidden" name="disassembly" value={disassembly} />
       <input type="hidden" name="other" value={other} />

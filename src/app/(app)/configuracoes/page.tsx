@@ -1,4 +1,6 @@
 import { all } from "@/lib/db";
+import Link from "next/link";
+import FreightSettings from "./FreightSettings";
 import { requireUser } from "@/lib/auth";
 import { listUsers } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
@@ -59,6 +61,7 @@ export default async function ConfiguracoesPage({
   return (
     <div className="space-y-4">
       <PageHeader title="Configuracoes" subtitle="Dados da empresa, modelos, usuarios e permissoes" />
+      <Link href="/notificacoes/preferencias" className="inline-block text-sm text-marca-600 underline">Notificacoes: dispositivos, funcoes operacionais e antecedentes</Link>
       {erro && <Alerta tone="vermelho">{erro}</Alerta>}
       {user.role !== "admin" && aba !== "conta" && (
         <Alerta tone="ambar">
@@ -249,83 +252,7 @@ export default async function ConfiguracoesPage({
         </Section>
       )}
 
-      {aba === "frete" && (
-        <Section title="Configuracao da calculadora de frete">
-          <form action={saveFreightSettings} className="space-y-3">
-            <Grid>
-              <Field label="Tipo de combustivel">
-                <input name="fuel_type" defaultValue={s.freight_fuel_type} className="campo" disabled={user.role !== "admin"} />
-              </Field>
-              <Field label="Preco por litro (R$)">
-                <input
-                  name="fuel_price"
-                  defaultValue={(Number(s.freight_fuel_price_cents || 0) / 100).toFixed(2)}
-                  inputMode="decimal"
-                  className="campo"
-                  disabled={user.role !== "admin"}
-                />
-              </Field>
-              <Field label="Consumo do veiculo (km/L)">
-                <input
-                  name="consumption"
-                  defaultValue={s.freight_consumption}
-                  inputMode="decimal"
-                  className="campo"
-                  disabled={user.role !== "admin"}
-                />
-              </Field>
-              <Field label="Custo operacional por km (R$)" hint="Manutencao, pneus, oleo e desgaste.">
-                <input
-                  name="cost_per_km"
-                  defaultValue={(Number(s.freight_cost_per_km_cents || 0) / 100).toFixed(2)}
-                  inputMode="decimal"
-                  className="campo"
-                  disabled={user.role !== "admin"}
-                />
-              </Field>
-              <Field label="Margem de lucro (%)" hint="Sobre o preco de venda, nao sobre o custo.">
-                <input
-                  name="margin"
-                  type="number"
-                  min={0}
-                  max={95}
-                  defaultValue={s.freight_margin_percent}
-                  className="campo"
-                  disabled={user.role !== "admin"}
-                />
-              </Field>
-              <Field label="Valor minimo do frete (R$)">
-                <input
-                  name="minimum"
-                  defaultValue={(Number(s.freight_minimum_cents || 0) / 100).toFixed(2)}
-                  inputMode="decimal"
-                  className="campo"
-                  disabled={user.role !== "admin"}
-                />
-              </Field>
-              <Field label="Arredondar para multiplos de (R$)" hint="0 desliga o arredondamento.">
-                <input
-                  name="rounding"
-                  defaultValue={(Number(s.freight_rounding_cents || 0) / 100).toFixed(2)}
-                  inputMode="decimal"
-                  className="campo"
-                  disabled={user.role !== "admin"}
-                />
-              </Field>
-              <Field label="Mao de obra padrao (R$)" hint="Deixe zero para cobrar dentro da margem.">
-                <input
-                  name="labor"
-                  defaultValue={(Number(s.freight_labor_cents || 0) / 100).toFixed(2)}
-                  inputMode="decimal"
-                  className="campo"
-                  disabled={user.role !== "admin"}
-                />
-              </Field>
-            </Grid>
-            {user.role === "admin" && <SubmitButton>Salvar configuracao do frete</SubmitButton>}
-          </form>
-        </Section>
-      )}
+      {aba === "frete" && <FreightSettings settings={s} admin={user.role === "admin"} />}
 
       {aba === "fornecedores" && (
         <Section title="Fornecedores">

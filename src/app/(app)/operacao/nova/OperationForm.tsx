@@ -10,12 +10,14 @@ export default function OperationForm({
   action,
   reservations,
   vehicles,
+  users,
   defaultReservation,
   defaultKind,
 }: {
   action: Action;
   reservations: { id: number; number: string; customer_name: string; event_date: string }[];
   vehicles: { id: number; name: string }[];
+  users: { id: number; name: string }[];
   defaultReservation?: number;
   defaultKind?: string;
 }) {
@@ -58,6 +60,9 @@ export default function OperationForm({
         </Field>
         <Field label="Responsavel">
           <input name="assignee" className="campo" placeholder="Quem vai executar" />
+        </Field>
+        <Field label="Usuario responsavel pelos avisos" hint="Opcional. Quando definido, recebe com exclusividade.">
+          <select name="assignee_id" className="campo"><option value="">Equipe pelas funcoes</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select>
         </Field>
         <Field label="Veiculo">
           <select name="vehicle_id" className="campo">

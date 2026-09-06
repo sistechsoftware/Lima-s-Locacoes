@@ -149,7 +149,9 @@ export async function removeCategory(fd: FormData) {
 /** Parametros usados pela calculadora de frete. */
 export async function saveFreightSettings(fd: FormData) {
   const user = await assertAdmin();
-  await setSettings({
+  const tipo = fd.get("tipo");
+  if (tipo !== "comum" && tipo !== "locacao") throw new Error("Tipo de frete invalido.");
+  const values = {
     freight_fuel_type: String(fd.get("fuel_type") ?? "").trim() || "Combustivel",
     freight_fuel_price_cents: String(parseMoney(String(fd.get("fuel_price") ?? ""))),
     freight_consumption: String(Math.max(0, Number(String(fd.get("consumption") ?? "").replace(",", ".")) || 0)),
@@ -158,7 +160,8 @@ export async function saveFreightSettings(fd: FormData) {
     freight_minimum_cents: String(parseMoney(String(fd.get("minimum") ?? ""))),
     freight_rounding_cents: String(parseMoney(String(fd.get("rounding") ?? ""))),
     freight_labor_cents: String(parseMoney(String(fd.get("labor") ?? ""))),
-  });
+  };
+  await setSettings({ ...Object.fromEntries(Object.entries(values).map(([key,value]) => [key.replace("freight_", `freight_${tipo}_`), value])), [`freight_${tipo}_base_address`]: String(fd.get("base_address") ?? "").trim().slice(0,400) });
   await logAction(user, "editar", "configuracao", null, `${user.name} atualizou os parametros do frete`);
   revalidatePath("/configuracoes");
   revalidatePath("/fretes/calculadora");

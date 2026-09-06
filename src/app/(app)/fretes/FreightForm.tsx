@@ -1,5 +1,6 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import RouteEstimate from "@/components/RouteEstimate";
 import { Field, Grid } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FREIGHT_STATUS, PAYMENT_METHODS, PAYMENT_METHOD_LABEL } from "@/lib/domain";
@@ -24,6 +25,9 @@ export default function FreightForm({
 }) {
   const [error, formAction] = useActionState(action, null);
   const v = freight ?? {};
+  const [origin, setOrigin] = useState(v.origin ?? "");
+  const [destination, setDestination] = useState(v.destination ?? "");
+  const [amount, setAmount] = useState(valorInicial ?? ((v.amount_cents ?? 0) / 100).toFixed(2));
   return (
     <form action={formAction} className="space-y-4">
       {freight && <input type="hidden" name="id" value={freight.id} />}
@@ -63,11 +67,12 @@ export default function FreightForm({
       </Grid>
 
       <Field label="Origem">
-        <input name="origin" defaultValue={v.origin ?? ""} className="campo" />
+        <input name="origin" value={origin} onChange={e => setOrigin(e.target.value)} className="campo" />
       </Field>
       <Field label="Destino">
-        <input name="destination" defaultValue={v.destination ?? ""} className="campo" />
+        <input name="destination" value={destination} onChange={e => setDestination(e.target.value)} className="campo" />
       </Field>
+      <RouteEstimate tipo="comum" origin={origin} destination={destination} onApply={setAmount} />
       <Field label="Descricao da carga">
         <textarea name="cargo" defaultValue={v.cargo ?? ""} rows={2} className="campo" />
       </Field>
@@ -76,7 +81,8 @@ export default function FreightForm({
         <Field label="Valor (R$)">
           <input
             name="amount"
-            defaultValue={valorInicial ?? ((v.amount_cents ?? 0) / 100).toFixed(2)}
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
             inputMode="decimal"
             className="campo"
           />

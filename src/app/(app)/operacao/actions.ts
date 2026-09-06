@@ -18,10 +18,12 @@ export async function createOperation(_prev: string | null, fd: FormData): Promi
   const scheduled = stamp(String(fd.get("scheduled_at") ?? ""), "08:00");
   if (!scheduled) return "Informe a data e o horario.";
   if (!reservationId) return "Selecione a reserva.";
+  const assigneeId = Number(fd.get("assignee_id")) || null;
+  if (assigneeId && !await one("SELECT id FROM users WHERE id=? AND active=1",[assigneeId])) return "Responsavel invalido ou inativo.";
 
   const id = await insert(
-    `INSERT INTO operations (kind, reservation_id, scheduled_at, status, assignee, vehicle_id, notes)
-     VALUES (?,?,?,?,?,?,?)`,
+    `INSERT INTO operations (kind, reservation_id, scheduled_at, status, assignee, vehicle_id, notes, assignee_id)
+     VALUES (?,?,?,?,?,?,?,?)`,
     [
       kind,
       reservationId,
@@ -30,6 +32,7 @@ export async function createOperation(_prev: string | null, fd: FormData): Promi
       String(fd.get("assignee") ?? ""),
       Number(fd.get("vehicle_id")) || null,
       String(fd.get("notes") ?? ""),
+      assigneeId,
     ],
   );
   const r = await one<any>(`SELECT number FROM reservations WHERE id = ?`, [reservationId]);
@@ -46,10 +49,12 @@ export async function updateOperation(fd: FormData) {
   if (!op) return;
 
   const scheduled = stamp(String(fd.get("scheduled_at") ?? op.scheduled_at), "08:00");
+  const assigneeId = Number(fd.get("assignee_id")) || null;
+  if (assigneeId && !await one("SELECT id FROM users WHERE id=? AND active=1",[assigneeId])) throw new Error("Responsavel invalido ou inativo.");
   await run(
-    `UPDATE operations SET scheduled_at = ?, assignee = ?, vehicle_id = ?, notes = ?, updated_at = datetime('now','localtime')
+    `UPDATE operations SET scheduled_at = ?, assignee = ?, vehicle_id = ?, notes = ?, assignee_id = ?, updated_at = datetime('now','localtime')
       WHERE id = ?`,
-    [scheduled, String(fd.get("assignee") ?? ""), Number(fd.get("vehicle_id")) || null, String(fd.get("notes") ?? ""), id],
+    [scheduled, String(fd.get("assignee") ?? ""), Number(fd.get("vehicle_id")) || null, String(fd.get("notes") ?? ""), assigneeId, id],
   );
   await logAction(user, "editar", "operacao", id, `${user.name} atualizou a ${op.kind} agendada para ${scheduled}`);
   revalidatePath(`/operacao/${id}`);

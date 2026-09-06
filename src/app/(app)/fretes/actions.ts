@@ -134,7 +134,9 @@ export async function salvarPrecoCombustivel(fd: FormData) {
   const user = await requireUser();
   const cents = parseMoney(String(fd.get("preco") ?? ""));
   if (cents <= 0) return;
-  await setSettings({ freight_fuel_price_cents: String(cents) });
+  const tipo = fd.get("tipo");
+  if (tipo !== "comum" && tipo !== "locacao") return;
+  await setSettings({ [`freight_${tipo}_fuel_price_cents`]: String(cents) });
   await logAction(user, "editar", "configuracao", null, `${user.name} atualizou o preco do combustivel para ${money(cents)}/L`);
   revalidatePath("/fretes/calculadora");
   revalidatePath("/configuracoes");

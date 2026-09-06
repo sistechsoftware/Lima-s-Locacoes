@@ -22,13 +22,19 @@ export type ConfigFrete = {
  * Assim o resultado aparece enquanto o usuario digita, sem ida ao servidor.
  */
 export default function Calculator({
-  config,
+  configs,
   salvarPreco,
 }: {
-  config: ConfigFrete;
+  configs: Record<TipoFrete, ConfigFrete>;
   salvarPreco: (fd: FormData) => Promise<void>;
 }) {
   const [tipo, setTipo] = useState<TipoFrete>("locacao");
+  const config = configs[tipo];
+  function selectType(value: TipoFrete) {
+    setTipo(value);
+    setPrecoLitro((configs[value].fuelPriceCents/100).toFixed(2));
+    setMaoDeObra((configs[value].laborCents/100).toFixed(2));
+  }
   const [distancia, setDistancia] = useState("");
   const [precoLitro, setPrecoLitro] = useState((config.fuelPriceCents / 100).toFixed(2));
   const [editandoPreco, setEditandoPreco] = useState(false);
@@ -73,14 +79,14 @@ export default function Calculator({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <TipoOpcao
               checked={tipo === "comum"}
-              onSelect={() => setTipo("comum")}
+              onSelect={() => selectType("comum")}
               titulo="Frete comum"
               descricao="Uma entrega: ida e volta."
               viagens={VIAGENS.comum}
             />
             <TipoOpcao
               checked={tipo === "locacao"}
-              onSelect={() => setTipo("locacao")}
+              onSelect={() => selectType("locacao")}
               titulo="Frete de locacao"
               descricao="Entrega e, depois, retirada."
               viagens={VIAGENS.locacao}
@@ -137,6 +143,7 @@ export default function Calculator({
               </p>
               {precoAlterado && (
                 <form action={salvarPreco}>
+                  <input type="hidden" name="tipo" value={tipo} />
                   <input type="hidden" name="preco" value={precoLitro} />
                   <button className="rounded-xl border border-marca-600 bg-white px-3 py-2 text-xs font-semibold text-marca-600">
                     Salvar {money(parseMoney(precoLitro))}/L como padrao

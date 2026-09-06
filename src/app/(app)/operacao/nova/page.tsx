@@ -19,6 +19,7 @@ export default async function NovaOperacaoPage({
       WHERE r.status <> 'cancelada' ORDER BY r.event_date DESC LIMIT 200`,
   );
   const vehicles = await all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
+  const users = await all<{id:number;name:string}>("SELECT id,name FROM users WHERE active=1 ORDER BY name");
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -28,6 +29,7 @@ export default async function NovaOperacaoPage({
           action={createOperation}
           reservations={reservations}
           vehicles={vehicles}
+          users={users}
           defaultReservation={sp.reserva ? Number(sp.reserva) : undefined}
           defaultKind={sp.tipo}
         />

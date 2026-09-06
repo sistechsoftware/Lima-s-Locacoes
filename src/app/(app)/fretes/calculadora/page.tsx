@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { freightConfig } from "@/lib/freight-config";
 import { PageHeader } from "@/components/ui";
 import Calculator, { type ConfigFrete } from "./Calculator";
 import { salvarPrecoCombustivel } from "../actions";
@@ -24,7 +25,7 @@ export default async function CalculadoraFretePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader title="Calcular frete" subtitle="Quanto cobrar por uma viagem" />
-      <Calculator config={config} salvarPreco={salvarPrecoCombustivel} />
+      <Calculator configs={{ comum: freightConfig(s,"comum"), locacao: freightConfig(s,"locacao") }} salvarPreco={salvarPrecoCombustivel} />
     </div>
   );
 }

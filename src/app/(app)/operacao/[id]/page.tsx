@@ -38,6 +38,7 @@ export default async function OperacaoDetalhePage({
       )
     : [];
   const vehicles = await all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
+  const users = await all<{id:number;name:string}>("SELECT id,name FROM users WHERE active=1 ORDER BY name");
   const checklist = await one<any>(`SELECT * FROM checklists WHERE operation_id = ? ORDER BY id DESC LIMIT 1`, [op.id]);
   const marcados: Record<string, boolean> = checklist ? JSON.parse(checklist.data) : {};
   const fotos = await attachmentsFor("operacao", op.id);
@@ -168,6 +169,8 @@ export default async function OperacaoDetalhePage({
             <label className="block">
               <span className="rotulo">Responsavel</span>
               <input name="assignee" defaultValue={op.assignee ?? ""} className="campo" />
+              <span className="rotulo mt-2">Usuario responsavel pelos avisos</span>
+              <select name="assignee_id" defaultValue={op.assignee_id??""} className="campo"><option value="">Equipe pelas funcoes</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select>
             </label>
             <label className="block">
               <span className="rotulo">Veiculo</span>
