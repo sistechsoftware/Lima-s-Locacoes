@@ -1,7 +1,7 @@
 import "server-only";
 import { all, one, scalar } from "./db";
 import { addDays, endOfMonth, startOfMonth, startOfWeek, today } from "./format";
-import { availabilityAll } from "./stock";
+import { availabilityAll, kitsFromPhysical } from "./stock";
 import { ACTIVE_STATUSES, HOLDING_STATUSES, OPEN_OPERATION_STATUS } from "./domain";
 
 const list = (arr: readonly string[]) => arr.map((s) => `'${s}'`).join(",");
@@ -186,6 +186,9 @@ export async function dashboardStats() {
   const manutencao = stock.reduce((s, p) => s + p.maintenance, 0);
   const baixos = stock.filter((p) => p.low).length;
 
+  // produtos compostos ativos, derivados do mesmo estoque ja lido acima
+  const kits = await kitsFromPhysical(stock);
+
   const faturamentoMes = Number(financeiro?.faturamento ?? 0) + Number(financeiro?.fretes ?? 0);
   const despesasMes = Number(financeiro?.despesas ?? 0);
 
@@ -215,6 +218,7 @@ export async function dashboardStats() {
       lucro: faturamentoMes - despesasMes,
     },
     estoque: { disponiveis, reservados, manutencao, baixos },
+    kits,
     alertas: {
       pagamentosPendentes: Number(contagens?.pagamentos_pendentes ?? 0),
       contratosPendentes: Number(contagens?.contratos_pendentes ?? 0),

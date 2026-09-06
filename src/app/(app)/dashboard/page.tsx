@@ -240,6 +240,24 @@ export default async function DashboardPage({
         </div>
       </div>
 
+      {s.kits.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Kits montaveis hoje</h2>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+            {s.kits.map((k) => (
+              <Stat
+                key={k.product_id}
+                label={k.name}
+                value={Math.max(0, k.available)}
+                hint="limitado pelo componente mais escasso"
+                tone={k.available <= 0 ? "vermelho" : k.low ? undefined : "verde"}
+                href={`/estoque/${k.product_id}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <Card className="text-xs text-stone-500">
         Faturamento considera reservas do mes com status ativo mais fretes concluidos. A receber soma o saldo em
         aberto de todas as reservas ativas. Valores em {money(0).slice(0, 2)}.

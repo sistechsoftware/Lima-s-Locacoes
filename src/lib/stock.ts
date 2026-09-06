@@ -402,23 +402,28 @@ export async function physicalAvailability(
  * Produtos fisicos e kits juntos, para telas de consulta.
  * O kit aparece com a quantidade que da para montar, nunca como estoque fisico.
  */
-export async function availabilityAllWithKits(
-  from: string,
-  to: string,
-  excludeReservationId?: number | null,
-): Promise<Availability[]> {
-  const physical = await availabilityAll(from, to, excludeReservationId);
+/**
+ * Disponibilidade dos produtos compostos a partir de uma disponibilidade
+ * fisica ja calculada.
+ *
+ * Recebe o resultado de availabilityAll em vez de consultar de novo, para o
+ * painel nao pagar duas vezes pela mesma leitura. A composicao vem do cadastro
+ * (product_components), entao qualquer kit novo passa a aparecer sozinho, sem
+ * precisar de codigo.
+ */
+export async function kitsFromPhysical(physical: Availability[]): Promise<Availability[]> {
   const disponivel = new Map(physical.map((r) => [r.product_id, r.available]));
-  const specs = await loadSpecs();
+  const [kits, specs] = await Promise.all([
+    all<any>(
+      `SELECT p.id, p.code, p.name, p.kind, p.min_qty, c.name AS category
+         FROM products p LEFT JOIN categories c ON c.id = p.category_id
+        WHERE p.active = 1 AND p.kind = 'kit'
+        ORDER BY c.name, p.name`,
+    ),
+    loadSpecs(),
+  ]);
 
-  const kits = await all<any>(
-    `SELECT p.id, p.code, p.name, p.kind, p.min_qty, c.name AS category
-       FROM products p LEFT JOIN categories c ON c.id = p.category_id
-      WHERE p.active = 1 AND p.kind = 'kit'
-      ORDER BY c.name, p.name`,
-  );
-
-  const kitRows: Availability[] = kits.map((p) => {
+  return kits.map((p) => {
     const spec = specs.get(p.id);
     const capacity = spec ? kitCapacity(spec, disponivel) : 0;
     return {
@@ -436,8 +441,15 @@ export async function availabilityAllWithKits(
       low: capacity < p.min_qty,
     };
   });
+}
 
-  return [...physical, ...kitRows];
+export async function availabilityAllWithKits(
+  from: string,
+  to: string,
+  excludeReservationId?: number | null,
+): Promise<Availability[]> {
+  const physical = await availabilityAll(from, to, excludeReservationId);
+  return [...physical, ...(await kitsFromPhysical(physical))];
 }
 
 /* ------------------------------------------------------------------ */
