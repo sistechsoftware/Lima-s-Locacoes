@@ -1,4 +1,10 @@
 import Link from "next/link";
+import AvailabilityFilter from "@/components/AvailabilityFilter";
+import { availabilityQuery, type AvailabilityParams } from "@/lib/availability-time";
+import { stockOptions } from "@/lib/availability-settings";
+import { checkConflicts, holdWindow } from "@/lib/stock";
+import ConflictList from "@/components/ConflictList";
+import { dateTimeBR } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -19,11 +25,12 @@ export default async function OrcamentoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<AvailabilityParams & { erro?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
-  const { erro } = await searchParams;
+  const sp = await searchParams;
+  const { erro } = sp;
   const q = await one<any>(
     `SELECT qt.*, c.name AS customer_name, c.phone AS customer_phone, c.whatsapp AS customer_whatsapp
        FROM quotes qt JOIN customers c ON c.id = qt.customer_id WHERE qt.id = ?`,
@@ -32,6 +39,10 @@ export default async function OrcamentoPage({
   if (!q) notFound();
 
   const items = await quoteItems(q.id);
+  const w = holdWindow(q);
+  const query = availabilityQuery({ ...sp, inicio: w.from, fim: w.to, preparo: sp.preparo ?? (sp.consulta === "1" ? "0" : String(q.stock_consider_preparation)) });
+  const options = await stockOptions(query);
+  const conflicts = q.status === "convertido" ? [] : await checkConflicts(items, w.from, w.to, null, options);
   const resumo = items.map((i) => `${i.qty}x ${i.product_name}`).join(", ");
   const msg = await messageForQuote(q, items.map((i) => `- ${i.qty}x ${i.product_name}: ${money(i.subtotal_cents)}`).join("\n"));
   const historico = await logsFor("orcamento", q.id);
@@ -61,6 +72,10 @@ export default async function OrcamentoPage({
       />
 
       {erro && <Alerta tone="vermelho" title="Nao foi possivel converter">{erro}</Alerta>}
+      {q.status !== "convertido" && <>
+        <AvailabilityFilter query={query} minutes={options.preparationMinutes} fixed />
+        {conflicts.length > 0 && <Alerta tone="ambar" title="Conflitos para converter em reserva"><ConflictList conflicts={conflicts} /></Alerta>}
+      </>}
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
@@ -83,6 +98,7 @@ export default async function OrcamentoPage({
             </form>
 
             <form action={convertQuote} className="mt-3 space-y-2">
+              <input type="hidden" name="consider_preparation" value={query.considerPreparation ? "1" : "0"} />
               <input type="hidden" name="id" value={q.id} />
               {user.role === "admin" && (
                 <label className="flex items-center gap-2 text-xs font-semibold text-stone-600">
@@ -111,8 +127,8 @@ export default async function OrcamentoPage({
           <Row label="Data do evento" value={q.event_date ? dateBR(q.event_date) : "-"} />
           <Row label="Horario" value={q.event_time || "-"} />
           <Row label="Endereco" value={[q.address, q.district, q.city].filter(Boolean).join(", ") || "-"} />
-          <Row label="Entrega prevista" value={q.delivery_at ? dateBR(q.delivery_at) : "-"} />
-          <Row label="Retirada prevista" value={q.pickup_at ? dateBR(q.pickup_at) : "-"} />
+          <Row label="Entrega prevista" value={q.delivery_at ? dateTimeBR(q.delivery_at) : "-"} />
+          <Row label="Retirada prevista" value={q.pickup_at ? dateTimeBR(q.pickup_at) : "-"} />
           {q.notes && <Row label="Observacoes" value={q.notes} />}
         </Section>
 

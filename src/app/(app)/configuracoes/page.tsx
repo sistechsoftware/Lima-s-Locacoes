@@ -17,6 +17,7 @@ import { createAccount, createSupplier } from "../compras/actions";
 import { money } from "@/lib/format";
 import UserForm from "./UserForm";
 import PasswordForm from "./PasswordForm";
+import { saveStockSettings } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function ConfiguracoesPage({
     { value: "fornecedores", label: "Fornecedores" },
     ...(user.role === "admin" ? [{ value: "contas", label: "Contas" }] : []),
     { value: "frete", label: "Frete" },
+    { value: "disponibilidade", label: "Disponibilidade" },
     { value: "fidelidade", label: "Fidelidade" },
     { value: "aniversarios", label: "Aniversarios" },
     ...(user.role === "admin" ? [{ value: "finalidades", label: "Finalidades" }] : []),
@@ -78,6 +80,16 @@ export default async function ConfiguracoesPage({
       )}
 
       <Tabs items={ABAS} current={aba} base="/configuracoes" />
+
+      {aba === "disponibilidade" && <Section title="Preparacao apos devolucao">
+        <form action={saveStockSettings} className="space-y-3">
+          <Field label="Tempo de deslocamento e higienizacao (minutos)" hint="Exemplos: 30, 60, 90 ou 120. Zero desativa o acrescimo. Cada consulta permite considerar ou ignorar este tempo.">
+            <input name="stock_preparation_minutes" type="number" min="0" max="10080" step="1" required defaultValue={s.stock_preparation_minutes} disabled={user.role !== "admin"} className="campo" />
+          </Field>
+          <p className="text-sm text-stone-500">Aplica-se aos intervalos das reservas que bloqueiam estoque. Cancelada, retirada e finalizada continuam sem bloqueio, conforme os status existentes. Alertas automaticos consideram o tempo configurado.</p>
+          {user.role === "admin" && <SubmitButton>Salvar configuracao</SubmitButton>}
+        </form>
+      </Section>}
 
       {aba === "empresa" && (
         <Section title="Dados da empresa">

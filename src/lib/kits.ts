@@ -217,7 +217,7 @@ export function conflictText(c: LineConflict): string {
       (detalhe ? ` (${detalhe})` : "")
     );
   }
-  return `${c.product}: pedido ${c.requested}, disponivel ${c.available} nesta data.`;
+  return `${c.product}: pedido ${c.requested}, disponivel ${c.available} neste intervalo.`;
 }
 
 /* ------------------------------------------------------------------ */

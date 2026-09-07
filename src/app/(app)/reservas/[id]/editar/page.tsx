@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui";
 import ReservationForm from "../../ReservationForm";
 import { updateReservation } from "../../actions";
 import { sellableProducts } from "@/lib/stock";
+import { preparationMinutes } from "@/lib/availability-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function EditarReservaPage({ params }: { params: Promise<{ 
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader title={`Editar ${reservation.number}`} subtitle="Alteracoes revalidam o estoque e a agenda" />
       <ReservationForm
+        preparationMinutes={await preparationMinutes()}
         action={updateReservation}
         products={products}
         customers={customers}

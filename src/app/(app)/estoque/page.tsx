@@ -1,4 +1,7 @@
 import Link from "next/link";
+import AvailabilityFilter from "@/components/AvailabilityFilter";
+import { availabilityQuery, type AvailabilityParams } from "@/lib/availability-time";
+import { stockOptions } from "@/lib/availability-settings";
 import { all } from "@/lib/db";
 import { availabilityAllWithKits } from "@/lib/stock";
 import { money, today } from "@/lib/format";
@@ -10,12 +13,13 @@ export const dynamic = "force-dynamic";
 export default async function EstoquePage({
   searchParams,
 }: {
-  searchParams: Promise<{ aba?: string; q?: string }>;
+  searchParams: Promise<AvailabilityParams & { aba?: string; q?: string }>;
 }) {
   const sp = await searchParams;
   const aba = sp.aba ?? "todos";
-  const d0 = today();
-  const disponibilidade = await availabilityAllWithKits(`${d0}T00:00`, `${d0}T23:59`);
+  const query = availabilityQuery(sp);
+  const options = await stockOptions(query);
+  const disponibilidade = await availabilityAllWithKits(query.from, query.to, null, options);
   const produtos = await all<any>(
     `SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id
       ORDER BY p.active DESC, c.name, p.name`,
@@ -40,18 +44,19 @@ export default async function EstoquePage({
         subtitle={`${produtos.length} produto(s) cadastrado(s)`}
         action={
           <>
-            <LinkButton href="/disponibilidade">Consultar data</LinkButton>
+            <LinkButton href={`/disponibilidade?${query.queryString}`}>Consultar disponibilidade</LinkButton>
             <LinkButton href="/estoque/novo" variant="primario">+ Novo produto</LinkButton>
           </>
         }
       />
 
+      <AvailabilityFilter query={query} minutes={options.preparationMinutes} hidden={{ aba }} />
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Stat
-          label="Disponiveis hoje"
+          label="Disponiveis na consulta"
           value={disponibilidade.filter((d) => d.kind !== "kit").reduce((s, d) => s + Math.max(0, d.available), 0)}
         />
-        <Stat label="Reservados hoje" value={disponibilidade.reduce((s, d) => s + d.reserved, 0)} />
+        <Stat label="Reservados na consulta" value={disponibilidade.reduce((s, d) => s + d.reserved, 0)} />
         <Stat label="Kits cadastrados" value={produtos.filter((p) => p.kind === "kit").length} />
         <Stat label="Em manutencao" value={produtos.reduce((s, p) => s + p.maintenance_qty, 0)} />
         <Stat
@@ -71,7 +76,7 @@ export default async function EstoquePage({
           { value: "inativos", label: "Inativos" },
         ]}
         current={aba}
-        base="/estoque"
+        base={`/estoque?${query.queryString}`}
       />
 
       {filtrados.length === 0 ? (
@@ -86,7 +91,7 @@ export default async function EstoquePage({
                 .map((p) => {
                   const d = info.get(p.id);
                   return (
-                    <Link key={p.id} href={`/estoque/${p.id}`} className="cartao flex items-center gap-3 p-3">
+                    <Link key={p.id} href={`/estoque/${p.id}?${query.queryString}`} className="cartao flex items-center gap-3 p-3">
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex flex-wrap gap-1.5">
                           {p.kind === "kit" && <Badge tone="terracota">Kit</Badge>}
@@ -104,7 +109,7 @@ export default async function EstoquePage({
                           {d ? Math.max(0, d.available) : p.total_qty}
                         </p>
                         <p className="text-[0.65rem] uppercase text-stone-400">
-                          {p.kind === "kit" ? "kits montaveis" : `de ${p.total_qty} hoje`}
+                          {!p.active ? "estoque cadastrado (inativo)" : p.kind === "kit" ? "kits montaveis" : `de ${p.total_qty} na consulta`}
                         </p>
                       </div>
                     </Link>

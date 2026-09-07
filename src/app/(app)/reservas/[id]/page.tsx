@@ -1,4 +1,8 @@
 import Link from "next/link";
+import AvailabilityFilter from "@/components/AvailabilityFilter";
+import { availabilityQuery, addMinutes, type AvailabilityParams } from "@/lib/availability-time";
+import { stockOptions } from "@/lib/availability-settings";
+import { HOLDING_STATUSES } from "@/lib/domain";
 import { notFound } from "next/navigation";
 import { all, one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -11,7 +15,7 @@ import {
   reservationOperations,
 } from "@/lib/reservations";
 import { messagesForReservation } from "@/lib/whatsapp";
-import { checkConflicts, compositionDrift, holdWindow, reservationPhysicalUsage } from "@/lib/stock";
+import { checkReservationConflicts, compositionDrift, holdWindow, reservationPhysicalUsage } from "@/lib/stock";
 import {
   CONTRACT_STATUS,
   DEPOSIT_STATUS,
@@ -43,11 +47,12 @@ export default async function ReservaPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<AvailabilityParams & { erro?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
-  const { erro } = await searchParams;
+  const sp = await searchParams;
+  const { erro } = sp;
   const r = await getReservation(Number(id));
   if (!r) notFound();
 
@@ -81,14 +86,12 @@ export default async function ReservaPage({
   const maps = mapsLink(r.address, r.district, r.city);
 
   const w = holdWindow(r);
+  const query = availabilityQuery({ ...sp, inicio: w.from, fim: w.to, preparo: sp.preparo ?? (sp.consulta === "1" ? "0" : String(r.stock_consider_preparation)) });
+  const options = await stockOptions(query);
+  const occupiedUntil = addMinutes(w.to, options.preparationMinutes);
   const conflicts =
-    r.status !== "cancelada"
-      ? await checkConflicts(
-          items.map((i) => ({ product_id: i.product_id, qty: i.qty })),
-          w.from,
-          w.to,
-          r.id,
-        )
+    (HOLDING_STATUSES as readonly string[]).includes(r.status)
+      ? await checkReservationConflicts(r.id, options)
       : [];
 
   const flowIndex = (RESERVATION_FLOW as readonly string[]).indexOf(r.status);
@@ -108,6 +111,9 @@ export default async function ReservaPage({
       />
 
       {erro && <Alerta tone="vermelho" title="Nao foi possivel concluir">{erro}</Alerta>}
+
+      <AvailabilityFilter query={query} minutes={options.preparationMinutes} fixed />
+      <p className="text-xs text-stone-500">Conferencia da composicao fisica gravada, excluindo a propria reserva. Fim da janela com preparacao: {dateTimeBR(occupiedUntil)}. {(HOLDING_STATUSES as readonly string[]).includes(r.status) ? "Este status bloqueia estoque." : "Este status nao bloqueia estoque."}</p>
 
       {conflicts.length > 0 && (
         <Alerta tone="vermelho" title="Conflito de estoque nesta reserva">
@@ -140,6 +146,7 @@ export default async function ReservaPage({
             ))}
           </ul>
           <form action={refreshComposition} className="mt-2">
+            <input type="hidden" name="consider_preparation" value={query.considerPreparation ? "1" : "0"} />
             <input type="hidden" name="id" value={r.id} />
             <SubmitButton variant="secundario" className="px-3 py-1.5 text-xs">
               Atualizar composicao
@@ -166,6 +173,7 @@ export default async function ReservaPage({
         <div className="mt-3 flex flex-wrap gap-2">
           {proximo && r.status !== "cancelada" && (
             <form action={changeStatus}>
+              <input type="hidden" name="consider_preparation" value={query.considerPreparation ? "1" : "0"} />
               <input type="hidden" name="id" value={r.id} />
               <input type="hidden" name="status" value={proximo} />
               <SubmitButton variant="sucesso">
@@ -174,6 +182,7 @@ export default async function ReservaPage({
             </form>
           )}
           <form action={changeStatus} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="consider_preparation" value={query.considerPreparation ? "1" : "0"} />
             <input type="hidden" name="id" value={r.id} />
             <select name="status" defaultValue={r.status} className="campo w-auto">
               {RESERVATION_STATUS.map((s) => (

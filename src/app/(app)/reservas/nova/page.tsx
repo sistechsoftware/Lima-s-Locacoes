@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui";
 import ReservationForm from "../ReservationForm";
 import { createReservation } from "../actions";
 import { sellableProducts } from "@/lib/stock";
+import { preparationMinutes } from "@/lib/availability-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function NovaReservaPage({
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader title="Nova reserva" subtitle="O sistema verifica o estoque automaticamente" />
       <ReservationForm
+        preparationMinutes={await preparationMinutes()}
         action={createReservation}
         products={products}
         customers={customers}

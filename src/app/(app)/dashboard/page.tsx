@@ -1,4 +1,7 @@
 import Link from "next/link";
+import AvailabilityFilter from "@/components/AvailabilityFilter";
+import { availabilityQuery, type AvailabilityParams } from "@/lib/availability-time";
+import { stockOptions } from "@/lib/availability-settings";
 import { requireUser } from "@/lib/auth";
 import { agendaEvents, dashboardStats, lateOperations, operationsOn } from "@/lib/queries";
 import { listNotifications, rebuildNotifications } from "@/lib/notifications";
@@ -21,10 +24,13 @@ const ATALHOS = [
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<AvailabilityParams & { erro?: string }>;
 }) {
   const user = await requireUser();
-  const { erro } = await searchParams;
+  const sp = await searchParams;
+  const { erro } = sp;
+  const query = availabilityQuery(sp);
+  const options = await stockOptions(query);
   const d0 = today();
 
   // Uma leitura so traz as operacoes do dia; a separacao por tipo e feita aqui,
@@ -37,7 +43,7 @@ export default async function DashboardPage({
   ]);
   // os indicadores contam alertas, entao so podem ser lidos depois do recalculo
   const [s, todosAlertas, aniversarios] = await Promise.all([
-    dashboardStats(),
+    dashboardStats(query, options),
     listNotifications(true),
     resumoAniversarios(),
   ]);
@@ -251,23 +257,24 @@ export default async function DashboardPage({
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Estoque hoje</h2>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Disponibilidade do estoque</h2>
+        <AvailabilityFilter query={query} minutes={options.preparationMinutes} />
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <Stat label="Disponiveis" value={s.estoque.disponiveis} href="/disponibilidade" />
-          <Stat label="Reservados" value={s.estoque.reservados} href="/disponibilidade" />
+          <Stat label="Disponiveis" value={s.estoque.disponiveis} href={`/disponibilidade?${query.queryString}`} />
+          <Stat label="Reservados" value={s.estoque.reservados} href={`/disponibilidade?${query.queryString}`} />
           <Stat label="Em manutencao" value={s.estoque.manutencao} href="/estoque" />
           <Stat
             label="Estoque baixo"
             value={s.estoque.baixos}
             tone={s.estoque.baixos ? "vermelho" : undefined}
-            href="/estoque"
+            href={`/estoque?${query.queryString}`}
           />
         </div>
       </div>
 
       {s.kits.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Kits montaveis hoje</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Kits montaveis na consulta</h2>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
             {s.kits.map((k) => (
               <Stat
@@ -276,7 +283,7 @@ export default async function DashboardPage({
                 value={Math.max(0, k.available)}
                 hint="limitado pelo componente mais escasso"
                 tone={k.available <= 0 ? "vermelho" : k.low ? undefined : "verde"}
-                href={`/estoque/${k.product_id}`}
+                href={`/estoque/${k.product_id}?${query.queryString}`}
               />
             ))}
           </div>

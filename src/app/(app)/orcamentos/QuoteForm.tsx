@@ -9,6 +9,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { money, parseMoney } from "@/lib/format";
 import { QUOTE_STATUS } from "@/lib/domain";
 import { checkStock } from "../reservas/actions";
+import { useStockCheck } from "@/components/useStockCheck";
+import PreparationChoice from "@/components/PreparationChoice";
 
 type Customer = { id: number; name: string; address: string; district: string; city: string };
 type Action = (prev: string | null, fd: FormData) => Promise<string | null>;
@@ -21,6 +23,7 @@ export default function QuoteForm({
   items: initialItems = [],
   defaultCustomerId,
   submitLabel = "Salvar orcamento",
+  preparationMinutes = 0,
 }: {
   action: Action;
   products: Product[];
@@ -29,11 +32,15 @@ export default function QuoteForm({
   items?: ItemRow[];
   defaultCustomerId?: number;
   submitLabel?: string;
+  preparationMinutes?: number;
 }) {
   const [error, formAction] = useActionState(action, null);
   const [items, setItems] = useState<ItemRow[]>(initialItems);
   const [customerId, setCustomerId] = useState(String(quote?.customer_id ?? defaultCustomerId ?? ""));
   const [eventDate, setEventDate] = useState(quote?.event_date ?? "");
+  const [deliveryAt, setDeliveryAt] = useState(quote?.delivery_at ?? "");
+  const [pickupAt, setPickupAt] = useState(quote?.pickup_at ?? "");
+  const [considerPreparation, setConsiderPreparation] = useState(quote?.stock_consider_preparation !== 0);
   const [address, setAddress] = useState(quote?.address ?? "");
   const [district, setDistrict] = useState(quote?.district ?? "");
   const [city, setCity] = useState(quote?.city ?? "");
@@ -42,8 +49,7 @@ export default function QuoteForm({
   const [disassembly, setDisassembly] = useState(cents(quote?.disassembly_cents));
   const [other, setOther] = useState(cents(quote?.other_cents));
   const [discount, setDiscount] = useState(cents(quote?.discount_cents));
-  const [conflicts, setConflicts] = useState<any[]>([]);
-  const [, startCheck] = useTransition();
+  const { conflicts, checking, error: stockError } = useStockCheck(items, deliveryAt, pickupAt, considerPreparation);
 
   useEffect(() => {
     const c = customers.find((x) => String(x.id) === customerId);
@@ -55,18 +61,11 @@ export default function QuoteForm({
   }, [customerId]);
 
   useEffect(() => {
-    if (!items.length || !eventDate) {
-      setConflicts([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      startCheck(async () => {
-        setConflicts(await checkStock({ items, from: `${eventDate}T00:00`, to: `${eventDate}T23:59` }));
-      });
-    }, 350);
-    return () => clearTimeout(timer);
+    if (!eventDate) return;
+    if (!deliveryAt) setDeliveryAt(`${eventDate}T08:00`);
+    if (!pickupAt) setPickupAt(`${eventDate}T18:00`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, eventDate]);
+  }, [eventDate]);
 
   const stockInfo: StockInfo = useMemo(
     () =>
@@ -136,12 +135,12 @@ export default function QuoteForm({
               <input
                 name="delivery_at"
                 type="datetime-local"
-                defaultValue={quote?.delivery_at ?? ""}
+                required value={deliveryAt} onChange={(e) => setDeliveryAt(e.target.value)}
                 className="campo"
               />
             </Field>
             <Field label="Retirada prevista">
-              <input name="pickup_at" type="datetime-local" defaultValue={quote?.pickup_at ?? ""} className="campo" />
+              <input required name="pickup_at" type="datetime-local" value={pickupAt} onChange={(e) => setPickupAt(e.target.value)} className="campo" />
             </Field>
           </Grid>
           <Field label="Endereco">
@@ -160,9 +159,12 @@ export default function QuoteForm({
 
       <section className="cartao p-4">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Itens</h2>
+        <PreparationChoice value={considerPreparation} onChange={setConsiderPreparation} minutes={preparationMinutes} from={deliveryAt} to={pickupAt} />
+        {checking && <p className="text-xs text-stone-500">Verificando estoque...</p>}
+        {stockError && <Alerta tone="ambar">{stockError}</Alerta>}
         {conflicts.length > 0 && (
           <div className="mb-3">
-            <Alerta tone="ambar" title="Atencao: estoque apertado nesta data">
+            <Alerta tone="ambar" title="Atencao: estoque apertado neste intervalo">
               <ConflictList conflicts={conflicts} />
               <p className="mt-1 text-xs">
                 O orcamento pode ser salvo assim mesmo. A checagem sera refeita na conversao em reserva.

@@ -51,6 +51,7 @@ _______________________________          _______________________________
 LOCADORA                                  LOCATARIO`;
 
 export const DEFAULT_SETTINGS: Settings = {
+  stock_preparation_minutes: "0",
   company_name: "Lima's Locacoes",
   company_tagline: "Gestao de Locacoes e Eventos",
   company_doc: "",
@@ -166,4 +167,3 @@ export function renderTemplate(
     return "";
   });
 }
-

@@ -1,16 +1,17 @@
 "use server";
+import { windowError } from "@/lib/availability-time";
+import { stockVersion, writeRental, commitStockBatch, STOCK_CHANGED } from "@/lib/stock-write";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { all, insert, one, run, scalar, tx } from "@/lib/db";
-import { nextNumber } from "@/lib/db";
+import { all, insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, currentUser, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { removeAttachment } from "@/lib/uploads";
 import { recalcReservation, reservationMoney, syncOperations, getReservation, itemsSummary } from "@/lib/reservations";
 import {
   checkConflicts,
+  checkReservationConflicts,
   conflictsMessage,
-  findOverbookings,
   holdWindow,
   rebuildReservationComponents,
   stamp,
@@ -65,30 +66,6 @@ function readHeader(fd: FormData) {
 
 const conflictMessage = conflictsMessage;
 
-/**
- * Confere, apos gravar, se esta reserva estourou o estoque por causa de uma
- * gravacao concorrente. Se estourou, desfaz a propria reserva e devolve o
- * erro. Ver findOverbookings para o criterio de desempate.
- */
-async function guardStock(reservationId: number, authorized: boolean): Promise<string | null> {
-  if (authorized) return null;
-  const excessos = await findOverbookings(reservationId);
-  if (!excessos.length) return null;
-
-  await run(`DELETE FROM reservation_items WHERE reservation_id = ?`, [reservationId]);
-  await run(`DELETE FROM reservation_item_components WHERE reservation_id = ?`, [reservationId]);
-  await run(`DELETE FROM deposits WHERE reservation_id = ?`, [reservationId]);
-  await run(`DELETE FROM operations WHERE reservation_id = ?`, [reservationId]);
-  await run(`DELETE FROM reservations WHERE id = ?`, [reservationId]);
-
-  return (
-    "ESTOQUE INSUFICIENTE. " +
-    excessos
-      .map((e) => `${e.product}: faltam ${e.excess} unidade(s) (outra reserva ocupou o estoque agora ha pouco).`)
-      .join(" ") +
-    " Refaca a operacao com as quantidades disponiveis."
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Criacao                                                             */
@@ -96,160 +73,65 @@ async function guardStock(reservationId: number, authorized: boolean): Promise<s
 
 export async function createReservation(_prev: string | null, fd: FormData): Promise<string | null> {
   const user = await requireUser();
-  const h = readHeader(fd);
+  const version = await stockVersion();
+  let h: ReturnType<typeof readHeader>;
+  try { h = readHeader(fd); } catch (e) { return (e as Error).message; }
+  const options = { considerPreparation: fd.get("consider_preparation") !== "0" };
   const items = readItems(fd);
-  const override = fd.get("override") === "1";
-
+  const override = fd.get("override") === "1" && user.role === "admin";
   if (!h.customer_id) return "Selecione o cliente.";
   if (!h.event_date) return "Informe a data do evento.";
   if (!items.length) return "Adicione ao menos um item a reserva.";
-  if (h.pickup_at < h.delivery_at) return "A retirada nao pode ser anterior a entrega.";
-
-  const holds = (HOLDING_STATUSES as readonly string[]).includes(h.status);
-  if (holds) {
-    const conflicts = await checkConflicts(items, h.delivery_at, h.pickup_at);
-    if (conflicts.length) {
-      if (!override) return conflictMessage(conflicts);
-      if (user.role !== "admin") return conflictMessage(conflicts) + " Somente o administrador pode prosseguir.";
-    }
+  const invalid = windowError(h.delivery_at, h.pickup_at);
+  if (invalid) return invalid;
+  if ((HOLDING_STATUSES as readonly string[]).includes(h.status)) {
+    const conflicts = await checkConflicts(items, h.delivery_at, h.pickup_at, null, options);
+    if (conflicts.length && !override) return conflictMessage(conflicts);
   }
-
-  let id = 0;
-  await tx(async () => {
-    const number = await nextNumber("reservations", "LIMA");
-    id = await insert(
-      `INSERT INTO reservations
-        (number, customer_id, status, event_date, event_time, address, district, city, delivery_at, pickup_at,
-         needs_delivery, needs_pickup, needs_assembly, needs_disassembly,
-         freight_cents, assembly_cents, disassembly_cents, other_cents, discount_cents, notes, stock_override, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [
-        number,
-        h.customer_id,
-        h.status,
-        h.event_date,
-        h.event_time,
-        h.address,
-        h.district,
-        h.city,
-        h.delivery_at,
-        h.pickup_at,
-        h.needs_delivery,
-        h.needs_pickup,
-        h.needs_assembly,
-        h.needs_disassembly,
-        h.freight_cents,
-        h.assembly_cents,
-        h.disassembly_cents,
-        h.other_cents,
-        h.discount_cents,
-        h.notes,
-        override ? 1 : 0,
-        user.id,
-      ],
-    );
-    for (const i of items) {
-      await insert(
-        `INSERT INTO reservation_items (reservation_id, product_id, qty, unit_price_cents, discount_cents)
-         VALUES (?,?,?,?,?)`,
-        [id, i.product_id, i.qty, i.unit_price_cents, i.discount_cents],
-      );
-    }
-    await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,?,'nao_recebida')`, [
-      id,
-      h.deposit_cents,
-    ]);
-    // expande kits nos componentes fisicos antes de qualquer calculo de estoque
-    await rebuildReservationComponents(id);
-    await recalcReservation(id);
-    await syncOperations(id);
-    await logAction(user, "criar", "reserva", id, `${user.name} criou a reserva ${number}`, { items: items.length });
-  });
-
-  const corrida = await guardStock(id, override && user.role === "admin");
-  if (corrida) return corrida;
-
-  revalidatePath("/reservas");
-  revalidatePath("/dashboard");
+  let saved: { id: number; number: string };
+  try {
+    saved = await writeRental(version, { ...h, stock_override: override ? 1 : 0,
+      stock_consider_preparation: options.considerPreparation ? 1 : 0, created_by: user.id }, items);
+  } catch (e) { if ((e as Error).message === STOCK_CHANGED) return STOCK_CHANGED; throw e; }
+  const { id, number } = saved;
+  await insert("INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,?,'nao_recebida')", [id, h.deposit_cents]);
+  await recalcReservation(id);
+  await syncOperations(id);
+  await logAction(user, "criar", "reserva", id, `${user.name} criou a reserva ${number}`, { items: items.length });
+  revalidatePath("/", "layout");
   redirect(`/reservas/${id}`);
 }
 
-/* ------------------------------------------------------------------ */
-/* Edicao                                                              */
-/* ------------------------------------------------------------------ */
-
 export async function updateReservation(_prev: string | null, fd: FormData): Promise<string | null> {
   const user = await requireUser();
+  const version = await stockVersion();
   const id = Number(fd.get("id"));
-  const h = readHeader(fd);
-  const items = readItems(fd);
-  const override = fd.get("override") === "1";
-
-  const current = await one<any>(`SELECT * FROM reservations WHERE id = ?`, [id]);
+  const current = await one<any>("SELECT * FROM reservations WHERE id=?", [id]);
   if (!current) return "Reserva nao encontrada.";
+  let h: ReturnType<typeof readHeader>;
+  try { h = readHeader(fd); } catch (e) { return (e as Error).message; }
+  const items = readItems(fd);
+  const options = { considerPreparation: fd.get("consider_preparation") !== "0" };
+  const override = fd.get("override") === "1" && user.role === "admin";
+  if (!h.customer_id) return "Selecione o cliente.";
   if (!items.length) return "A reserva precisa ter ao menos um item.";
-  if (h.pickup_at < h.delivery_at) return "A retirada nao pode ser anterior a entrega.";
-
-  const holds = (HOLDING_STATUSES as readonly string[]).includes(h.status);
-  if (holds) {
-    const conflicts = await checkConflicts(items, h.delivery_at, h.pickup_at, id);
-    if (conflicts.length) {
-      if (!override) return conflictMessage(conflicts);
-      if (user.role !== "admin") return conflictMessage(conflicts) + " Somente o administrador pode prosseguir.";
-    }
+  const invalid = windowError(h.delivery_at, h.pickup_at);
+  if (invalid) return invalid;
+  if ((HOLDING_STATUSES as readonly string[]).includes(h.status)) {
+    const conflicts = await checkConflicts(items, h.delivery_at, h.pickup_at, id, options);
+    if (conflicts.length && !override) return conflictMessage(conflicts);
   }
-
-  await tx(async () => {
-    await run(
-      `UPDATE reservations SET customer_id=?, status=?, event_date=?, event_time=?, address=?, district=?, city=?,
-              delivery_at=?, pickup_at=?, needs_delivery=?, needs_pickup=?, needs_assembly=?, needs_disassembly=?,
-              freight_cents=?, assembly_cents=?, disassembly_cents=?, other_cents=?, discount_cents=?, notes=?,
-              stock_override=?, updated_at=datetime('now','localtime')
-        WHERE id = ?`,
-      [
-        h.customer_id,
-        h.status,
-        h.event_date,
-        h.event_time,
-        h.address,
-        h.district,
-        h.city,
-        h.delivery_at,
-        h.pickup_at,
-        h.needs_delivery,
-        h.needs_pickup,
-        h.needs_assembly,
-        h.needs_disassembly,
-        h.freight_cents,
-        h.assembly_cents,
-        h.disassembly_cents,
-        h.other_cents,
-        h.discount_cents,
-        h.notes,
-        override ? 1 : current.stock_override,
-        id,
-      ],
-    );
-    await run(`DELETE FROM reservation_items WHERE reservation_id = ?`, [id]);
-    for (const i of items) {
-      await insert(
-        `INSERT INTO reservation_items (reservation_id, product_id, qty, unit_price_cents, discount_cents)
-         VALUES (?,?,?,?,?)`,
-        [id, i.product_id, i.qty, i.unit_price_cents, i.discount_cents],
-      );
-    }
-    const dep = await one<any>(`SELECT id FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`, [id]);
-    if (dep) await run(`UPDATE deposits SET amount_cents = ? WHERE id = ?`, [h.deposit_cents, dep.id]);
-    else await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,?,'nao_recebida')`, [id, h.deposit_cents]);
-
-    // regrava a expansao: alterar quantidade de kits ajusta o consumo fisico
-    await rebuildReservationComponents(id);
-    await recalcReservation(id);
-    await syncOperations(id);
-    await logAction(user, "editar", "reserva", id, `${user.name} alterou a reserva ${current.number}`);
-  });
-
-  revalidatePath(`/reservas/${id}`);
+  try {
+    await writeRental(version, { ...h, stock_override: override ? 1 : current.stock_override,
+      stock_consider_preparation: options.considerPreparation ? 1 : 0 }, items, id);
+  } catch (e) { if ((e as Error).message === STOCK_CHANGED) return STOCK_CHANGED; throw e; }
+  const dep = await one<any>("SELECT id FROM deposits WHERE reservation_id=? ORDER BY id DESC LIMIT 1", [id]);
+  if (dep) await run("UPDATE deposits SET amount_cents=? WHERE id=?", [h.deposit_cents,dep.id]);
+  else await insert("INSERT INTO deposits(reservation_id,amount_cents,status) VALUES(?,?,'nao_recebida')", [id,h.deposit_cents]);
+  await recalcReservation(id);
+  await syncOperations(id);
+  await logAction(user, "editar", "reserva", id, `${user.name} alterou a reserva ${current.number}`);
+  revalidatePath("/", "layout");
   redirect(`/reservas/${id}`);
 }
 
@@ -259,6 +141,7 @@ export async function updateReservation(_prev: string | null, fd: FormData): Pro
 
 export async function changeStatus(fd: FormData) {
   const user = await requireUser();
+  const version = await stockVersion();
   const id = Number(fd.get("id"));
   const status = String(fd.get("status"));
   const r = await one<any>(`SELECT * FROM reservations WHERE id = ?`, [id]);
@@ -270,15 +153,18 @@ export async function changeStatus(fd: FormData) {
 
   // ao voltar a ocupar estoque, revalida disponibilidade
   if ((HOLDING_STATUSES as readonly string[]).includes(status) && !(HOLDING_STATUSES as readonly string[]).includes(r.status)) {
-    const items = await all<any>(`SELECT product_id, qty FROM reservation_items WHERE reservation_id = ?`, [id]);
-    const w = holdWindow(r);
-    const conflicts = await checkConflicts(items, w.from, w.to, id);
+    const conflicts = await checkReservationConflicts(id, { considerPreparation: fd.has("consider_preparation") ? fd.get("consider_preparation") !== "0" : r.stock_consider_preparation !== 0 });
     if (conflicts.length && !r.stock_override) {
       redirect(`/reservas/${id}?erro=${encodeURIComponent(conflictMessage(conflicts))}`);
     }
   }
 
-  await run(`UPDATE reservations SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`, [status, id]);
+  try {
+    await commitStockBatch(version, [{ sql: `UPDATE reservations SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`, params: [status,id] }]);
+  } catch (e) {
+    if ((e as Error).message === STOCK_CHANGED) redirect(`/reservas/${id}?erro=${encodeURIComponent(STOCK_CHANGED)}`);
+    throw e;
+  }
   if (status === "cancelada") {
     await run(`UPDATE reservations SET cancel_reason = ? WHERE id = ?`, [String(fd.get("reason") ?? ""), id]);
   }
@@ -423,9 +309,10 @@ export async function checkStock(payload: {
   from: string;
   to: string;
   excludeId?: number | null;
+  considerPreparation?: boolean;
 }) {
   await requireUser();
-  const conflicts = await checkConflicts(payload.items, payload.from, payload.to, payload.excludeId ?? null);
+  const conflicts = await checkConflicts(payload.items, payload.from, payload.to, payload.excludeId ?? null, { considerPreparation: payload.considerPreparation !== false });
   return conflicts.map((c) => ({
     product_id: c.product_id,
     product: c.product,
@@ -434,7 +321,7 @@ export async function checkStock(payload: {
     available: c.available,
     missing: c.missing,
     components: c.components,
-    holds: c.holds.map((h) => ({ number: h.number, customer: h.customer, qty: h.qty })),
+    holds: c.holds.map((h) => ({ number: h.number, customer: h.customer, qty: h.qty, hold_start: h.hold_start, hold_end: h.hold_end })),
   }));
 }
 
@@ -457,11 +344,23 @@ export async function logWhatsApp(fd: FormData) {
  */
 export async function refreshComposition(fd: FormData) {
   const user = await requireUser();
+  const version = await stockVersion();
   const id = Number(fd.get("id"));
-  const r = await one<any>(`SELECT number FROM reservations WHERE id = ?`, [id]);
+  const r = await one<any>(`SELECT * FROM reservations WHERE id = ?`, [id]);
   if (!r) return;
 
-  await rebuildReservationComponents(id);
+  if ((HOLDING_STATUSES as readonly string[]).includes(r.status)) {
+    const items = await all<any>(`SELECT product_id, qty FROM reservation_items WHERE reservation_id = ?`, [id]);
+    const w = holdWindow(r);
+    const conflicts = await checkConflicts(items, w.from, w.to, id, { considerPreparation: fd.has("consider_preparation") ? fd.get("consider_preparation") !== "0" : r.stock_consider_preparation !== 0 });
+    if (conflicts.length && !r.stock_override) redirect(`/reservas/${id}?erro=${encodeURIComponent(conflictsMessage(conflicts))}`);
+  }
+
+  try { await rebuildReservationComponents(id, version); }
+  catch (e) {
+    if ((e as Error).message === STOCK_CHANGED) redirect(`/reservas/${id}?erro=${encodeURIComponent(STOCK_CHANGED)}`);
+    throw e;
+  }
   await logAction(
     user,
     "editar",

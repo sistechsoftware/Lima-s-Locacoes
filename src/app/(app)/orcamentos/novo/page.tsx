@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui";
 import QuoteForm from "../QuoteForm";
 import { createQuote } from "../actions";
 import { sellableProducts } from "@/lib/stock";
+import { preparationMinutes } from "@/lib/availability-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function NovoOrcamentoPage({
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader title="Novo orcamento" subtitle="Depois basta converter em reserva" />
       <QuoteForm
+        preparationMinutes={await preparationMinutes()}
         action={createQuote}
         products={products}
         customers={customers}

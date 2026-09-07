@@ -105,7 +105,7 @@ export default function ProductForm({
           </Field>
         ) : (
           <Field label="Quantidade total" hint="Kit nao tem estoque proprio: vem dos componentes.">
-            <input value={capacidade ? `${capacidade} kit(s) montaveis` : "definido pelos componentes"} className="campo" disabled />
+            <input value={capacidade ? `${capacidade} kit(s): capacidade teorica, sem reservas/manutencao` : "definido pelos componentes"} className="campo" disabled />
           </Field>
         )}
 

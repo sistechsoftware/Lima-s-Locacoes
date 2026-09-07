@@ -1,4 +1,8 @@
 import Link from "next/link";
+import AvailabilityFilter from "@/components/AvailabilityFilter";
+import { availabilityQuery, type AvailabilityParams } from "@/lib/availability-time";
+import { stockOptions } from "@/lib/availability-settings";
+import { dateTimeBR } from "@/lib/format";
 import { requireUser } from "@/lib/auth";
 import { availabilityByCategory, timelinesByProduct, type Availability } from "@/lib/stock";
 import { timeBR } from "@/lib/format";
@@ -24,16 +28,16 @@ export const dynamic = "force-dynamic";
 export default async function DisponibilidadePage({
   searchParams,
 }: {
-  searchParams: Promise<{ data?: string; ate?: string }>;
+  searchParams: Promise<AvailabilityParams>;
 }) {
   await requireUser();
   const sp = await searchParams;
-  const data = sp.data || today();
-  const ate = sp.ate || data;
+  const query = availabilityQuery(sp);
+  const options = await stockOptions(query);
 
   const [grupos, linhas] = await Promise.all([
-    availabilityByCategory(`${data}T00:00`, `${ate}T23:59`),
-    timelinesByProduct(`${data}T00:00`, `${ate}T23:59`),
+    availabilityByCategory(query.from, query.to, options),
+    timelinesByProduct(query.from, query.to, options),
   ]);
 
   const todos = grupos.flatMap((g) => g.products);
@@ -47,7 +51,7 @@ export default async function DisponibilidadePage({
   const esgotados = todos.filter((p) => p.available <= 0).length;
 
   const resumoTexto =
-    `Disponibilidade para ${dateBR(data)}${ate !== data ? ` ate ${dateBR(ate)}` : ""}:\n` +
+    `${query.label}. Sao Paulo. Preparacao: ${options.preparationMinutes} min${query.considerPreparation ? " considerada" : " desativada"}.\n` +
     [
       ...(kits.length > 0
         ? [
@@ -72,27 +76,12 @@ export default async function DisponibilidadePage({
         subtitle="Consulte antes de responder o cliente no WhatsApp"
       />
 
-      <Card>
-        <form className="flex flex-wrap items-end gap-2">
-          <label className="min-w-[9rem] flex-1">
-            <span className="rotulo">Data inicial</span>
-            <input type="date" name="data" defaultValue={data} className="campo" />
-          </label>
-          <label className="min-w-[9rem] flex-1">
-            <span className="rotulo">Data final</span>
-            <input type="date" name="ate" defaultValue={ate} className="campo" />
-          </label>
-          <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Consultar</button>
-        </form>
-        <p className="mt-2 text-xs text-stone-500">
-          O calculo considera o pico de uso simultaneo entre a entrega e a retirada de cada reserva.
-        </p>
-      </Card>
+      <AvailabilityFilter query={query} minutes={options.preparationMinutes} />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <Stat label="Produtos disponiveis" value={comEstoque} tone="verde" />
         <Stat label="Sem disponibilidade" value={esgotados} tone={esgotados > 0 ? "vermelho" : "verde"} />
-        <Stat label="Periodo" value={dateBR(data) === dateBR(ate) ? dateBR(data) : `${dateBR(data)} - ${dateBR(ate)}`} />
+        <Stat label="Horario inicial" value={dateTimeBR(query.from)} />
       </div>
 
       {todos.length === 0 && <Alerta tone="ambar">Nenhum produto ativo cadastrado.</Alerta>}
@@ -105,7 +94,7 @@ export default async function DisponibilidadePage({
           </header>
           <div className="divide-y divide-nuvem-200">
             {kits.map((k) => (
-              <Link key={k.product_id} href={`/estoque/${k.product_id}`} className="block px-4 py-3">
+              <Link key={k.product_id} href={`/estoque/${k.product_id}?${query.queryString}`} className="block px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-tinta-900">{k.name}</p>
@@ -146,7 +135,7 @@ export default async function DisponibilidadePage({
                   const pct = p.effective > 0 ? Math.round((p.reserved / p.effective) * 100) : 0;
                   const trechos = linhas.get(p.product_id) ?? [];
                   return (
-                    <Link key={p.product_id} href={`/estoque/${p.product_id}`} className="block px-4 py-3">
+                    <Link key={p.product_id} href={`/estoque/${p.product_id}?${query.queryString}`} className="block px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-bold text-tinta-900">{p.name}</p>
@@ -161,7 +150,7 @@ export default async function DisponibilidadePage({
                             <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs">
                               {trechos.map((t) => (
                                 <span key={t.from} className={t.available > 0 ? "text-emerald-700" : "text-red-600"}>
-                                  <b>{Math.max(0, t.available)}</b> das {timeBR(t.from)} as {timeBR(t.to)}
+                                  <b>{Math.max(0, t.available)}</b> de {dateTimeBR(t.from)} ate {dateTimeBR(t.to)}
                                 </span>
                               ))}
                             </p>

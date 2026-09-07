@@ -1,4 +1,6 @@
 import "server-only";
+import { availabilityQuery, type AvailabilityQuery } from "./availability-time";
+import { type StockOptions } from "./availability-settings";
 import { all, one, scalar } from "./db";
 import { addDays, endOfMonth, startOfMonth, startOfWeek, today } from "./format";
 import { availabilityAll, kitsFromPhysical } from "./stock";
@@ -126,7 +128,7 @@ export async function agendaEvents(from: string, to: string): Promise<AgendaEven
 
 /* -------------------------------- indicadores -------------------------------- */
 
-export async function dashboardStats() {
+export async function dashboardStats(query: AvailabilityQuery = availabilityQuery(), options: StockOptions = query) {
   const d0 = today();
   const weekStart = startOfWeek(d0);
   const weekEnd = addDays(weekStart, 6);
@@ -174,7 +176,7 @@ export async function dashboardStats() {
        FROM operations GROUP BY kind`,
       [d0],
     ),
-    availabilityAll(`${d0}T00:00`, `${d0}T23:59`),
+    availabilityAll(query.from, query.to, null, options),
   ]);
 
   const porTipo = new Map(ops.map((o) => [o.kind, o]));

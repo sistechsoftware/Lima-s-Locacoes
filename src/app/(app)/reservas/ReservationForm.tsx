@@ -9,6 +9,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { money, parseMoney } from "@/lib/format";
 import { RESERVATION_STATUS } from "@/lib/domain";
 import { checkStock } from "./actions";
+import { useStockCheck } from "@/components/useStockCheck";
+import PreparationChoice from "@/components/PreparationChoice";
 
 type Customer = { id: number; name: string; phone: string; address: string; district: string; city: string };
 type Action = (prev: string | null, fd: FormData) => Promise<string | null>;
@@ -23,6 +25,7 @@ export default function ReservationForm({
   defaultCustomerId,
   freteInicial,
   submitLabel = "Salvar reserva",
+  preparationMinutes = 0,
 }: {
   action: Action;
   products: Product[];
@@ -34,6 +37,7 @@ export default function ReservationForm({
   /** Preenche o frete quando vem da calculadora. */
   freteInicial?: string;
   submitLabel?: string;
+  preparationMinutes?: number;
 }) {
   const [error, formAction] = useActionState(action, null);
   const [items, setItems] = useState<ItemRow[]>(initialItems);
@@ -51,8 +55,8 @@ export default function ReservationForm({
   const [other, setOther] = useState(cents(reservation?.other_cents));
   const [discount, setDiscount] = useState(cents(reservation?.discount_cents));
 
-  const [conflicts, setConflicts] = useState<any[]>([]);
-  const [checking, startCheck] = useTransition();
+  const [considerPreparation, setConsiderPreparation] = useState(reservation?.stock_consider_preparation !== 0);
+  const { conflicts, checking, error: stockError } = useStockCheck(items, deliveryAt, pickupAt, considerPreparation, reservation?.id);
   const [override, setOverride] = useState(false);
 
   // preenche o endereco a partir do cliente quando ainda estiver vazio
@@ -72,24 +76,6 @@ export default function ReservationForm({
     if (!pickupAt) setPickupAt(`${nextDay(eventDate)}T10:00`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventDate]);
-
-  // verifica estoque sempre que itens ou janela mudarem
-  useEffect(() => {
-    const from = deliveryAt || (eventDate ? `${eventDate}T00:00` : "");
-    const to = pickupAt || (eventDate ? `${eventDate}T23:59` : "");
-    if (!items.length || !from || !to) {
-      setConflicts([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      startCheck(async () => {
-        const result = await checkStock({ items, from, to, excludeId: reservation?.id ?? null });
-        setConflicts(result);
-      });
-    }, 350);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, deliveryAt, pickupAt, eventDate]);
 
   const stockInfo: StockInfo = useMemo(
     () =>
@@ -186,6 +172,7 @@ export default function ReservationForm({
           <Field label="Entrega em" hint="Define quando o equipamento sai do estoque.">
             <input
               name="delivery_at"
+              required
               type="datetime-local"
               value={deliveryAt}
               onChange={(e) => setDeliveryAt(e.target.value)}
@@ -195,6 +182,7 @@ export default function ReservationForm({
           <Field label="Retirada em" hint="Define quando o equipamento volta ao estoque.">
             <input
               name="pickup_at"
+              required
               type="datetime-local"
               value={pickupAt}
               onChange={(e) => setPickupAt(e.target.value)}
@@ -202,6 +190,8 @@ export default function ReservationForm({
             />
           </Field>
         </Grid>
+        <PreparationChoice value={considerPreparation} onChange={setConsiderPreparation} minutes={preparationMinutes} from={deliveryAt} to={pickupAt} />
+        {stockError && <Alerta tone="ambar">{stockError}</Alerta>}
         <div className="mt-3 grid grid-cols-2 gap-2">
           {[
             ["needs_delivery", "Entrega", reservation ? !!reservation.needs_delivery : true],

@@ -1,4 +1,6 @@
 "use server";
+import { windowError } from "@/lib/availability-time";
+import { stockVersion, writeRental, STOCK_CHANGED } from "@/lib/stock-write";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { all, insert, nextNumber, one, run, tx } from "@/lib/db";
@@ -50,7 +52,10 @@ function readHeader(fd: FormData) {
 
 export async function createQuote(_prev: string | null, fd: FormData): Promise<string | null> {
   const user = await requireUser();
-  const h = readHeader(fd);
+  let h: ReturnType<typeof readHeader>;
+  try { h = readHeader(fd); } catch (e) { return (e as Error).message; }
+  const invalidWindow = windowError(h.delivery_at, h.pickup_at);
+  if (invalidWindow) return invalidWindow;
   const items = readItems(fd);
   if (!h.customer_id) return "Selecione o cliente.";
   if (!items.length) return "Adicione ao menos um item.";
@@ -97,6 +102,7 @@ export async function createQuote(_prev: string | null, fd: FormData): Promise<s
     await logAction(user, "criar", "orcamento", id, `${user.name} criou o orcamento ${number}`);
   });
 
+  await run(`UPDATE quotes SET stock_consider_preparation = ? WHERE id = ?`, [fd.get("consider_preparation") === "0" ? 0 : 1, id]);
   revalidatePath("/orcamentos");
   redirect(`/orcamentos/${id}`);
 }
@@ -104,7 +110,10 @@ export async function createQuote(_prev: string | null, fd: FormData): Promise<s
 export async function updateQuote(_prev: string | null, fd: FormData): Promise<string | null> {
   const user = await requireUser();
   const id = Number(fd.get("id"));
-  const h = readHeader(fd);
+  let h: ReturnType<typeof readHeader>;
+  try { h = readHeader(fd); } catch (e) { return (e as Error).message; }
+  const invalidWindow = windowError(h.delivery_at, h.pickup_at);
+  if (invalidWindow) return invalidWindow;
   const items = readItems(fd);
   const q = await one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
   if (!q) return "Orcamento nao encontrado.";
@@ -152,6 +161,7 @@ export async function updateQuote(_prev: string | null, fd: FormData): Promise<s
   });
 
   revalidatePath(`/orcamentos/${id}`);
+  await run(`UPDATE quotes SET stock_consider_preparation = ? WHERE id = ?`, [fd.get("consider_preparation") === "0" ? 0 : 1, id]);
   redirect(`/orcamentos/${id}`);
 }
 
@@ -169,11 +179,14 @@ export async function setQuoteStatus(fd: FormData) {
 /** Converte o orcamento em reserva mantendo todos os dados e itens. */
 export async function convertQuote(fd: FormData) {
   const user = await requireUser();
+  const version = await stockVersion();
   const id = Number(fd.get("id"));
   const force = fd.get("override") === "1";
   const q = await one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
   if (!q) return;
   if (q.reservation_id) redirect(`/reservas/${q.reservation_id}`);
+  const invalidWindow = windowError(q.delivery_at, q.pickup_at);
+  if (invalidWindow) redirect(`/orcamentos/${id}?erro=${encodeURIComponent(invalidWindow)}`);
 
   const items = await all<any>(`SELECT * FROM quote_items WHERE quote_id = ?`, [id]);
   if (!items.length) redirect(`/orcamentos/${id}?erro=${encodeURIComponent("Orcamento sem itens.")}`);
@@ -182,60 +195,31 @@ export async function convertQuote(fd: FormData) {
     items.map((i) => ({ product_id: i.product_id, qty: i.qty })),
     q.delivery_at,
     q.pickup_at,
+    null,
+    { considerPreparation: fd.has("consider_preparation") ? fd.get("consider_preparation") !== "0" : q.stock_consider_preparation !== 0 },
   );
   if (conflicts.length && !(force && user.role === "admin")) {
     const msg = conflictsMessage(conflicts);
     redirect(`/orcamentos/${id}?erro=${encodeURIComponent(msg)}`);
   }
 
-  let reservationId = 0;
-  await tx(async () => {
-    const number = await nextNumber("reservations", "LIMA");
-    reservationId = await insert(
-      `INSERT INTO reservations
-        (number, customer_id, status, event_date, event_time, address, district, city, delivery_at, pickup_at,
-         needs_delivery, needs_pickup, freight_cents, assembly_cents, disassembly_cents, other_cents, discount_cents,
-         notes, quote_id, stock_override, created_by)
-       VALUES (?,?,'confirmada',?,?,?,?,?,?,?,1,1,?,?,?,?,?,?,?,?,?)`,
-      [
-        number,
-        q.customer_id,
-        q.event_date,
-        q.event_time,
-        q.address,
-        q.district,
-        q.city,
-        q.delivery_at,
-        q.pickup_at,
-        q.freight_cents,
-        q.assembly_cents,
-        q.disassembly_cents,
-        q.other_cents,
-        q.discount_cents,
-        q.notes,
-        q.id,
-        force ? 1 : 0,
-        user.id,
-      ],
-    );
-    for (const i of items) {
-      await insert(
-        `INSERT INTO reservation_items (reservation_id, product_id, qty, unit_price_cents, discount_cents)
-         VALUES (?,?,?,?,?)`,
-        [reservationId, i.product_id, i.qty, i.unit_price_cents, i.discount_cents],
-      );
-    }
-    await insert(`INSERT INTO deposits (reservation_id, amount_cents, status) VALUES (?,0,'nao_recebida')`, [reservationId]);
-    await run(`UPDATE reservations SET needs_assembly = ? WHERE id = ?`, [q.assembly_cents > 0 ? 1 : 0, reservationId]);
-    await run(`UPDATE reservations SET needs_disassembly = ? WHERE id = ?`, [q.disassembly_cents > 0 ? 1 : 0, reservationId]);
-    // expande kits do orcamento nos componentes fisicos da reserva
-    await rebuildReservationComponents(reservationId);
-    await recalcReservation(reservationId);
-    await syncOperations(reservationId);
-    await run(`UPDATE quotes SET status = 'convertido', reservation_id = ? WHERE id = ?`, [reservationId, id]);
-    await logAction(user, "converter", "orcamento", id, `${user.name} converteu o orcamento ${q.number} na reserva ${number}`);
-    await logAction(user, "criar", "reserva", reservationId, `Reserva ${number} criada a partir do orcamento ${q.number}`);
-  });
+  const considerPreparation = fd.has("consider_preparation") ? fd.get("consider_preparation") !== "0" : q.stock_consider_preparation !== 0;
+  let saved: { id: number; number: string };
+  try {
+    saved = await writeRental(version, { ...q, status: "confirmada", quote_id: id, created_by: user.id,
+      needs_delivery: 1, needs_pickup: 1, needs_assembly: q.assembly_cents > 0 ? 1 : 0,
+      needs_disassembly: q.disassembly_cents > 0 ? 1 : 0, stock_override: force && user.role === "admin" ? 1 : 0,
+      stock_consider_preparation: considerPreparation ? 1 : 0 }, items, undefined, id);
+  } catch (e) {
+    if ((e as Error).message === STOCK_CHANGED) redirect(`/orcamentos/${id}?erro=${encodeURIComponent(STOCK_CHANGED)}`);
+    throw e;
+  }
+  const { id: reservationId, number } = saved;
+  await insert("INSERT INTO deposits (reservation_id,amount_cents,status) VALUES (?,0,'nao_recebida')", [reservationId]);
+  await recalcReservation(reservationId);
+  await syncOperations(reservationId);
+  await logAction(user, "converter", "orcamento", id, `${user.name} converteu o orcamento ${q.number} na reserva ${number}`);
+  await logAction(user, "criar", "reserva", reservationId, `Reserva ${number} criada a partir do orcamento ${q.number}`);
 
   revalidatePath("/orcamentos");
   revalidatePath("/reservas");

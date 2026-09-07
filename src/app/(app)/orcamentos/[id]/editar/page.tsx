@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui";
 import QuoteForm from "../../QuoteForm";
 import { updateQuote } from "../../actions";
 import { sellableProducts } from "@/lib/stock";
+import { preparationMinutes } from "@/lib/availability-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function EditarOrcamentoPage({ params }: { params: Promise<
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader title={`Editar ${quote.number}`} />
       <QuoteForm
+        preparationMinutes={await preparationMinutes()}
         action={updateQuote}
         products={products}
         customers={customers}

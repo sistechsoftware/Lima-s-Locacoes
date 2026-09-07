@@ -1,9 +1,20 @@
 "use server";
+import { preparationValue } from "@/lib/availability-time";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { getSettings, setSettings } from "@/lib/settings";
+
+export async function saveStockSettings(fd: FormData) {
+  const user = await assertAdmin();
+  let minutes: number;
+  try { minutes = preparationValue(fd.get("stock_preparation_minutes")); }
+  catch (e) { redirect(`/configuracoes?aba=disponibilidade&erro=${encodeURIComponent((e as Error).message)}`); }
+  await setSettings({ stock_preparation_minutes: String(minutes) });
+  await logAction(user, "editar", "configuracao", null, `${user.name} configurou ${minutes} minutos de preparacao do estoque`);
+  revalidatePath("/", "layout");
+}
 import { logAction } from "@/lib/audit";
 import { saveUpload, UploadError, removeFileByUrl } from "@/lib/uploads";
 import { parseMoney } from "@/lib/format";

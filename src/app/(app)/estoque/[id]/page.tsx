@@ -1,4 +1,8 @@
 import Link from "next/link";
+import AvailabilityFilter from "@/components/AvailabilityFilter";
+import { availabilityQuery, addMinutes, type AvailabilityParams } from "@/lib/availability-time";
+import { stockOptions } from "@/lib/availability-settings";
+import { dateTimeBR } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { all, one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -17,31 +21,37 @@ export default async function ProdutoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ aviso?: string }>;
+  searchParams: Promise<AvailabilityParams & { aviso?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
-  const { aviso } = await searchParams;
+  const sp = await searchParams;
+  const { aviso } = sp;
+  const query = availabilityQuery(sp);
+  const options = await stockOptions(query);
   const p = await one<any>(
     `SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
     [Number(id)],
   );
   if (!p) notFound();
 
-  const d0 = today();
-  const hoje = await availabilityFor(p.id, `${d0}T00:00`, `${d0}T23:59`);
+  const d0 = query.from.slice(0, 10);
+  const hoje = await availabilityFor(p.id, query.from, query.to, null, options);
   const proximos = await Promise.all(
     Array.from({ length: 14 }, async (_, i) => {
       const d = addDays(d0, i);
-      return { date: d, ...(await availabilityFor(p.id, `${d}T00:00`, `${d}T23:59`)) };
+      const from = addMinutes(query.from, i * 1440), to = addMinutes(query.to, i * 1440);
+      return { date: d, from, to, ...(await availabilityFor(p.id, from, to, null, options)) };
     }),
   );
-  const holds = await holdsForProduct(p.id, `${d0}T00:00`, `${addDays(d0, 60)}T23:59`);
   const units = await all<any>(`SELECT * FROM product_units WHERE product_id = ? ORDER BY code`, [p.id]);
   const maint = await all<any>(`SELECT * FROM maintenance WHERE product_id = ? ORDER BY status, id DESC LIMIT 20`, [p.id]);
   const historico = (await logsFor("produto", p.id)).slice(0, 10);
   const ehKit = p.kind === "kit";
   const componentes = ehKit ? await componentsOf(p.id) : [];
+  const holds = (await Promise.all((ehKit ? componentes.map((c: any) => ({ id: c.component_product_id, name: c.component_name })) : [{ id: p.id, name: p.name }]).map(async (c: any) =>
+    (await holdsForProduct(c.id, query.from, addMinutes(query.to, 60 * 1440), null, null, options)).map((h) => ({ ...h, physicalName: c.name }))
+  ))).flat();
   const kitsQueUsam = ehKit ? [] : await kitsUsing(p.id);
 
   const usos = (await all<any>(
@@ -59,11 +69,12 @@ export default async function ProdutoPage({
         action={
           <>
             <LinkButton href={`/estoque/${p.id}/editar`}>Editar</LinkButton>
-            <LinkButton href="/disponibilidade" variant="secundario">Consultar data</LinkButton>
+            <LinkButton href={`/disponibilidade?${query.queryString}`} variant="secundario">Consultar disponibilidade</LinkButton>
           </>
         }
       />
 
+      <AvailabilityFilter query={query} minutes={options.preparationMinutes} />
       {aviso === "componente" && (
         <Alerta tone="ambar" title="Produto inativado">
           Este produto faz parte da composicao de um ou mais kits, por isso foi inativado em vez de excluido.
@@ -79,9 +90,9 @@ export default async function ProdutoPage({
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Stat label={ehKit ? "Estoque proprio" : "Total"} value={ehKit ? "-" : p.total_qty} />
-        <Stat label="Reservado hoje" value={ehKit ? "-" : hoje.reserved} />
+        <Stat label="Reservado na consulta" value={ehKit ? "-" : hoje.reserved} />
         <Stat
-          label={ehKit ? "Kits montaveis hoje" : "Disponivel hoje"}
+          label={ehKit ? "Kits montaveis na consulta" : "Disponivel na consulta"}
           value={Math.max(0, hoje.available)}
           tone={hoje.available <= 0 ? "vermelho" : "verde"}
         />
@@ -102,7 +113,7 @@ export default async function ProdutoPage({
             <ul className="divide-y divide-nuvem-200">
               {componentes.map((c: any) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 py-2">
-                  <Link href={`/estoque/${c.component_product_id}`} className="min-w-0">
+                  <Link href={`/estoque/${c.component_product_id}?${query.queryString}`} className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-marca-600">{c.component_name}</span>
                     <span className="block text-xs text-stone-500">
                       {c.component_code} - estoque total {c.total_qty} un.
@@ -121,7 +132,7 @@ export default async function ProdutoPage({
           <ul className="divide-y divide-nuvem-200">
             {kitsQueUsam.map((k: any) => (
               <li key={k.id} className="flex items-center justify-between gap-3 py-2">
-                <Link href={`/estoque/${k.id}`} className="min-w-0 truncate text-sm font-semibold text-marca-600">
+                <Link href={`/estoque/${k.id}?${query.queryString}`} className="min-w-0 truncate text-sm font-semibold text-marca-600">
                   {k.name}
                 </Link>
                 <span className="shrink-0 text-sm text-stone-500">{k.quantity} un. por kit</span>
@@ -152,6 +163,7 @@ export default async function ProdutoPage({
         </Section>
 
         <Section title="Disponibilidade dos proximos 14 dias">
+          <p className="mb-2 text-xs text-stone-500">A mesma consulta deslocada dia a dia, mantendo os horarios e a duracao. Preparacao: {options.preparationMinutes} min.</p>
           <div className="grid grid-cols-7 gap-1.5">
             {proximos.map((d) => (
               <div
@@ -159,7 +171,7 @@ export default async function ProdutoPage({
                 className={`rounded-lg p-1.5 text-center ${
                   d.available <= 0 ? "bg-red-100 text-red-800" : d.low ? "bg-amber-100 text-amber-800" : "bg-emerald-50 text-emerald-800"
                 }`}
-                title={`${dateBR(d.date)}: ${d.available} disponivel`}
+                title={`${dateTimeBR(d.from)} ate ${dateTimeBR(d.to)}: ${d.available} disponivel`}
               >
                 <p className="text-[0.6rem] font-semibold">{d.date.slice(8, 10)}/{d.date.slice(5, 7)}</p>
                 <p className="text-sm font-bold leading-tight">{Math.max(0, d.available)}</p>
@@ -177,7 +189,7 @@ export default async function ProdutoPage({
                   <Link href={`/reservas/${h.reservation_id}`} className="min-w-0">
                     <span className="block truncate font-semibold text-marca-600">{h.number} - {h.customer}</span>
                     <span className="block text-xs text-stone-500">
-                      {dateBR(h.hold_start)} ate {dateBR(h.hold_end)}
+                      {dateTimeBR(h.hold_start)} ate {dateTimeBR(h.hold_end)} — {h.physicalName}
                     </span>
                   </Link>
                   <span className="shrink-0 font-bold">{h.qty} un.</span>

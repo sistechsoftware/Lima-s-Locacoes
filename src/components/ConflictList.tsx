@@ -36,7 +36,7 @@ export default function ConflictList({ conflicts }: { conflicts: ConflictView[] 
             </>
           ) : (
             <>
-              <b>{c.product}</b>: pedido {c.requested}, disponivel {c.available} nesta data.
+              <b>{c.product}</b>: pedido {c.requested}, disponivel {c.available} neste intervalo.
             </>
           )}
           {!!c.holds?.length && (

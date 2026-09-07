@@ -1,4 +1,8 @@
 import Link from "next/link";
+import AvailabilityFilter from "@/components/AvailabilityFilter";
+import { availabilityQuery, type AvailabilityParams } from "@/lib/availability-time";
+import { stockOptions } from "@/lib/availability-settings";
+import { scanConflicts } from "@/lib/stock";
 import { requireUser } from "@/lib/auth";
 import { listNotifications, rebuildNotifications } from "@/lib/notifications";
 import { Empty, PageHeader, Stat } from "@/components/ui";
@@ -23,10 +27,14 @@ const TIPOS = [
 export default async function NotificacoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipo?: string }>;
+  searchParams: Promise<AvailabilityParams & { tipo?: string }>;
 }) {
   await requireUser();
-  const { tipo = "todos" } = await searchParams;
+  const sp = await searchParams;
+  const { tipo = "todos" } = sp;
+  const query = availabilityQuery(sp);
+  const options = await stockOptions(query);
+  const conflicts = await scanConflicts(query.from, options, query.to);
   await rebuildNotifications({ force: true });
   const todas = await listNotifications();
   const lista = tipo === "todos" ? todas : todas.filter((n: any) => n.type === tipo);
@@ -53,7 +61,13 @@ export default async function NotificacoesPage({
       </div>
 
       <Link href="/notificacoes" className="text-marca-600 underline">Minha central de notificacoes</Link>
-      <Tabs items={TIPOS} current={tipo} base="/notificacoes/alertas" param="tipo" />
+      <AvailabilityFilter query={query} minutes={options.preparationMinutes} hidden={{ tipo }} />
+      <section className="cartao p-3 space-y-2"><h2 className="font-semibold">Conflitos no horario ou intervalo consultado</h2>
+        {!conflicts.length && <p className="text-sm">Nenhum conflito de estoque nesta consulta.</p>}
+        {conflicts.map((c) => <p key={c.reservation_id} className="text-sm"><Link href={`/reservas/${c.reservation_id}?preparo=${query.considerPreparation ? 1 : 0}`} className="text-marca-600 underline">{c.number}</Link>: {c.faltas.map(f => `${f.product}: faltam ${f.missing}`).join("; ")}</p>)}
+      </section>
+      <p className="text-xs text-stone-500">Os alertas automaticos abaixo verificam os compromissos futuros com a preparacao configurada sempre ativa. O filtro acima e uma simulacao e nao altera alertas compartilhados.</p>
+      <Tabs items={TIPOS} current={tipo} base={`/notificacoes/alertas?${query.queryString}`} param="tipo" />
 
       {lista.length === 0 ? (
         <Empty>Nenhum alerta neste filtro. Operacao em dia.</Empty>

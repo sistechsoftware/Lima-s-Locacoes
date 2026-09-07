@@ -96,10 +96,8 @@ function normalize(params: any[]): any[] {
  *
  * O D1 nao oferece transacao interativa (BEGIN/COMMIT dirigido pela
  * aplicacao), apenas `batch()` para um conjunto de statements ja conhecido.
- * Como as escritas de reserva dependem do id gerado pelo INSERT anterior,
- * elas nao cabem num unico batch. Por isso o controle de concorrencia de
- * estoque e feito por verificacao pos-escrita com rollback deterministico
- * (ver guardStock em lib/stock.ts), e nao por bloqueio de transacao.
+ * Este helper legado NAO e uma transacao. Escritas que alteram a ocupacao de
+ * reservas usam stock-write.ts: revisao otimista e batch atomico real.
  */
 export async function tx<T>(fn: () => Promise<T>): Promise<T> {
   return fn();
