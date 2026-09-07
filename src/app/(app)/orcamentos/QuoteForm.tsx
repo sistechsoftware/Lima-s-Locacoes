@@ -170,7 +170,7 @@ export default function QuoteForm({
             </Alerta>
           </div>
         )}
-        <ItemsEditor products={products} items={items} onChange={setItems} stock={stockInfo} />
+        <ItemsEditor products={products} items={items} onChange={setItems} stock={stockInfo} dataReferencia={eventDate} />
       </section>
 
       <section className="cartao p-4">

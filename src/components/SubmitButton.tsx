@@ -10,6 +10,7 @@ export function SubmitButton({
   name,
   value,
   formAction,
+  disabled = false,
 }: {
   children: React.ReactNode;
   variant?: keyof typeof BTN;
@@ -18,6 +19,8 @@ export function SubmitButton({
   name?: string;
   value?: string;
   formAction?: (formData: FormData) => void | Promise<void>;
+  /** Bloqueia o envio quando o formulario ainda tem erro conhecido. */
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
@@ -26,7 +29,7 @@ export function SubmitButton({
       name={name}
       value={value}
       formAction={formAction}
-      disabled={pending}
+      disabled={pending || disabled}
       onClick={(e) => {
         if (confirm && !window.confirm(confirm)) e.preventDefault();
       }}

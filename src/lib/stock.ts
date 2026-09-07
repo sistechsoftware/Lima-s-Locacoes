@@ -1,4 +1,5 @@
 import "server-only";
+import { promocoesAtivasPorProduto } from "./promocoes-db";
 import { all, one, run } from "./db";
 import { HOLDING_STATUSES } from "./domain";
 import {
@@ -105,7 +106,7 @@ export async function loadSpecs(): Promise<SpecMap> {
  * Usado pelos formularios de reserva e orcamento.
  */
 export async function sellableProducts() {
-  const [rows, comps] = await Promise.all([
+  const [rows, comps, promocoes] = await Promise.all([
     all<any>(
       `SELECT p.id, p.code, p.name, p.kind, p.rent_price_cents, p.total_qty, c.name AS category
          FROM products p LEFT JOIN categories c ON c.id = p.category_id
@@ -117,6 +118,10 @@ export async function sellableProducts() {
          FROM product_components pc JOIN products p ON p.id = pc.component_product_id
         ORDER BY p.name`,
     ),
+    // a promocao viaja junto com o produto para o formulario decidir o preco
+    // sem uma consulta por linha; a vigencia por data e avaliada la, contra a
+    // data do evento que o operador escolheu
+    promocoesAtivasPorProduto(),
   ]);
   const byParent = new Map<number, string[]>();
   for (const c of comps) {
@@ -127,6 +132,7 @@ export async function sellableProducts() {
   return rows.map((r) => ({
     ...r,
     composition: r.kind === "kit" ? (byParent.get(r.id) ?? []).join(" + ") || null : null,
+    promocao: promocoes.get(r.id) ?? null,
   }));
 }
 

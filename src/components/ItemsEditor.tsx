@@ -1,6 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { money, parseMoney } from "@/lib/format";
+import { precoUnitario, rotuloFaixa, type Promocao } from "@/lib/promocoes";
 import { Icon } from "./Icons";
 
 export type Product = {
@@ -13,6 +14,8 @@ export type Product = {
   kind?: "simples" | "kit" | string;
   /** Resumo da composicao do kit ("1 Mesa + 4 Cadeira"). */
   composition?: string | null;
+  /** Promocao por quantidade ativa deste produto, quando existir. */
+  promocao?: Promocao | null;
 };
 
 export type ItemRow = {
@@ -20,6 +23,14 @@ export type ItemRow = {
   qty: number;
   unit_price_cents: number;
   discount_cents: number;
+  /**
+   * O operador digitou este preco a mao?
+   *
+   * Enquanto for automatico, mudar a quantidade recalcula pela promocao. Depois
+   * que alguem digita um valor, o sistema para de mexer: sobrescrever o que a
+   * pessoa acabou de escrever seria pior que nao ter promocao nenhuma.
+   */
+  preco_manual?: boolean;
 };
 
 export type StockInfo = Record<number, { available: number; requested: number; missing: number }>;
@@ -30,14 +41,43 @@ export default function ItemsEditor({
   items,
   onChange,
   stock,
+  dataReferencia,
 }: {
   products: Product[];
   items: ItemRow[];
   onChange: (items: ItemRow[]) => void;
   stock?: StockInfo;
+  /**
+   * Data que decide se a promocao esta vigente. Numa reserva e a data do
+   * evento, nao a de hoje: quem fecha em setembro uma festa de novembro
+   * precisa ver o preco de novembro.
+   */
+  dataReferencia?: string;
 }) {
   const [picker, setPicker] = useState("");
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const dia = dataReferencia || new Date().toISOString().slice(0, 10);
+
+  /** Preco que a regra manda cobrar por esta linha, com a faixa que o justifica. */
+  const calcular = (productId: number, qty: number) => {
+    const p = byId.get(productId);
+    return precoUnitario(p?.rent_price_cents ?? 0, p?.promocao, qty, dia);
+  };
+
+  // a promocao muda com a quantidade, entao o preco automatico e recalculado
+  // sempre que a linha muda; a linha com preco digitado a mao fica intacta
+  useEffect(() => {
+    let mudou = false;
+    const ajustados = items.map((i) => {
+      if (i.preco_manual) return i;
+      const alvo = calcular(i.product_id, i.qty).unit_price_cents;
+      if (alvo === i.unit_price_cents) return i;
+      mudou = true;
+      return { ...i, unit_price_cents: alvo };
+    });
+    if (mudou) onChange(ajustados);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, dia]);
 
   const add = (productId: number) => {
     if (!productId) return;
@@ -47,7 +87,15 @@ export default function ItemsEditor({
     if (existing) {
       onChange(items.map((i) => (i.product_id === productId ? { ...i, qty: i.qty + 1 } : i)));
     } else {
-      onChange([...items, { product_id: productId, qty: 1, unit_price_cents: p.rent_price_cents, discount_cents: 0 }]);
+      onChange([
+        ...items,
+        {
+          product_id: productId,
+          qty: 1,
+          unit_price_cents: calcular(productId, 1).unit_price_cents,
+          discount_cents: 0,
+        },
+      ]);
     }
     setPicker("");
   };
@@ -96,6 +144,7 @@ export default function ItemsEditor({
             const p = byId.get(item.product_id);
             const info = stock?.[item.product_id];
             const line = Math.max(0, item.qty * item.unit_price_cents - item.discount_cents);
+            const promo = calcular(item.product_id, item.qty);
             return (
               <div
                 key={item.product_id}
@@ -160,8 +209,14 @@ export default function ItemsEditor({
                   <label className="block">
                     <span className="mb-0.5 block text-[0.68rem] font-semibold uppercase text-stone-500">Valor un.</span>
                     <input
+                      key={`${item.product_id}-${item.unit_price_cents}`}
                       defaultValue={(item.unit_price_cents / 100).toFixed(2)}
-                      onBlur={(e) => patch(index, { unit_price_cents: parseMoney(e.target.value) })}
+                      onBlur={(e) => {
+                        const digitado = parseMoney(e.target.value);
+                        if (digitado === item.unit_price_cents) return;
+                        // a partir daqui o preco e escolha da pessoa, nao da regra
+                        patch(index, { unit_price_cents: digitado, preco_manual: true });
+                      }}
                       inputMode="decimal"
                       className="w-full rounded-lg border border-nuvem-300 px-2 py-2 text-sm outline-none"
                     />
@@ -177,6 +232,26 @@ export default function ItemsEditor({
                     />
                   </label>
                 </div>
+
+                {promo.promocional && !item.preco_manual && (
+                  <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-emerald-50 px-2 py-1.5 text-xs text-emerald-800">
+                    <span className="font-bold">Promocao aplicada</span>
+                    <span>
+                      {rotuloFaixa(promo.faixa!)}: {money(promo.unit_price_cents)} cada
+                    </span>
+                    {p && p.rent_price_cents > promo.unit_price_cents && (
+                      <span className="text-emerald-700">
+                        (normal <s>{money(p.rent_price_cents)}</s>, economia de{" "}
+                        {money((p.rent_price_cents - promo.unit_price_cents) * item.qty)})
+                      </span>
+                    )}
+                  </p>
+                )}
+                {item.preco_manual && p?.promocao && (
+                  <p className="mt-2 text-xs text-stone-500">
+                    Preco digitado a mao: a promocao nao esta sendo aplicada nesta linha.
+                  </p>
+                )}
 
                 <div className="mt-2 flex items-center justify-between">
                   {info ? (
