@@ -28,7 +28,7 @@ import {
   paymentState,
   statusLabel,
 } from "@/lib/domain";
-import { dateBR, dateTimeBR, mapsLink, money, phoneBR, timeBR, today, utcParaLocal } from "@/lib/format";
+import { dateBR, dateTimeBR, dateUtcBR, mapsLink, money, phoneBR, timeBR, today, utcParaLocal } from "@/lib/format";
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, Stat, StatusBadge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -597,7 +597,7 @@ export default async function ReservaPage({
                 >
                   <span>
                     <span className="block text-sm font-bold">{c.number}</span>
-                    <span className="block text-xs text-stone-500">Gerado em {dateBR(c.created_at)}</span>
+                    <span className="block text-xs text-stone-500">Gerado em {dateUtcBR(c.created_at)}</span>
                   </span>
                   <StatusBadge defs={CONTRACT_STATUS} value={c.status} />
                 </Link>

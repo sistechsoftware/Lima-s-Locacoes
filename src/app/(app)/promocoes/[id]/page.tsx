@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { getPromocao } from "@/lib/promocoes-db";
 import { rotuloFaixa, validarFaixas, vigente } from "@/lib/promocoes";
 import { logsFor } from "@/lib/audit";
-import { dateBR, money, today } from "@/lib/format";
+import { dateBR, money, today, utcParaLocal } from "@/lib/format";
 import { Alerta, Badge, Card, LinkButton, PageHeader, Section, Stat } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { deletePromotion, togglePromotion } from "../actions";
@@ -120,7 +120,7 @@ export default async function PromocaoPage({ params }: { params: Promise<{ id: s
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
-                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span className="shrink-0 text-xs text-stone-400">{utcParaLocal(h.created_at)}</span>
                 <span>{h.summary}</span>
               </li>
             ))}

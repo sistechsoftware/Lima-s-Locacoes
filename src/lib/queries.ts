@@ -231,13 +231,16 @@ export async function dashboardStats(query: AvailabilityQuery = availabilityQuer
 
 /* --------------------------------- clientes ---------------------------------- */
 
+// date('now','localtime') devolve UTC no Worker, entao das 21h a meia-noite ele
+// ja esta no dia seguinte e uma reserva de amanha entraria como "ultima". O
+// deslocamento explicito mantem a conta no fuso de Brasilia em qualquer maquina.
 export const CUSTOMER_SELECT = `
   SELECT c.*,
          (SELECT COUNT(*) FROM reservations r WHERE r.customer_id = c.id AND r.status <> 'cancelada') AS locacoes,
          (SELECT COUNT(*) FROM reservations r WHERE r.customer_id = c.id AND r.status = 'cancelada') AS canceladas,
          (SELECT COALESCE(SUM(r.total_cents),0) FROM reservations r WHERE r.customer_id = c.id AND r.status IN (${ACTIVE})) AS total_cents,
-         (SELECT MAX(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date <= date('now','localtime') AND r.status <> 'cancelada') AS ultima,
-         (SELECT MIN(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date > date('now','localtime') AND r.status <> 'cancelada') AS proxima,
+         (SELECT MAX(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date <= date('now','-3 hours') AND r.status <> 'cancelada') AS ultima,
+         (SELECT MIN(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date > date('now','-3 hours') AND r.status <> 'cancelada') AS proxima,
          (SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)),0)
             FROM reservations r WHERE r.customer_id = c.id AND r.status IN (${ACTIVE})) AS saldo_cents
     FROM customers c`;

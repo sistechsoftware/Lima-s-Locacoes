@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { quoteItems } from "@/lib/reservations";
 import { QUOTE_STATUS, statusLabel } from "@/lib/domain";
-import { dateBR, docBR, money, phoneBR, timeBR } from "@/lib/format";
+import { dateBR, dateUtcBR, docBR, money, phoneBR, timeBR } from "@/lib/format";
 import PrintButton from "@/app/(app)/contratos/[id]/PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -95,7 +95,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
           <div className="text-right">
             <p className="text-xs font-bold uppercase tracking-wide text-stone-500">Orcamento</p>
             <p className="text-xl font-black text-marca-600">{q.number}</p>
-            <p className="text-xs text-stone-600">Emitido em {dateBR(q.created_at)}</p>
+            <p className="text-xs text-stone-600">Emitido em {dateUtcBR(q.created_at)}</p>
             {q.valid_until && <p className="text-xs text-stone-600">Valido ate {dateBR(q.valid_until)}</p>}
             <p className="text-xs text-stone-600">Status: {statusLabel(QUOTE_STATUS, q.status)}</p>
           </div>

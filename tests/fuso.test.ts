@@ -7,7 +7,7 @@
  */
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { addDays, dateBR, endOfMonth, nowLocal, parseMoney, startOfWeek, toISODate, today, utcParaLocal, valorValido } from "../src/lib/format.ts";
+import { addDays, dateBR, dateUtcBR, endOfMonth, nowLocal, parseMoney, startOfWeek, toISODate, today, utcParaLocal, valorValido } from "../src/lib/format.ts";
 
 describe("datas no fuso do negocio", () => {
   before(() => {
@@ -112,5 +112,27 @@ describe("leitura de valor digitado", () => {
   it("zero e valido como texto, mas continua sendo zero", () => {
     assert.ok(valorValido("0"));
     assert.equal(parseMoney("0"), 0);
+  });
+});
+
+describe("carimbo do banco exibido em Brasilia", () => {
+  it("converte a hora gravada em UTC para Brasilia", () => {
+    // o banco grava 2026-09-07 18:24 (UTC); em Brasilia sao 15:24
+    assert.equal(utcParaLocal("2026-09-07 18:24:25"), "07/09/2026 15:24");
+  });
+
+  it("a data vira o dia certo quando o carimbo passa da meia-noite em UTC", () => {
+    // 01:30 UTC de dia 8 e 22:30 de dia 7 em Brasilia
+    assert.equal(dateUtcBR("2026-09-08 01:30:00"), "07/09/2026", "nao pode exibir o dia seguinte");
+    assert.equal(dateBR("2026-09-08 01:30:00"), "08/09/2026", "dateBR nao converte, por isso erra aqui");
+  });
+
+  it("mesmo dia quando o horario nao cruza a meia-noite", () => {
+    assert.equal(dateUtcBR("2026-09-07 18:24:25"), "07/09/2026");
+  });
+
+  it("vazio continua vazio", () => {
+    assert.equal(dateUtcBR(null), "-");
+    assert.equal(dateUtcBR(""), "-");
   });
 });

@@ -104,6 +104,19 @@ export function toISODateTime(d: Date): string {
  * Converte um instante gravado em UTC pelo banco para o texto do fuso local.
  * Usado nos carimbos criados por datetime('now'), que no Worker saem em UTC.
  */
+/**
+ * Data de um carimbo gravado pelo banco, no fuso de Brasilia.
+ *
+ * O default das colunas e datetime('now','localtime'), que no Worker da
+ * Cloudflare devolve UTC porque a maquina roda em UTC. Exibir esse texto direto
+ * mostra tres horas a mais e, entre 21h e meia-noite, o dia seguinte: um
+ * orcamento emitido as 22h de segunda sairia impresso como terca.
+ */
+export function dateUtcBR(s: string | null | undefined): string {
+  const completo = utcParaLocal(s);
+  return completo === "-" ? "-" : completo.slice(0, 10);
+}
+
 export function utcParaLocal(s: string | null | undefined): string {
   if (!s) return "-";
   const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(s);

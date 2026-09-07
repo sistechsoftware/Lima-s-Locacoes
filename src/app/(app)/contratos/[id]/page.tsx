@@ -5,7 +5,7 @@ import { one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { CONTRACT_STATUS } from "@/lib/domain";
-import { dateBR, dateTimeBR } from "@/lib/format";
+import { dateBR, dateTimeBR, dateUtcBR, utcParaLocal } from "@/lib/format";
 import { Alerta, Card, PageHeader, Section, StatusBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { assinaturasDoContrato } from "@/lib/assinatura-db";
@@ -102,7 +102,7 @@ export default async function ContratoPage({
                   <div>
                     <p className="text-sm font-semibold text-tinta-900">Link ativo, aguardando assinatura</p>
                     <p className="text-xs text-stone-500">
-                      Criado em {dateTimeBR(pendente.created_at)}
+                      Criado em {utcParaLocal(pendente.created_at)}
                       {pendente.expires_at ? ` - expira em ${dateTimeBR(pendente.expires_at)}` : " - sem expiracao"}
                     </p>
                   </div>
@@ -212,7 +212,7 @@ export default async function ContratoPage({
           </div>
           <span className="ml-auto text-right text-xs text-stone-500">
             <span className="block font-bold text-tinta-900">{c.number}</span>
-            {dateBR(c.created_at)}
+            {dateUtcBR(c.created_at)}
           </span>
         </header>
         <pre className="whitespace-pre-wrap font-sans text-[0.82rem] leading-relaxed text-tinta-900">{c.body}</pre>

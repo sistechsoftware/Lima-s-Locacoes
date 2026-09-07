@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { dateBR, money, waLink } from "@/lib/format";
+import { dateBR, money, utcParaLocal, waLink } from "@/lib/format";
 import { diasAte, resumoProgresso, type Progresso, type Regra } from "@/lib/fidelidade";
 import { Alerta, Badge, Card, Section } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -147,7 +147,7 @@ export function FidelidadeCliente({
           <ul className="mt-2 space-y-1 text-sm">
             {historico.map((h) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
-                <span className="shrink-0 text-xs text-stone-400">{h.created_at}</span>
+                <span className="shrink-0 text-xs text-stone-400">{utcParaLocal(h.created_at)}</span>
                 <span>
                   <b className={h.delta > 0 ? "text-emerald-700" : "text-red-700"}>
                     {h.delta > 0 ? "+" : ""}
