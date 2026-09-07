@@ -519,3 +519,81 @@ export async function avisarEquipe(
     }
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Importacao do historico                                             */
+/* ------------------------------------------------------------------ */
+
+export type ResumoImportacao = {
+  locacoes: number;
+  clientes: number;
+  recompensas: number;
+  porCliente: { customer_id: number; name: string; locacoes: number; recompensas: number }[];
+};
+
+/**
+ * Traz para o programa as locacoes que ja tinham sido concluidas.
+ *
+ * Sem isso o cliente de oito festas comeca do zero no dia em que o programa
+ * entra no ar, o que e exatamente o oposto de um programa de fidelidade.
+ *
+ * Duas cautelas guiam o desenho. A primeira e que nada aqui avisa ninguem:
+ * pontuar dez anos de historico de uma vez dispararia uma mensagem por cliente,
+ * e o programa estrearia como spam. A segunda e que rodar de novo nao pode
+ * duplicar: o UNIQUE por locacao ja barra o ponto repetido, e a recompensa
+ * continua saindo da conta entre devido e emitido.
+ */
+export async function importarHistorico(opts: { simular?: boolean; userId?: number } = {}): Promise<ResumoImportacao> {
+  const regra = await regraAtual();
+  const marcas = regra.statusElegiveis.map(() => "?").join(",") || "''";
+
+  // uma consulta para todo o historico: nada de percorrer reserva por reserva
+  const condicao = `
+      FROM reservations r JOIN customers c ON c.id = r.customer_id
+     WHERE r.status IN (${marcas})
+       AND r.total_cents >= ?
+       AND NOT EXISTS (SELECT 1 FROM fidelity_events e WHERE e.reservation_id = r.id AND e.kind = 'ponto')
+       ${regra.contarLocacaoGratuita ? "" : "AND NOT EXISTS (SELECT 1 FROM fidelity_rewards f WHERE f.used_reservation_id = r.id)"}`;
+  const params = [...regra.statusElegiveis, regra.valorMinimoCents];
+
+  const pendentes = await all<any>(
+    `SELECT r.customer_id, c.name, COUNT(*) AS locacoes ${condicao} GROUP BY r.customer_id, c.name ORDER BY locacoes DESC`,
+    params,
+  );
+
+  const previsao: ResumoImportacao["porCliente"] = [];
+  for (const p of pendentes) {
+    const atuais = await pontosDe(p.customer_id);
+    const emitidas = await scalar<number>(`SELECT COUNT(*) FROM fidelity_rewards WHERE customer_id = ?`, [
+      p.customer_id,
+    ]);
+    previsao.push({
+      customer_id: p.customer_id,
+      name: p.name,
+      locacoes: p.locacoes,
+      recompensas: aEmitir(atuais + p.locacoes, emitidas, regra),
+    });
+  }
+
+  const resumo: ResumoImportacao = {
+    locacoes: pendentes.reduce((s: number, p: any) => s + p.locacoes, 0),
+    clientes: pendentes.length,
+    recompensas: previsao.reduce((s, p) => s + p.recompensas, 0),
+    porCliente: previsao,
+  };
+  if (opts.simular) return resumo;
+
+  await run(
+    `INSERT OR IGNORE INTO fidelity_events (customer_id, reservation_id, kind, delta, notes, created_by)
+     SELECT r.customer_id, r.id, 'ponto', 1, 'Locacao ' || r.number || ' (historico importado)', ?
+     ${condicao}`,
+    [opts.userId ?? null, ...params],
+  );
+
+  // as recompensas saem em silencio: o aviso e escolha da empresa, cliente a
+  // cliente, e nao um disparo para a base inteira
+  for (const p of previsao) {
+    await emitirRecompensas(p.customer_id, regra, opts.userId);
+  }
+  return resumo;
+}

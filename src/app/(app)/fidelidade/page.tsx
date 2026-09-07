@@ -1,18 +1,23 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { all } from "@/lib/db";
-import { regraAtual, mensagensPendentes } from "@/lib/fidelidade-db";
+import { regraAtual, mensagensPendentes, importarHistorico } from "@/lib/fidelidade-db";
 import { progresso, resumoProgresso, situacao, diasAte } from "@/lib/fidelidade";
 import { dateBR, money, today, waLink } from "@/lib/format";
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Section, Stat } from "@/components/ui";
 import { Icon } from "@/components/Icons";
-import { marcarMensagem } from "./actions";
+import { importarHistoricoFidelidade, marcarMensagem } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
-export default async function FidelidadePage() {
-  await requireUser();
+export default async function FidelidadePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ importado?: string; recompensas?: string }>;
+}) {
+  const user = await requireUser();
+  const sp = await searchParams;
   const regra = await regraAtual();
   const d0 = today();
 
@@ -30,6 +35,8 @@ export default async function FidelidadePage() {
       ORDER BY r.id DESC LIMIT 100`,
   );
   const pendentes = await mensagensPendentes();
+  // o que existe de locacao concluida ainda fora do programa
+  const aImportar = await importarHistorico({ simular: true });
 
   const comSituacao = recompensas.map((r: any) => ({ ...r, situacao: situacao(r, d0) }));
   const disponiveis = comSituacao.filter((r: any) => r.situacao === "disponivel");
@@ -50,6 +57,59 @@ export default async function FidelidadePage() {
         <Alerta tone="ambar" title="Programa desativado">
           Novas locacoes nao pontuam. As recompensas ja conquistadas continuam validas.
         </Alerta>
+      )}
+
+      {sp.importado !== undefined && (
+        <Alerta tone="verde" title="Historico importado">
+          {Number(sp.importado) === 0
+            ? "Nenhuma locacao nova para importar: o historico ja estava todo no programa."
+            : `${sp.importado} locacao(oes) do historico entraram no programa, gerando ${sp.recompensas ?? 0} recompensa(s). Nenhum cliente foi avisado automaticamente: use as mensagens prontas para falar com quem voce quiser.`}
+        </Alerta>
+      )}
+
+      {aImportar.locacoes > 0 && (
+        <Card>
+          <p className="text-sm font-bold text-tinta-900">
+            {aImportar.locacoes} locacao(oes) ja concluidas estao fora do programa
+          </p>
+          <p className="mt-0.5 text-xs text-stone-500">
+            Sao {aImportar.clientes} cliente(s) que ja alugaram antes de o programa existir. Importar conta essas
+            locacoes e gera {aImportar.recompensas} recompensa(s) na hora. Ninguem e avisado automaticamente.
+          </p>
+
+          {aImportar.porCliente.length > 0 && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs font-semibold text-marca-600">
+                Ver quem sera afetado
+              </summary>
+              <ul className="mt-1.5 max-h-56 space-y-0.5 overflow-y-auto text-sm">
+                {aImportar.porCliente.map((c) => (
+                  <li key={c.customer_id} className="flex justify-between gap-3">
+                    <Link href={`/clientes/${c.customer_id}`} className="truncate text-marca-600">
+                      {c.name}
+                    </Link>
+                    <span className="shrink-0 text-xs text-stone-500">
+                      +{c.locacoes} locacao(oes)
+                      {c.recompensas > 0 ? ` - ${c.recompensas} recompensa(s)` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {user.role === "admin" ? (
+            <form action={importarHistoricoFidelidade} className="mt-3">
+              <SubmitButton
+                confirm={`Importar ${aImportar.locacoes} locacao(oes) e gerar ${aImportar.recompensas} recompensa(s)? Isso concede beneficio de verdade aos clientes.`}
+              >
+                Importar historico
+              </SubmitButton>
+            </form>
+          ) : (
+            <p className="mt-2 text-xs text-stone-500">Somente o administrador pode importar o historico.</p>
+          )}
+        </Card>
       )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">

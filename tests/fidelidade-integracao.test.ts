@@ -9,6 +9,7 @@ import { all, insert, one, run, scalar } from "../src/lib/db.ts";
 import {
   aoConcluirLocacao,
   devolverRecompensaDaReserva,
+  importarHistorico,
   painelDoCliente,
   pontosDe,
   pontuarReserva,
@@ -373,5 +374,128 @@ describe("rotina diaria", () => {
     const resultado = await rotinaDiaria();
     assert.equal(resultado.expiradas, 0);
     assert.equal((await recompensasDisponiveis(cliente)).length, 1);
+  });
+});
+
+describe("importacao do historico", () => {
+  beforeEach(cenario);
+
+  /** Locacao antiga, criada direto no banco, sem passar pelo gatilho. */
+  async function locacaoAntiga(status = "finalizada", total = 50000, customerId = cliente) {
+    seq++;
+    return await insert(
+      `INSERT INTO reservations (number, customer_id, status, event_date, total_cents)
+       VALUES (?,?,?,'2025-05-10',?)`,
+      [`ANT-${String(seq).padStart(3, "0")}`, customerId, status, total],
+    );
+  }
+
+  it("a previsao mostra o que seria importado sem gravar nada", async () => {
+    for (let i = 0; i < 7; i++) await locacaoAntiga();
+    const previa = await importarHistorico({ simular: true });
+
+    assert.equal(previa.locacoes, 7);
+    assert.equal(previa.clientes, 1);
+    assert.equal(previa.recompensas, 1, "7 locacoes fecham um ciclo de 5");
+    assert.equal(await pontosDe(cliente), 0, "simular nao pode gravar");
+    assert.equal((await recompensasDe(cliente)).length, 0);
+  });
+
+  it("importa as locacoes ja concluidas e gera as recompensas devidas", async () => {
+    for (let i = 0; i < 12; i++) await locacaoAntiga();
+    const r = await importarHistorico({ userId: 1 });
+
+    assert.equal(r.locacoes, 12);
+    assert.equal(await pontosDe(cliente), 12);
+    assert.equal((await recompensasDe(cliente)).length, 2, "12 locacoes = 2 ciclos fechados");
+    const p = await painelDoCliente(cliente);
+    assert.equal(p.progresso.noCiclo, 2, "sobram 2 no ciclo atual");
+  });
+
+  it("nao avisa ninguem: importar a base inteira nao pode virar spam", async () => {
+    for (let i = 0; i < 10; i++) await locacaoAntiga();
+    await importarHistorico({ userId: 1 });
+    assert.equal(await scalar<number>(`SELECT COUNT(*) FROM fidelity_messages`), 0);
+    assert.equal(await scalar<number>(`SELECT COUNT(*) FROM user_notifications`), 0);
+  });
+
+  it("rodar duas vezes nao duplica ponto nem recompensa", async () => {
+    for (let i = 0; i < 6; i++) await locacaoAntiga();
+    await importarHistorico({ userId: 1 });
+    const segunda = await importarHistorico({ userId: 1 });
+
+    assert.equal(segunda.locacoes, 0, "na segunda vez nao sobra nada para importar");
+    assert.equal(await pontosDe(cliente), 6);
+    assert.equal((await recompensasDe(cliente)).length, 1);
+  });
+
+  it("nao importa cancelada, orcamento nem pre-reserva", async () => {
+    for (const status of ["cancelada", "orcamento", "pre_reserva", "confirmada"]) {
+      await locacaoAntiga(status);
+    }
+    const r = await importarHistorico({ userId: 1 });
+    assert.equal(r.locacoes, 0);
+    assert.equal(await pontosDe(cliente), 0);
+  });
+
+  it("respeita o valor minimo configurado", async () => {
+    await config("fidelity_min_value_cents", "30000");
+    await locacaoAntiga("finalizada", 20000);
+    await locacaoAntiga("finalizada", 40000);
+    const r = await importarHistorico({ userId: 1 });
+    assert.equal(r.locacoes, 1, "so a locacao acima do minimo");
+  });
+
+  it("nao rouba o ponto de quem ja pontuou pelo fluxo normal", async () => {
+    const nova = await locacao();
+    assert.equal(await pontosDe(cliente), 1);
+    for (let i = 0; i < 3; i++) await locacaoAntiga();
+
+    const r = await importarHistorico({ userId: 1 });
+    assert.equal(r.locacoes, 3, "so as antigas entram");
+    assert.equal(await pontosDe(cliente), 4);
+    assert.equal(
+      await scalar<number>(`SELECT COUNT(*) FROM fidelity_events WHERE reservation_id = ?`, [nova]),
+      1,
+      "a locacao ja pontuada continua com um ponto so",
+    );
+  });
+
+  it("separa o historico de cada cliente", async () => {
+    const maria = await insert(`INSERT INTO customers (name) VALUES ('Maria')`);
+    for (let i = 0; i < 5; i++) await locacaoAntiga("finalizada", 50000, cliente);
+    for (let i = 0; i < 2; i++) await locacaoAntiga("finalizada", 50000, maria);
+
+    const r = await importarHistorico({ userId: 1 });
+    assert.equal(r.clientes, 2);
+    assert.equal(await pontosDe(cliente), 5);
+    assert.equal(await pontosDe(maria), 2);
+    assert.equal((await recompensasDe(cliente)).length, 1);
+    assert.equal((await recompensasDe(maria)).length, 0, "Maria ainda nao fechou ciclo");
+  });
+
+  it("o historico importado fica visivel e identificado", async () => {
+    await locacaoAntiga();
+    await importarHistorico({ userId: 1 });
+    const [linha] = await all<any>(`SELECT * FROM fidelity_events WHERE customer_id = ?`, [cliente]);
+    assert.match(linha.notes, /historico importado/i, "da para saber de onde veio o ponto");
+    assert.equal(linha.kind, "ponto");
+  });
+
+  it("cancelar depois uma locacao importada reverte normalmente", async () => {
+    const antiga = await locacaoAntiga();
+    await importarHistorico({ userId: 1 });
+    assert.equal(await pontosDe(cliente), 1);
+
+    await run(`UPDATE reservations SET status='cancelada' WHERE id=?`, [antiga]);
+    await reverterReserva(antiga, 1);
+    assert.equal(await pontosDe(cliente), 0);
+  });
+
+  it("base sem locacao concluida nao importa nada", async () => {
+    const r = await importarHistorico({ userId: 1 });
+    assert.equal(r.locacoes, 0);
+    assert.equal(r.clientes, 0);
+    assert.equal(r.recompensas, 0);
   });
 });
