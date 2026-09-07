@@ -25,6 +25,26 @@ export function parseMoney(input: string | number | null | undefined): number {
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
 
+/**
+ * O texto digitado e um valor que da para ler?
+ *
+ * parseMoney devolve 0 tanto para "zero" quanto para "nao entendi", e essa
+ * ambiguidade ja custou lancamentos: o sistema descartava em silencio o que
+ * nao conseguia interpretar. Aqui a pergunta e outra, e a resposta permite
+ * dizer a pessoa exatamente o que aconteceu.
+ */
+export function valorValido(input: string | number | null | undefined): boolean {
+  if (typeof input === "number") return Number.isFinite(input);
+  const bruto = String(input ?? "").trim();
+  if (!bruto) return false;
+  const s = bruto.replace(/[^\d,.-]/g, "");
+  if (!s || !/\d/.test(s)) return false;
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  const normalized = lastComma > lastDot ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  return Number.isFinite(Number(normalized));
+}
+
 /* ------------------------------- datas ------------------------------ */
 
 /**

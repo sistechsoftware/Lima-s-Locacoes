@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { all, scalar } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { ACTIVE_STATUSES, EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYMENT_METHOD_LABEL } from "@/lib/domain";
+import { ACTIVE_STATUSES, PAYMENT_METHODS, PAYMENT_METHOD_LABEL } from "@/lib/domain";
 import { dateBR, endOfMonth, money, startOfMonth, today } from "@/lib/format";
-import { Badge, Card, Empty, PageHeader, Section, Stat } from "@/components/ui";
+import { Alerta, Badge, Card, Empty, PageHeader, Section, Stat } from "@/components/ui";
 import { Tabs } from "@/components/List";
 import { listarEntries, totaisEntries } from "@/lib/receber";
 import { situacaoParcela } from "@/lib/financeiro";
 import { receberParcela } from "./receber-actions";
 import { payEntry } from "../compras/actions";
 import { SubmitButton } from "@/components/SubmitButton";
-import { addExpense, deleteExpense } from "./actions";
+import { addExpense, createPurpose, deleteExpense, finalidadesDisponiveis } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +19,15 @@ const ACTIVE = ACTIVE_STATUSES.map((s) => `'${s}'`).join(",");
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ aba?: string; de?: string; ate?: string }>;
+  searchParams: Promise<{ aba?: string; de?: string; ate?: string; erro?: string; ok?: string; nova?: string }>;
 }) {
   const user = await requireUser();
   const sp = await searchParams;
   const aba = sp.aba ?? "resumo";
   const de = sp.de || startOfMonth(today());
   const ate = sp.ate || endOfMonth(today());
+  // o catalogo manda no que aparece; a finalidade recem-criada ja vem escolhida
+  const finalidades = await finalidadesDisponiveis(sp.nova);
 
   /* leituras independentes: uma latencia so em vez de cinco */
   const [entradas, saidas, aReceber, caucaoRetida, reservas] = await Promise.all([
@@ -78,14 +80,22 @@ export default async function FinanceiroPage({
     total: entradas.filter((e) => e.method === m).reduce((s, e) => s + e.amount_cents, 0),
   })).filter((x) => x.total > 0);
 
-  const porCategoria = EXPENSE_CATEGORIES.map((c) => ({
-    category: c,
-    total: saidas.filter((e) => e.category === c).reduce((s, e) => s + e.amount_cents, 0),
-  })).filter((x) => x.total > 0);
+  // agrupa pelo que foi realmente lancado, e nao por uma lista fixa: assim uma
+  // finalidade criada pelo administrador aparece no resumo como qualquer outra
+  const porCategoria = [...saidas.reduce((mapa: Map<string, number>, e: any) => {
+    const chave = String(e.category ?? "Outros");
+    return mapa.set(chave, (mapa.get(chave) ?? 0) + e.amount_cents);
+  }, new Map<string, number>())]
+    .map(([category, total]) => ({ category, total }))
+    .filter((x) => x.total > 0)
+    .sort((a, b) => b.total - a.total);
 
   return (
     <div className="space-y-4">
       <PageHeader title="Financeiro" subtitle={`${dateBR(de)} ate ${dateBR(ate)}`} />
+
+      {sp.erro && <Alerta tone="vermelho" title="Nao foi lancado">{sp.erro}</Alerta>}
+      {sp.ok && <Alerta tone="verde" title="Pronto">{sp.ok}</Alerta>}
 
       <Card>
         <form className="flex flex-wrap items-end gap-2">
@@ -197,9 +207,13 @@ export default async function FinanceiroPage({
         <div className="space-y-4">
           <Section title="Lancar saida">
             <form action={addExpense} className="grid grid-cols-2 gap-2">
+              {/* o periodo viaja junto para o lancamento voltar para a mesma tela */}
+              <input type="hidden" name="aba" value="saidas" />
+              <input type="hidden" name="de" value={de} />
+              <input type="hidden" name="ate" value={ate} />
               <input name="date" type="date" defaultValue={today()} className="campo" />
-              <select name="category" className="campo">
-                {EXPENSE_CATEGORIES.map((c) => (
+              <select name="category" defaultValue={sp.nova ?? finalidades[0]} className="campo">
+                {finalidades.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -226,6 +240,32 @@ export default async function FinanceiroPage({
                 <SubmitButton className="w-full">Lancar saida</SubmitButton>
               </div>
             </form>
+
+            {user.role === "admin" && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-sm font-semibold text-marca-600">
+                  + Nova finalidade
+                </summary>
+                {/* form separado: um formulario dentro do outro seria HTML invalido */}
+                <form action={createPurpose} className="mt-2 flex flex-wrap items-end gap-2">
+                  <input type="hidden" name="aba" value="saidas" />
+                  <input type="hidden" name="de" value={de} />
+                  <input type="hidden" name="ate" value={ate} />
+                  <input
+                    name="name"
+                    placeholder="Ex.: Manutencao do veiculo"
+                    maxLength={60}
+                    required
+                    className="campo min-w-[12rem] flex-1"
+                  />
+                  <SubmitButton variant="secundario">Salvar finalidade</SubmitButton>
+                </form>
+                <p className="mt-1 text-xs text-stone-500">
+                  A nova finalidade fica disponivel na hora e ja vem selecionada. Para renomear ou desativar, use
+                  Configuracoes.
+                </p>
+              </details>
+            )}
           </Section>
 
           <Section title={`Saidas (${saidas.length})`}>

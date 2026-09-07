@@ -3,6 +3,7 @@ import Link from "next/link";
 import FreightSettings from "./FreightSettings";
 import FidelitySettings from "./FidelitySettings";
 import BirthdaySettings from "./BirthdaySettings";
+import { createPurpose, renamePurpose, todasFinalidades, togglePurpose } from "../financeiro/actions";
 import { requireUser } from "@/lib/auth";
 import { listUsers } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
@@ -47,6 +48,7 @@ export default async function ConfiguracoesPage({
         )
       : [];
   const users = user.role === "admin" ? await listUsers() : [];
+  const finalidades = user.role === "admin" ? await todasFinalidades() : [];
 
   const ABAS = [
     { value: "empresa", label: "Empresa" },
@@ -58,6 +60,7 @@ export default async function ConfiguracoesPage({
     { value: "frete", label: "Frete" },
     { value: "fidelidade", label: "Fidelidade" },
     { value: "aniversarios", label: "Aniversarios" },
+    ...(user.role === "admin" ? [{ value: "finalidades", label: "Finalidades" }] : []),
     ...(user.role === "admin" ? [{ value: "usuarios", label: "Usuarios" }] : []),
     { value: "conta", label: "Minha conta" },
   ];
@@ -261,6 +264,65 @@ export default async function ConfiguracoesPage({
       {aba === "fidelidade" && <FidelitySettings settings={s} admin={user.role === "admin"} />}
 
       {aba === "aniversarios" && <BirthdaySettings settings={s} admin={user.role === "admin"} />}
+
+      {aba === "finalidades" && user.role === "admin" && (
+        <Section title="Finalidades das saidas">
+          <p className="mb-3 text-sm text-stone-600">
+            Sao as opcoes que aparecem ao lancar uma saida no Financeiro. Desativar ou renomear uma finalidade{" "}
+            <b>nao altera nenhum lancamento ja registrado</b>: cada saida guarda o texto escolhido no dia.
+          </p>
+
+          <form action={createPurpose} className="mb-4 flex flex-wrap items-end gap-2">
+            <input type="hidden" name="aba" value="finalidades" />
+            <input name="name" placeholder="Nova finalidade" maxLength={60} required className="campo min-w-[12rem] flex-1" />
+            <SubmitButton>Adicionar</SubmitButton>
+          </form>
+
+          {finalidades.length === 0 ? (
+            <Empty>Nenhuma finalidade cadastrada.</Empty>
+          ) : (
+            <ul className="divide-y divide-nuvem-200">
+              {finalidades.map((f: any) => (
+                <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                  <form action={renamePurpose} className="flex min-w-0 flex-1 items-center gap-2">
+                    <input type="hidden" name="id" value={f.id} />
+                    <input
+                      name="name"
+                      defaultValue={f.name}
+                      maxLength={60}
+                      className="campo min-w-0 flex-1"
+                      aria-label={`Nome da finalidade ${f.name}`}
+                    />
+                    <SubmitButton variant="secundario" className="px-2.5 py-1.5 text-xs">
+                      Renomear
+                    </SubmitButton>
+                  </form>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-stone-500">
+                      {f.usos > 0 ? `${f.usos} saida(s)` : "sem uso"}
+                    </span>
+                    {f.active ? <Badge tone="verde">ativa</Badge> : <Badge tone="cinza">inativa</Badge>}
+                    <form action={togglePurpose}>
+                      <input type="hidden" name="id" value={f.id} />
+                      <SubmitButton
+                        variant="secundario"
+                        className="px-2.5 py-1.5 text-xs"
+                        confirm={
+                          f.active
+                            ? `Desativar "${f.name}"? Ela some das opcoes de novos lancamentos, e as ${f.usos} saida(s) ja registradas continuam intactas.`
+                            : undefined
+                        }
+                      >
+                        {f.active ? "Desativar" : "Reativar"}
+                      </SubmitButton>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
 
       {aba === "fornecedores" && (
         <Section title="Fornecedores">

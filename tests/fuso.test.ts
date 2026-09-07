@@ -7,7 +7,7 @@
  */
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { addDays, dateBR, endOfMonth, nowLocal, startOfWeek, toISODate, today, utcParaLocal } from "../src/lib/format.ts";
+import { addDays, dateBR, endOfMonth, nowLocal, parseMoney, startOfWeek, toISODate, today, utcParaLocal, valorValido } from "../src/lib/format.ts";
 
 describe("datas no fuso do negocio", () => {
   before(() => {
@@ -86,5 +86,31 @@ describe("aritmetica de datas de calendario", () => {
   it("nao desloca a data exibida", () => {
     assert.equal(dateBR("2026-09-05"), "05/09/2026");
     assert.equal(dateBR("2026-01-01"), "01/01/2026");
+  });
+});
+
+describe("leitura de valor digitado", () => {
+  it("aceita os formatos que a pessoa realmente digita", () => {
+    for (const bom of ["1234", "1234,56", "1.234,56", "R$ 1.234,56", "0,50", "1234.56"]) {
+      assert.ok(valorValido(bom), bom);
+    }
+  });
+
+  it("recusa o que nao da para ler, em vez de virar zero calado", () => {
+    for (const ruim of ["", "   ", "abc", "R$", ",", "--"]) {
+      assert.equal(valorValido(ruim), false, JSON.stringify(ruim));
+    }
+  });
+
+  it("milhar com ponto e sem centavos nao pode passar como valido", () => {
+    // "1.234.567" vira NaN no parseMoney: antes isso descartava o lancamento
+    // em silencio, agora e recusado com mensagem
+    assert.equal(valorValido("1.234.567"), false);
+    assert.equal(parseMoney("1.234.567"), 0, "confirma que viraria zero");
+  });
+
+  it("zero e valido como texto, mas continua sendo zero", () => {
+    assert.ok(valorValido("0"));
+    assert.equal(parseMoney("0"), 0);
   });
 });
