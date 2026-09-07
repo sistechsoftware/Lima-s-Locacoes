@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { CONTRACT_STATUS } from "@/lib/domain";
-import { dateBR } from "@/lib/format";
-import { Alerta, Card, PageHeader, StatusBadge } from "@/components/ui";
+import { dateBR, dateTimeBR } from "@/lib/format";
+import { Alerta, Card, PageHeader, Section, StatusBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { regenerateContract, saveContractBody, setContractStatus } from "../actions";
+import { assinaturasDoContrato } from "@/lib/assinatura-db";
+import LinkAssinatura from "@/components/LinkAssinatura";
+import { gerarLinkAssinatura, regenerateContract, revogarLinkAssinatura, saveContractBody, setContractStatus } from "../actions";
 import PrintButton from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +20,7 @@ export default async function ContratoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro?: string; editar?: string }>;
+  searchParams: Promise<{ erro?: string; editar?: string; token?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
@@ -30,6 +33,20 @@ export default async function ContratoPage({
   );
   if (!c) notFound();
   const s = await getSettings();
+  const assinaturas = await assinaturasDoContrato(c.id);
+  const pendente = assinaturas.find((a: any) => a.status === "pendente");
+  const assinada = assinaturas.find((a: any) => a.status === "assinado");
+  const cliente = await one<any>(
+    `SELECT cu.whatsapp, cu.phone FROM reservations r JOIN customers cu ON cu.id = r.customer_id WHERE r.id = ?`,
+    [c.reservation_id],
+  );
+  const zap = String(cliente?.whatsapp || cliente?.phone || "").replace(/\D/g, "");
+  // o endereco publico sai do proprio host da requisicao: assim o link funciona
+  // em producao, em preview e no ambiente local sem nenhuma configuracao
+  const cabecalhos = await headers();
+  const host = cabecalhos.get("host") ?? "";
+  const esquema = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
+  const baseUrl = host ? `${esquema}://${host}` : "";
 
   return (
     <div className="space-y-4">
@@ -51,6 +68,72 @@ export default async function ContratoPage({
         />
 
         {sp.erro && <Alerta tone="vermelho">{sp.erro}</Alerta>}
+
+        <Section title="Assinatura virtual">
+          {assinada ? (
+            <>
+              <Alerta tone="verde" title="Contrato assinado">
+                Assinado por {assinada.signer_name} em {dateTimeBR(assinada.signed_at)}. A versao assinada esta
+                congelada: editar o contrato aqui nao altera o documento que o cliente aceitou.
+              </Alerta>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/contratos/assinado/${assinada.id}`}
+                  className="rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
+                >
+                  Ver documento assinado
+                </Link>
+                {assinada.document_hash && (
+                  <span className="text-xs text-stone-400">
+                    verificacao SHA-256 {String(assinada.document_hash).slice(0, 16)}...
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {sp.token && (
+                <div className="mb-3">
+                  <LinkAssinatura url={`${baseUrl}/assinar/${sp.token}`} whatsapp={zap || null} />
+                </div>
+              )}
+              {pendente ? (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-tinta-900">Link ativo, aguardando assinatura</p>
+                    <p className="text-xs text-stone-500">
+                      Criado em {dateTimeBR(pendente.created_at)}
+                      {pendente.expires_at ? ` - expira em ${dateTimeBR(pendente.expires_at)}` : " - sem expiracao"}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <form action={gerarLinkAssinatura}>
+                      <input type="hidden" name="id" value={c.id} />
+                      <SubmitButton variant="secundario">Gerar novo link</SubmitButton>
+                    </form>
+                    <form action={revogarLinkAssinatura}>
+                      <input type="hidden" name="id" value={pendente.id} />
+                      <input type="hidden" name="contract_id" value={c.id} />
+                      <SubmitButton variant="perigo" confirm="Revogar este link? O cliente nao conseguira mais assinar.">
+                        Revogar
+                      </SubmitButton>
+                    </form>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-stone-600">
+                    Gere um link exclusivo para o cliente ler e assinar pelo celular, sem cadastro nem aplicativo.
+                  </p>
+                  <form action={gerarLinkAssinatura}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <SubmitButton>Gerar link para assinatura</SubmitButton>
+                  </form>
+                </div>
+              )}
+            </>
+          )}
+        </Section>
 
         <Card>
           <div className="flex flex-wrap items-center gap-2">

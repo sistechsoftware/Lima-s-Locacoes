@@ -5,7 +5,8 @@ import { one, run } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { buildContractBody, ensureContract } from "@/lib/contracts";
-import { today } from "@/lib/format";
+import { nowLocal, today } from "@/lib/format";
+import { gerarLink, revogarLink } from "@/lib/assinatura-db";
 
 export async function generateContract(fd: FormData) {
   const user = await requireUser();
@@ -59,4 +60,39 @@ export async function saveContractBody(fd: FormData) {
   await run(`UPDATE contracts SET body = ? WHERE id = ?`, [body, id]);
   await logAction(user, "editar", "contrato", id, `${user.name} editou o texto do contrato`);
   revalidatePath(`/contratos/${id}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* Assinatura virtual                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Cria o link publico de assinatura.
+ *
+ * O token so existe legivel neste retorno: no banco fica o hash. Por isso ele
+ * volta pela URL uma unica vez, para o operador copiar e mandar ao cliente.
+ */
+export async function gerarLinkAssinatura(fd: FormData) {
+  const user = await requireUser();
+  const contractId = Number(fd.get("id"));
+  const criado = await gerarLink(contractId, user.id);
+  if (!criado) redirect(`/contratos/${contractId}?erro=${encodeURIComponent("Contrato nao encontrado.")}`);
+
+  await run(`UPDATE contracts SET status='enviado', sent_at=? WHERE id=? AND status='pendente'`, [
+    nowLocal(),
+    contractId,
+  ]);
+  await logAction(user, "editar", "contrato", contractId, `${user.name} gerou o link de assinatura do contrato`);
+  revalidatePath(`/contratos/${contractId}`);
+  redirect(`/contratos/${contractId}?token=${criado.token}`);
+}
+
+export async function revogarLinkAssinatura(fd: FormData) {
+  const user = await requireUser();
+  const contractId = Number(fd.get("contract_id"));
+  const id = Number(fd.get("id"));
+  if (await revogarLink(id)) {
+    await logAction(user, "editar", "contrato", contractId, `${user.name} revogou o link de assinatura`);
+  }
+  revalidatePath(`/contratos/${contractId}`);
 }

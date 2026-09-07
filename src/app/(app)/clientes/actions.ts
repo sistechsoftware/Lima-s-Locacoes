@@ -1,9 +1,10 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { insert, one, run, scalar } from "@/lib/db";
+import { getDb, insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { validarDocumento } from "@/lib/assinatura";
 
 function readCustomer(fd: FormData) {
   return {
@@ -83,4 +84,72 @@ export async function deleteCustomer(fd: FormData) {
   await run(`DELETE FROM customers WHERE id = ?`, [id]);
   await logAction(user, "excluir", "cliente", id, `${user.name} excluiu o cliente ${c?.name}`);
   redirect("/clientes");
+}
+
+/* ------------------------------------------------------------------ */
+/* Historico documental                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Anexa um contrato assinado no papel, ou um documento antigo.
+ *
+ * Cada envio e um registro proprio: nada substitui o documento anterior,
+ * porque um cliente acumula contratos ao longo dos anos.
+ */
+export async function adicionarDocumento(fd: FormData) {
+  const user = await requireUser();
+  const customerId = Number(fd.get("customer_id"));
+  const arquivo = fd.get("file");
+  const voltar = `/clientes/${customerId}`;
+
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    redirect(`${voltar}?aviso=${encodeURIComponent("Escolha um arquivo para enviar.")}`);
+  }
+  const erro = validarDocumento(arquivo.type || "", arquivo.size);
+  if (erro) redirect(`${voltar}?aviso=${encodeURIComponent(erro)}`);
+
+  const id = crypto.randomUUID().replace(/-/g, "");
+  const bytes = new Uint8Array(await arquivo.arrayBuffer());
+  await getDb()
+    .prepare(`INSERT INTO files (id, mime, size, data, created_by) VALUES (?,?,?,?,?)`)
+    .bind(id, arquivo.type.toLowerCase(), bytes.length, bytes, user.id)
+    .run();
+
+  await insert(
+    `INSERT INTO customer_documents (customer_id, contract_id, title, source, file_id, mime, size, notes, created_by)
+     VALUES (?,?,?, 'upload_manual', ?,?,?,?,?)`,
+    [
+      customerId,
+      Number(fd.get("contract_id")) || null,
+      String(fd.get("title") ?? "").trim().slice(0, 160) || arquivo.name.slice(0, 160),
+      id,
+      arquivo.type.toLowerCase(),
+      bytes.length,
+      String(fd.get("notes") ?? "").trim().slice(0, 300) || null,
+      user.id,
+    ],
+  );
+
+  await logAction(user, "criar", "cliente", customerId, `${user.name} anexou um documento ao cliente`);
+  revalidatePath(voltar);
+}
+
+/** Remove um documento anexado, deixando rastro na auditoria. */
+export async function removerDocumento(fd: FormData) {
+  const user = await assertAdmin();
+  const id = Number(fd.get("id"));
+  const doc = await one<any>(`SELECT * FROM customer_documents WHERE id = ?`, [id]);
+  if (!doc) return;
+  // documento de assinatura virtual e prova: nao se apaga pela tela
+  if (doc.source === "assinatura_virtual") {
+    redirect(
+      `/clientes/${doc.customer_id}?aviso=${encodeURIComponent(
+        "Documento de assinatura virtual nao pode ser excluido: ele e a prova do contrato assinado.",
+      )}`,
+    );
+  }
+  await run(`DELETE FROM customer_documents WHERE id = ?`, [id]);
+  if (doc.file_id) await run(`DELETE FROM files WHERE id = ?`, [doc.file_id]);
+  await logAction(user, "excluir", "cliente", doc.customer_id, `${user.name} removeu o documento "${doc.title}"`);
+  revalidatePath(`/clientes/${doc.customer_id}`);
 }

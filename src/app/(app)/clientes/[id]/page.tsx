@@ -10,6 +10,8 @@ import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, Statu
 import { ListRow } from "@/components/List";
 import { Icon } from "@/components/Icons";
 import { FidelidadeCliente } from "@/components/FidelidadeCliente";
+import { DocumentosCliente } from "@/components/DocumentosCliente";
+import { documentosDoCliente } from "@/lib/assinatura-db";
 import { painelDoCliente, historicoDe, mensagensDoCliente } from "@/lib/fidelidade-db";
 import { today } from "@/lib/format";
 import { deleteCustomer, toggleCustomer } from "../actions";
@@ -36,10 +38,11 @@ export default async function ClientePage({
     [c.id],
   );
   const orcamentos = await all<any>(`SELECT * FROM quotes WHERE customer_id = ? ORDER BY id DESC LIMIT 20`, [c.id]);
-  const [fidelidade, fidelidadeHistorico, fidelidadeMensagens] = await Promise.all([
+  const [fidelidade, fidelidadeHistorico, fidelidadeMensagens, documentos] = await Promise.all([
     painelDoCliente(c.id),
     historicoDe(c.id),
     mensagensDoCliente(c.id),
+    documentosDoCliente(c.id),
   ]);
   const pagamentos = await all<any>(
     `SELECT p.*, r.number FROM payments p LEFT JOIN reservations r ON r.id = p.reservation_id
@@ -136,6 +139,8 @@ export default async function ClientePage({
           telefone={c.whatsapp || c.phone}
           hoje={today()}
         />
+
+        <DocumentosCliente customerId={c.id} documentos={documentos} admin={user.role === "admin"} />
 
         <Section title={`Reservas (${reservas.length})`}>
           {reservas.length === 0 ? (
