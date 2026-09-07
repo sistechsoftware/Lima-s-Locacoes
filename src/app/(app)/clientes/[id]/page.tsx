@@ -9,6 +9,9 @@ import { dateBR, docBR, mapsLink, money, phoneBR, utcParaLocal, waLink } from "@
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, StatusBadge, Stat } from "@/components/ui";
 import { ListRow } from "@/components/List";
 import { Icon } from "@/components/Icons";
+import { FidelidadeCliente } from "@/components/FidelidadeCliente";
+import { painelDoCliente, historicoDe, mensagensDoCliente } from "@/lib/fidelidade-db";
+import { today } from "@/lib/format";
 import { deleteCustomer, toggleCustomer } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
 
@@ -33,6 +36,11 @@ export default async function ClientePage({
     [c.id],
   );
   const orcamentos = await all<any>(`SELECT * FROM quotes WHERE customer_id = ? ORDER BY id DESC LIMIT 20`, [c.id]);
+  const [fidelidade, fidelidadeHistorico, fidelidadeMensagens] = await Promise.all([
+    painelDoCliente(c.id),
+    historicoDe(c.id),
+    mensagensDoCliente(c.id),
+  ]);
   const pagamentos = await all<any>(
     `SELECT p.*, r.number FROM payments p LEFT JOIN reservations r ON r.id = p.reservation_id
       WHERE r.customer_id = ? ORDER BY p.paid_at DESC LIMIT 20`,
@@ -118,6 +126,16 @@ export default async function ClientePage({
             )}
           </div>
         </Section>
+
+        <FidelidadeCliente
+          regra={fidelidade.regra}
+          progresso={fidelidade.progresso}
+          recompensas={fidelidade.recompensas}
+          mensagens={fidelidadeMensagens}
+          historico={fidelidadeHistorico}
+          telefone={c.whatsapp || c.phone}
+          hoje={today()}
+        />
 
         <Section title={`Reservas (${reservas.length})`}>
           {reservas.length === 0 ? (

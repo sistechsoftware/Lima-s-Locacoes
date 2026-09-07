@@ -166,3 +166,56 @@ export async function saveFreightSettings(fd: FormData) {
   revalidatePath("/configuracoes");
   revalidatePath("/fretes/calculadora");
 }
+
+/**
+ * Regras e mensagens da fidelidade.
+ *
+ * Fica tudo em settings, junto com o resto da configuracao do sistema: nao ha
+ * motivo para uma tabela de programa so para guardar meia duzia de numeros que
+ * o administrador edita nesta tela.
+ */
+export async function saveFidelitySettings(fd: FormData) {
+  const user = await assertAdmin();
+  const inteiro = (campo: string, padrao: number, max: number) => {
+    const v = Math.trunc(Number(fd.get(campo)));
+    return String(Number.isFinite(v) && v >= 0 ? Math.min(v, max) : padrao);
+  };
+  const marcado = (campo: string) => (String(fd.get(campo) ?? "") === "1" ? "1" : "0");
+
+  const eventos = ["progresso", "quase_la", "conquista", "uso", "vencendo", "expirada"];
+  const mensagens = Object.fromEntries(
+    eventos.map((e) => [`fidelity_msg_${e}`, String(fd.get(`msg_${e}`) ?? "").trim().slice(0, 1000)]),
+  );
+
+  await setSettings({
+    fidelity_active: marcado("active"),
+    fidelity_goal: inteiro("goal", 5, 100) === "0" ? "1" : inteiro("goal", 5, 100),
+    fidelity_kits: inteiro("kits", 5, 100),
+    fidelity_validity_days: inteiro("validity_days", 0, 3650),
+    fidelity_accumulate: marcado("accumulate"),
+    fidelity_count_free_rental: marcado("count_free_rental"),
+    fidelity_return_on_cancel: marcado("return_on_cancel"),
+    fidelity_min_value_cents: String(parseMoney(String(fd.get("min_value") ?? ""))),
+    fidelity_eligible_status: String(fd.get("eligible_status") ?? "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .join(","),
+    fidelity_expiry_reminders: String(fd.get("expiry_reminders") ?? "").trim().slice(0, 60),
+    fidelity_window_start: String(fd.get("window_start") ?? "08:00").slice(0, 5),
+    fidelity_window_end: String(fd.get("window_end") ?? "20:00").slice(0, 5),
+    fidelity_notify_progress: marcado("fidelity_notify_progress"),
+    fidelity_notify_almost: marcado("fidelity_notify_almost"),
+    fidelity_notify_earned: marcado("fidelity_notify_earned"),
+    fidelity_notify_used: marcado("fidelity_notify_used"),
+    fidelity_notify_expiring: marcado("fidelity_notify_expiring"),
+    fidelity_notify_expired: marcado("fidelity_notify_expired"),
+    ...mensagens,
+  });
+
+  // alterar a regra nao mexe em recompensa ja conquistada: cada uma guarda o
+  // retrato da regra do dia em que nasceu
+  await logAction(user, "editar", "configuracao", null, `${user.name} atualizou o programa de fidelidade`);
+  revalidatePath("/configuracoes");
+  revalidatePath("/fidelidade");
+}

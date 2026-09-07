@@ -14,8 +14,29 @@ declare global {
  * D1 compativel em globalThis para exercitar as mesmas consultas SQL sem
  * precisar de infraestrutura Cloudflare.
  */
+/**
+ * Banco fornecido explicitamente por quem roda fora de uma requisicao.
+ *
+ * O cron do Worker nao tem contexto de requisicao, entao getCloudflareContext()
+ * nao serve la. Em vez de duplicar todo o acesso a dados so para o agendador,
+ * ele passa o binding por aqui. Todas as execucoes usam o mesmo env.DB, entao
+ * uma sobreposicao momentanea nao muda o banco de ninguem.
+ */
+let dbDoAgendador: D1Database | undefined;
+
+export async function runWithDb<T>(db: D1Database, fn: () => Promise<T>): Promise<T> {
+  const anterior = dbDoAgendador;
+  dbDoAgendador = db;
+  try {
+    return await fn();
+  } finally {
+    dbDoAgendador = anterior;
+  }
+}
+
 export function getDb(): D1Database {
   if (globalThis.__limasTestDb) return globalThis.__limasTestDb;
+  if (dbDoAgendador) return dbDoAgendador;
   return getCloudflareContext().env.DB;
 }
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { all } from "@/lib/db";
+import { all, one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { logsFor } from "@/lib/audit";
 import {
@@ -32,6 +32,8 @@ import { addPayment, changeStatus, deletePayment, deleteReservation, refreshComp
 import { generateContract } from "../../contratos/actions";
 import { parcelarReserva, receberParcela } from "../../financeiro/receber-actions";
 import { recebiveisDe } from "@/lib/receber";
+import { recompensasDisponiveis, simularUso } from "@/lib/fidelidade-db";
+import { aplicarRecompensa } from "../fidelidade-actions";
 import { situacaoParcela } from "@/lib/financeiro";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +63,15 @@ export default async function ReservaPage({
   );
   const historico = await logsFor("reserva", r.id);
   const parcelasReceber = await recebiveisDe({ tipo: "locacao", reservationId: r.id });
+  const recompensas = r.status === "cancelada" ? [] : await recompensasDisponiveis(r.customer_id);
+  const recompensaUsada = await one<any>(
+    `SELECT * FROM fidelity_rewards WHERE used_reservation_id = ? LIMIT 1`,
+    [r.id],
+  );
+  // quanto cada recompensa cobriria desta reserva, para o operador decidir vendo o valor
+  const previaRecompensas = await Promise.all(
+    recompensas.map(async (rec: any) => ({ rec, previa: await simularUso(rec.id, r.id) })),
+  );
   const consumoFisico = await reservationPhysicalUsage(r.id);
   const divergencia = r.status === "cancelada" ? [] : await compositionDrift(r.id);
   const temKit = items.some((i: any) => i.product_kind === "kit");
@@ -312,6 +323,54 @@ export default async function ReservaPage({
           </div>
         )}
       </Section>
+
+      {(recompensaUsada || previaRecompensas.length > 0) && (
+        <Section title="Fidelidade">
+          {recompensaUsada ? (
+            <Alerta tone="verde" title="Recompensa aplicada nesta locacao">
+              {recompensaUsada.used_kits} kit(s) gratuitos, {money(recompensaUsada.used_discount_cents ?? 0)} de
+              desconto. O valor entrou no desconto da reserva; frete e itens avulsos seguem cobrados.
+            </Alerta>
+          ) : (
+            <>
+              <p className="mb-2 text-sm text-stone-600">
+                Este cliente tem recompensa disponivel. Aplicar lanca o desconto no campo de desconto da reserva.
+              </p>
+              <ul className="space-y-2">
+                {previaRecompensas.map(({ rec, previa }) => (
+                  <li key={rec.id} className="rounded-xl border border-nuvem-300 bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        <span className="text-sm font-bold text-tinta-900">Ate {rec.kit_quantity} kits gratis</span>
+                        <span className="ml-2 text-xs text-stone-500">
+                          conquistada em {dateBR(rec.earned_at)}
+                          {rec.expires_on ? ` - vale ate ${dateBR(rec.expires_on)}` : ""}
+                        </span>
+                      </span>
+                      {previa && previa.kitsGratis > 0 ? (
+                        <Badge tone="verde">
+                          cobre {previa.kitsGratis} kit(s) - {money(previa.descontoCents)}
+                        </Badge>
+                      ) : (
+                        <Badge tone="cinza">sem kit nesta reserva</Badge>
+                      )}
+                    </div>
+                    {previa && previa.kitsGratis > 0 && r.status !== "cancelada" && (
+                      <form action={aplicarRecompensa} className="mt-2">
+                        <input type="hidden" name="reservation_id" value={r.id} />
+                        <input type="hidden" name="reward_id" value={rec.id} />
+                        <SubmitButton confirm={`Aplicar a recompensa e descontar ${money(previa.descontoCents)}?`}>
+                          Utilizar recompensa
+                        </SubmitButton>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Section>
+      )}
 
       <Section title={`Parcelamento (${parcelasReceber.length})`}>
         {parcelasReceber.length === 0 ? (

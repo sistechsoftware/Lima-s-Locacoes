@@ -15,6 +15,7 @@ import {
   rebuildReservationComponents,
   stamp,
 } from "@/lib/stock";
+import { aoConcluirLocacao, devolverRecompensaDaReserva, reverterReserva } from "@/lib/fidelidade-db";
 import { HOLDING_STATUSES } from "@/lib/domain";
 import { money, parseMoney, today } from "@/lib/format";
 
@@ -284,9 +285,19 @@ export async function changeStatus(fd: FormData) {
   // cancelar libera o estoque automaticamente: a reserva deixa de ocupar a
   // janela, e a expansao fisica deixa de ser contabilizada pelo motor.
   await syncOperations(id);
+
+  // fidelidade acompanha o status real da locacao, nunca uma tela aberta
+  if (status === "cancelada") {
+    await reverterReserva(id, user.id);
+    await devolverRecompensaDaReserva(id);
+  } else {
+    await aoConcluirLocacao(id, user.id);
+  }
+
   await logAction(user, "status", "reserva", id, `${user.name} alterou o status da reserva ${r.number} para ${status}`);
   revalidatePath(`/reservas/${id}`);
   revalidatePath("/dashboard");
+  revalidatePath(`/clientes/${r.customer_id}`);
 }
 
 /* ------------------------------------------------------------------ */

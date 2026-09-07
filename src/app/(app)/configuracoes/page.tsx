@@ -1,6 +1,7 @@
 import { all } from "@/lib/db";
 import Link from "next/link";
 import FreightSettings from "./FreightSettings";
+import FidelitySettings from "./FidelitySettings";
 import { requireUser } from "@/lib/auth";
 import { listUsers } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
@@ -54,6 +55,7 @@ export default async function ConfiguracoesPage({
     { value: "fornecedores", label: "Fornecedores" },
     ...(user.role === "admin" ? [{ value: "contas", label: "Contas" }] : []),
     { value: "frete", label: "Frete" },
+    { value: "fidelidade", label: "Fidelidade" },
     ...(user.role === "admin" ? [{ value: "usuarios", label: "Usuarios" }] : []),
     { value: "conta", label: "Minha conta" },
   ];
@@ -253,6 +255,8 @@ export default async function ConfiguracoesPage({
       )}
 
       {aba === "frete" && <FreightSettings settings={s} admin={user.role === "admin"} />}
+
+      {aba === "fidelidade" && <FidelitySettings settings={s} admin={user.role === "admin"} />}
 
       {aba === "fornecedores" && (
         <Section title="Fornecedores">
