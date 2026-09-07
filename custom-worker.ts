@@ -11,8 +11,11 @@ export default {
     ).then(result => { console.log(JSON.stringify({ event: "notification_cron", ...result })); }));
     // fidelidade uma vez por dia: expirar recompensas e preparar lembretes nao
     // pode depender de alguem abrir o sistema
+    // toda rotina do cron precisa registrar a propria falha: sem isso, uma
+    // quebra fica invisivel e a rotina simplesmente para de acontecer
     ctx.waitUntil(runFidelityDaily(env.DB, Math.floor(event.scheduledTime / 1000))
-      .then(result => { if (result) console.log(JSON.stringify({ event: "fidelity_cron", ...result })); }));
+      .then(result => { if (result) console.log(JSON.stringify({ event: "fidelity_cron", ...result })); })
+      .catch(e => { console.log(JSON.stringify({ event: "fidelity_cron_error", error: String(e).slice(0, 200) })); }));
     // aniversarios: uma falha aqui nao pode derrubar as outras rotinas do cron
     ctx.waitUntil(runBirthdayDaily(env.DB, Math.floor(event.scheduledTime / 1000))
       .then(result => { if (result) console.log(JSON.stringify({ event: "birthday_cron", ...result })); })

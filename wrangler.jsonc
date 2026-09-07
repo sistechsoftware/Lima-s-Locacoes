@@ -10,6 +10,8 @@
     "VAPID_SUBJECT": "mailto:uericlislima@gmail.com"
   },
   "triggers": { "crons": ["* * * * *"] },
+  // o guarda do Next nao se aplica ao Worker e impedia o cron de rodar
+  "alias": { "server-only": "./src/lib/server-only-worker.ts" },
   "secrets": { "required": ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"] },
   "observability": { "enabled": true, "head_sampling_rate": 0.1 },
   "assets": {
