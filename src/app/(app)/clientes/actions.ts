@@ -5,6 +5,7 @@ import { getDb, insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { validarDocumento } from "@/lib/assinatura";
+import { valida } from "@/lib/aniversarios";
 
 function readCustomer(fd: FormData) {
   return {
@@ -17,6 +18,9 @@ function readCustomer(fd: FormData) {
     district: String(fd.get("district") ?? "").trim(),
     city: String(fd.get("city") ?? "").trim(),
     zip: String(fd.get("zip") ?? "").trim(),
+    // data vazia vira null, para o cliente sem nascimento cadastrado nao virar
+    // uma data invalida no banco
+    birth_date: String(fd.get("birth_date") ?? "").trim() || null,
     notes: String(fd.get("notes") ?? "").trim(),
   };
 }
@@ -25,11 +29,12 @@ export async function createCustomer(_prev: string | null, fd: FormData): Promis
   const user = await requireUser();
   const c = readCustomer(fd);
   if (!c.name) return "Informe o nome do cliente.";
+  if (c.birth_date && !valida(c.birth_date)) return "Data de nascimento invalida.";
 
   const id = await insert(
-    `INSERT INTO customers (name, doc, phone, whatsapp, email, address, district, city, zip, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [c.name, c.doc, c.phone, c.whatsapp || c.phone, c.email, c.address, c.district, c.city, c.zip, c.notes],
+    `INSERT INTO customers (name, doc, phone, whatsapp, email, address, district, city, zip, birth_date, notes)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    [c.name, c.doc, c.phone, c.whatsapp || c.phone, c.email, c.address, c.district, c.city, c.zip, c.birth_date, c.notes],
   );
   await logAction(user, "criar", "cliente", id, `${user.name} cadastrou o cliente ${c.name}`);
   revalidatePath("/clientes");
@@ -43,12 +48,13 @@ export async function updateCustomer(_prev: string | null, fd: FormData): Promis
   const id = Number(fd.get("id"));
   const c = readCustomer(fd);
   if (!c.name) return "Informe o nome do cliente.";
+  if (c.birth_date && !valida(c.birth_date)) return "Data de nascimento invalida.";
 
   await run(
-    `UPDATE customers SET name=?, doc=?, phone=?, whatsapp=?, email=?, address=?, district=?, city=?, zip=?, notes=?,
-            updated_at = datetime('now','localtime')
+    `UPDATE customers SET name=?, doc=?, phone=?, whatsapp=?, email=?, address=?, district=?, city=?, zip=?,
+            birth_date=?, notes=?, updated_at = datetime('now','localtime')
       WHERE id = ?`,
-    [c.name, c.doc, c.phone, c.whatsapp || c.phone, c.email, c.address, c.district, c.city, c.zip, c.notes, id],
+    [c.name, c.doc, c.phone, c.whatsapp || c.phone, c.email, c.address, c.district, c.city, c.zip, c.birth_date, c.notes, id],
   );
   await logAction(user, "editar", "cliente", id, `${user.name} alterou o cliente ${c.name}`);
   revalidatePath(`/clientes/${id}`);

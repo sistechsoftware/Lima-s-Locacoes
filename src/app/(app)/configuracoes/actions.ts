@@ -219,3 +219,25 @@ export async function saveFidelitySettings(fd: FormData) {
   revalidatePath("/configuracoes");
   revalidatePath("/fidelidade");
 }
+
+/** Avisos de aniversario: antecedencia, canais e horario. */
+export async function saveBirthdaySettings(fd: FormData) {
+  const user = await assertAdmin();
+  const inteiro = (campo: string, padrao: number, max: number) => {
+    const v = Math.trunc(Number(fd.get(campo)));
+    return String(Number.isFinite(v) && v >= 0 ? Math.min(v, max) : padrao);
+  };
+  const marcado = (campo: string) => (String(fd.get(campo) ?? "") === "1" ? "1" : "0");
+
+  await setSettings({
+    birthday_active: marcado("active"),
+    birthday_days_ahead: inteiro("days_ahead", 7, 366),
+    birthday_notify_today: marcado("notify_today"),
+    birthday_notify_upcoming: marcado("notify_upcoming"),
+    birthday_push: marcado("push"),
+    birthday_hour: inteiro("hour", 8, 23),
+  });
+  await logAction(user, "editar", "configuracao", null, `${user.name} atualizou os avisos de aniversario`);
+  revalidatePath("/configuracoes");
+  revalidatePath("/aniversarios");
+}

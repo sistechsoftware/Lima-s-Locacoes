@@ -111,14 +111,27 @@ export async function runNotificationScheduler(db: D1Database, now = Math.floor(
         n.title AS notification_title,n.body,n.link AS notification_link,n.type AS notification_type,n.created_at AS notification_created,
         a.*,e.revision AS event_revision,r.enabled AS rule_enabled
         FROM push_deliveries d JOIN push_subscriptions s ON s.id=d.subscription_id
-        JOIN user_notifications n ON n.id=d.notification_id JOIN notification_events e ON e.id=n.event_id
-        JOIN activities a ON a.id=e.activity_id LEFT JOIN notification_rules r ON r.type=n.type WHERE d.id=?`).bind(job.id).first<Activity & {
+        JOIN user_notifications n ON n.id=d.notification_id LEFT JOIN notification_events e ON e.id=n.event_id
+        LEFT JOIN activities a ON a.id=e.activity_id LEFT JOIN notification_rules r ON r.type=n.type WHERE d.id=?`).bind(job.id).first<Activity & {
           notification_id:number; subscription_id:number; attempts:number; endpoint:string; p256dh:string; auth:string;
           enabled:number; user_id:number; expiration_time:number|null; notification_title:string;body:string;notification_link:string;
           notification_type:string;notification_created:number;event_revision:number;rule_enabled:number;
         }>();
-      const recipient = d ? (await candidates(db,d.notification_type,d.kind,d.user_id))[0] : undefined;
-      if (!d || !d.enabled || d.expiration_time !== null && d.expiration_time <= now*1000 || !recipient || !eligible(d,recipient) || d.revision !== d.event_revision || !d.rule_enabled || now-d.notification_created>3600 || (d.status !== "pending" && d.notification_type!=="cancelamento")) {
+      const recipient = d ? (await candidates(db,d.notification_type,d.kind ?? d.notification_type,d.user_id))[0] : undefined;
+      // Um aviso proprio (aniversario, por exemplo) nao nasce de uma atividade:
+      // ali nao ha revisao nem escala para conferir, e o que vale e o tipo estar
+      // ligado e o usuario nao ter desligado. As checagens de atividade seguem
+      // valendo, intactas, para tudo que veio de uma.
+      const daAtividade = !!d && d.event_revision !== null && d.event_revision !== undefined;
+      const permitido = !!d && !!recipient
+        && !!d.enabled
+        && !(d.expiration_time !== null && d.expiration_time <= now*1000)
+        && !!d.rule_enabled
+        && now-d.notification_created <= 3600
+        && (daAtividade
+          ? eligible(d,recipient) && d.revision === d.event_revision && (d.status === "pending" || d.notification_type === "cancelamento")
+          : recipient.mode !== "off" && recipient.kindMode !== "off");
+      if (!permitido) {
         await execute(db,"UPDATE push_deliveries SET status='cancelled' WHERE id=?",[job.id]); continue;
       }
       let status = 0;

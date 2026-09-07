@@ -19,6 +19,7 @@ export const NAV: NavItem[] = [
   { href: "/disponibilidade", label: "Disponibilidade", icon: "disponibilidade" },
   { href: "/promocoes", label: "Promocoes", icon: "estoque" },
   { href: "/fidelidade", label: "Fidelidade", icon: "clientes" },
+  { href: "/aniversarios", label: "Aniversariantes", icon: "agenda" },
   { href: "/financeiro", label: "Financeiro", icon: "financeiro" },
   { href: "/compras", label: "Compras", icon: "estoque" },
   { href: "/contratos", label: "Contratos", icon: "contratos" },

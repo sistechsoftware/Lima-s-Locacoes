@@ -1,7 +1,7 @@
 // @ts-ignore OpenNext generates this module during the deployment build.
 import handler from "./.open-next/worker.js";
 import { runNotificationScheduler, webPushSender } from "./src/lib/push-scheduler";
-import { runFidelityDaily } from "./src/lib/fidelidade-cron";
+import { runBirthdayDaily, runFidelityDaily } from "./src/lib/fidelidade-cron";
 
 export default {
   fetch: handler.fetch,
@@ -13,5 +13,9 @@ export default {
     // pode depender de alguem abrir o sistema
     ctx.waitUntil(runFidelityDaily(env.DB, Math.floor(event.scheduledTime / 1000))
       .then(result => { if (result) console.log(JSON.stringify({ event: "fidelity_cron", ...result })); }));
+    // aniversarios: uma falha aqui nao pode derrubar as outras rotinas do cron
+    ctx.waitUntil(runBirthdayDaily(env.DB, Math.floor(event.scheduledTime / 1000))
+      .then(result => { if (result) console.log(JSON.stringify({ event: "birthday_cron", ...result })); })
+      .catch(e => { console.log(JSON.stringify({ event: "birthday_cron_error", error: String(e).slice(0, 200) })); }));
   },
 } satisfies ExportedHandler<CloudflareEnv>;

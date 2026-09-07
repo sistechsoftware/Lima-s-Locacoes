@@ -4,6 +4,7 @@ import { agendaEvents, dashboardStats, lateOperations, operationsOn } from "@/li
 import { listNotifications, rebuildNotifications } from "@/lib/notifications";
 import { dateBR, money, moneyShort, today } from "@/lib/format";
 import { Alerta, Card, LinkButton, PageHeader, Section, Stat } from "@/components/ui";
+import { resumoAniversarios } from "@/lib/aniversarios-db";
 import { OperationCard } from "@/components/OperationCard";
 import { Icon } from "@/components/Icons";
 
@@ -35,7 +36,11 @@ export default async function DashboardPage({
     agendaEvents(d0, d0),
   ]);
   // os indicadores contam alertas, entao so podem ser lidos depois do recalculo
-  const [s, todosAlertas] = await Promise.all([dashboardStats(), listNotifications(true)]);
+  const [s, todosAlertas, aniversarios] = await Promise.all([
+    dashboardStats(),
+    listNotifications(true),
+    resumoAniversarios(),
+  ]);
   const doTipo = (kind: string) => operacoesHoje.filter((o: any) => o.kind === kind);
   const entregas = doTipo("entrega");
   const retiradas = doTipo("retirada");
@@ -80,6 +85,26 @@ export default async function DashboardPage({
         </header>
 
         <div className="space-y-4 p-3 sm:p-4">
+          {aniversarios.ativo && aniversarios.hoje.length > 0 && (
+            <Alerta
+              tone="verde"
+              title={`Hoje e aniversario de ${aniversarios.hoje.length} cliente(s)`}
+            >
+              <div className="mt-1 space-y-0.5">
+                {aniversarios.hoje.slice(0, 4).map((a) => (
+                  <Link key={a.id} href={`/clientes/${a.id}`} className="block underline underline-offset-2">
+                    {a.name}
+                    {a.idadeQueCompleta !== null ? ` - completa ${a.idadeQueCompleta} anos` : ""}
+                  </Link>
+                ))}
+                <Link href="/aniversarios" className="block font-semibold underline underline-offset-2">
+                  Ver aniversariantes
+                  {aniversarios.proximos > 0 ? ` (${aniversarios.proximos} nos proximos dias)` : ""}
+                </Link>
+              </div>
+            </Alerta>
+          )}
+
           {atrasadas.length > 0 && (
             <Alerta tone="vermelho" title={`${atrasadas.length} operacao(oes) em atraso`}>
               <div className="mt-1.5 space-y-1">

@@ -1,7 +1,7 @@
 export const NOTIFICATION_TYPES = {
   entrega: "Entregas", retirada: "Retiradas", montagem: "Montagens", desmontagem: "Desmontagens",
   separacao: "Separacao de materiais", reserva: "Reservas", frete: "Fretes", financeiro: "Financeiro",
-  alteracao: "Alteracoes", cancelamento: "Cancelamentos",
+  alteracao: "Alteracoes", cancelamento: "Cancelamentos", aniversario: "Aniversariantes",
 };
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
 export const OFFSETS = [1440, 720, 120, 60, 30, 15, 0];

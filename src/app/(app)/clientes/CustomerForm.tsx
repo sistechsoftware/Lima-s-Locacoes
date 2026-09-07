@@ -40,6 +40,15 @@ export default function CustomerForm({
         <Field label="E-mail">
           <input name="email" type="email" defaultValue={v.email ?? ""} className="campo" />
         </Field>
+        <Field label="Data de nascimento" hint="Opcional. Serve para avisar o aniversario do cliente.">
+          <input
+            name="birth_date"
+            type="date"
+            max="2100-12-31"
+            defaultValue={(v.birth_date ?? "").slice(0, 10)}
+            className="campo"
+          />
+        </Field>
       </Grid>
 
       <Field label="Endereco">
