@@ -35,10 +35,17 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { addPayment, changeStatus, deletePayment, deleteReservation, refreshComposition, saveDeposit } from "../actions";
 import { generateContract } from "../../contratos/actions";
 import { parcelarReserva, receberParcela } from "../../financeiro/receber-actions";
-import { recebiveisDe } from "@/lib/receber";
+import { adiantamentosDaReserva, recebiveisDe } from "@/lib/receber";
 import { recompensasDisponiveis, simularUso } from "@/lib/fidelidade-db";
 import { aplicarRecompensa } from "../fidelidade-actions";
 import { situacaoParcela } from "@/lib/financeiro";
+import { situacaoAdiantamento } from "@/lib/adiantamento";
+import {
+  atualizarAdiantamentoAction,
+  cancelarAdiantamentoAction,
+  confirmarAdiantamentoAction,
+  criarAdiantamentoAction,
+} from "../adiantamento-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -47,12 +54,12 @@ export default async function ReservaPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<AvailabilityParams & { erro?: string }>;
+  searchParams: Promise<AvailabilityParams & { erro?: string; aviso?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
   const sp = await searchParams;
-  const { erro } = sp;
+  const { erro, aviso } = sp;
   const r = await getReservation(Number(id));
   if (!r) notFound();
 
@@ -68,6 +75,9 @@ export default async function ReservaPage({
   );
   const historico = await logsFor("reserva", r.id);
   const parcelasReceber = await recebiveisDe({ tipo: "locacao", reservationId: r.id });
+  const adiantamentos = await adiantamentosDaReserva(r.id);
+  const adiantamentoAberto = adiantamentos.find((a: any) => a.status === "aberta");
+  const historicoAdiantamentos = adiantamentos.filter((a: any) => a.id !== adiantamentoAberto?.id);
   const recompensas = r.status === "cancelada" ? [] : await recompensasDisponiveis(r.customer_id);
   const recompensaUsada = await one<any>(
     `SELECT * FROM fidelity_rewards WHERE used_reservation_id = ? LIMIT 1`,
@@ -111,6 +121,7 @@ export default async function ReservaPage({
       />
 
       {erro && <Alerta tone="vermelho" title="Nao foi possivel concluir">{erro}</Alerta>}
+      {aviso && <Alerta tone="ambar" title="Atencao">{aviso}</Alerta>}
 
       <AvailabilityFilter query={query} minutes={options.preparationMinutes} fixed />
       <p className="text-xs text-stone-500">Conferencia da composicao fisica gravada, excluindo a propria reserva. Fim da janela com preparacao: {dateTimeBR(occupiedUntil)}. {(HOLDING_STATUSES as readonly string[]).includes(r.status) ? "Este status bloqueia estoque." : "Este status nao bloqueia estoque."}</p>
@@ -380,6 +391,79 @@ export default async function ReservaPage({
           )}
         </Section>
       )}
+
+      <Section title="Adiantamento">
+        {adiantamentoAberto ? (
+          <AdiantamentoAberto entry={adiantamentoAberto} reservationId={r.id} hoje={today()} />
+        ) : r.status !== "cancelada" ? (
+          <>
+            <p className="mb-2 text-sm text-stone-600">
+              Saldo disponivel para adiantar: {money(Math.max(0, m.total - m.paid - m.scheduledAdvance))}.
+            </p>
+            <form action={criarAdiantamentoAction} className="space-y-3">
+              <input type="hidden" name="reservation_id" value={r.id} />
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="rotulo">Valor (R$)</span>
+                  <input name="amount" inputMode="decimal" required className="campo" />
+                </label>
+                <label className="block">
+                  <span className="rotulo">Forma de pagamento</span>
+                  <select name="method" defaultValue="pix" className="campo">
+                    {PAYMENT_METHODS.map((mth) => (
+                      <option key={mth} value={mth}>
+                        {PAYMENT_METHOD_LABEL[mth]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <label className="flex flex-1 items-center gap-2 rounded-xl border border-nuvem-300 p-3 text-sm has-[:checked]:border-marca-400 has-[:checked]:bg-marca-50">
+                  <input type="radio" name="type" value="agora" defaultChecked />
+                  Pago agora
+                </label>
+                <label className="flex flex-1 items-center gap-2 rounded-xl border border-nuvem-300 p-3 text-sm has-[:checked]:border-marca-400 has-[:checked]:bg-marca-50">
+                  <input type="radio" name="type" value="agendado" />
+                  Agendar pagamento
+                </label>
+              </div>
+              <label className="block max-w-56">
+                <span className="rotulo">Data (do pagamento, ou prevista se agendar)</span>
+                <input name="date" type="date" defaultValue={today()} className="campo" />
+              </label>
+              <SubmitButton>Registrar adiantamento</SubmitButton>
+            </form>
+          </>
+        ) : (
+          <p className="text-sm text-stone-500">Reserva cancelada.</p>
+        )}
+
+        {historicoAdiantamentos.length > 0 && (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-marca-600">
+              Historico de adiantamentos ({historicoAdiantamentos.length})
+            </summary>
+            <ul className="mt-2 space-y-1.5">
+              {historicoAdiantamentos.map((a: any) => {
+                const sit = situacaoAdiantamento(a, a.recebido_cents, today());
+                const pagamento = payments.find((p: any) => p.entry_id === a.id);
+                return (
+                  <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-nuvem-200 p-2.5 text-sm">
+                    <span>
+                      {money(a.amount_cents)}
+                      <span className="ml-2 text-xs text-stone-500">
+                        {sit === "recebido" ? `recebido em ${dateBR(pagamento?.paid_at ?? a.due_date)}` : `previsto ${dateBR(a.due_date)}`}
+                      </span>
+                    </span>
+                    <Badge tone={sit === "recebido" ? "verde" : sit === "cancelado" ? "cinza" : "vermelho"}>{sit}</Badge>
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
+        )}
+      </Section>
 
       <Section title={`Parcelamento (${parcelasReceber.length})`}>
         {parcelasReceber.length === 0 ? (
@@ -663,6 +747,93 @@ export default async function ReservaPage({
           </form>
         </Card>
       )}
+    </div>
+  );
+}
+
+/**
+ * O adiantamento agendado (aberta) desta reserva, com edicao, confirmacao e
+ * cancelamento. So existe um por vez, entao a tela tem um lugar so para isso.
+ */
+function AdiantamentoAberto({ entry, reservationId, hoje }: { entry: any; reservationId: number; hoje: string }) {
+  const sit = situacaoAdiantamento(entry, entry.recebido_cents, hoje);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          <span className="text-base font-bold text-tinta-900">{money(entry.amount_cents)}</span>
+          <span className="ml-2 text-xs text-stone-500">
+            previsto {dateBR(entry.due_date)} - {PAYMENT_METHOD_LABEL[entry.expected_method] ?? entry.expected_method}
+          </span>
+        </span>
+        <Badge tone={sit === "atrasado" ? "vermelho" : "ambar"}>{sit}</Badge>
+      </div>
+
+      <form action={confirmarAdiantamentoAction} className="grid grid-cols-2 gap-2 rounded-xl border border-nuvem-300 bg-white p-3">
+        <input type="hidden" name="entry_id" value={entry.id} />
+        <input type="hidden" name="reservation_id" value={reservationId} />
+        <label className="col-span-2 text-xs font-bold uppercase text-stone-500">Confirmar recebimento</label>
+        <label className="block">
+          <span className="rotulo">Forma efetiva</span>
+          <select name="method" defaultValue={entry.expected_method ?? "pix"} className="campo">
+            {PAYMENT_METHODS.map((m) => (
+              <option key={m} value={m}>
+                {PAYMENT_METHOD_LABEL[m]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="rotulo">Data do recebimento</span>
+          <input name="paid_at" type="date" defaultValue={hoje} className="campo" />
+        </label>
+        <div className="col-span-2">
+          <SubmitButton className="w-full">Confirmar recebimento</SubmitButton>
+        </div>
+      </form>
+
+      <details>
+        <summary className="cursor-pointer text-xs font-semibold text-marca-600">Alterar valor, data ou forma</summary>
+        <form action={atualizarAdiantamentoAction} className="mt-2 grid grid-cols-2 gap-2">
+          <input type="hidden" name="entry_id" value={entry.id} />
+          <input type="hidden" name="reservation_id" value={reservationId} />
+          <label className="block">
+            <span className="rotulo">Valor (R$)</span>
+            <input name="amount" defaultValue={(entry.amount_cents / 100).toFixed(2)} inputMode="decimal" className="campo" />
+          </label>
+          <label className="block">
+            <span className="rotulo">Data prevista</span>
+            <input name="date" type="date" defaultValue={entry.due_date} className="campo" />
+          </label>
+          <label className="block col-span-2">
+            <span className="rotulo">Forma prevista</span>
+            <select name="method" defaultValue={entry.expected_method ?? "pix"} className="campo">
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {PAYMENT_METHOD_LABEL[m]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="col-span-2">
+            <SubmitButton variant="secundario" className="w-full">
+              Salvar alteracao
+            </SubmitButton>
+          </div>
+        </form>
+      </details>
+
+      <form action={cancelarAdiantamentoAction}>
+        <input type="hidden" name="entry_id" value={entry.id} />
+        <input type="hidden" name="reservation_id" value={reservationId} />
+        <SubmitButton
+          variant="perigo"
+          confirm={`Cancelar o agendamento de ${money(entry.amount_cents)}? O historico fica registrado.`}
+          className="px-3 py-1.5 text-xs"
+        >
+          Cancelar agendamento
+        </SubmitButton>
+      </form>
     </div>
   );
 }

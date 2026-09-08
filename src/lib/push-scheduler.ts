@@ -1,7 +1,12 @@
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { eligible, notificationType, safePushEndpoint, ROLE_KINDS, type Activity, type Candidate } from "./push-rules";
+import { mensagemLembreteAntecipado, mensagemLembreteHoje } from "./adiantamento";
 
-type EventRow = Activity & { event_id: number; event_type: string; event_revision: number; offset_minutes: number; created_at: number };
+// a.* traz source/source_id/reservation_id mesmo sem declarados no tipo Activity
+type EventRow = Activity & {
+  event_id: number; event_type: string; event_revision: number; offset_minutes: number; created_at: number;
+  source: string; source_id: number; reservation_id: number | null;
+};
 type Credentials = { publicKey: string; privateKey: string; subject: string };
 type Sender = (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }, payload: object) => Promise<number>;
 async function rows<T>(db: D1Database, sql: string, params: (string|number|null)[] = []) {
@@ -73,8 +78,26 @@ export async function runNotificationScheduler(db: D1Database, now = Math.floor(
     const type = notificationType(e.event_type,e.kind);
     const rule = await db.prepare("SELECT message FROM notification_rules WHERE type=?").bind(type).first<{ message: string }>();
     const prefix = e.event_type === "reminder" ? (e.offset_minutes ? `Em ${e.offset_minutes} min` : "Agora") : e.event_type === "cancelamento" ? "Cancelamento" : e.event_type === "alteracao" ? "Alteracao" : "Novo agendamento";
-    const title = `${prefix}: ${e.title}`.slice(0,180);
-    const body = (rule?.message || `${e.title} — ${e.scheduled_at.replace("T"," ")}. Abra para conferir os detalhes.`).slice(0,500);
+    let title = `${prefix}: ${e.title}`.slice(0,180);
+    let body = (rule?.message || `${e.title} — ${e.scheduled_at.replace("T"," ")}. Abra para conferir os detalhes.`).slice(0,500);
+    // Adiantamento: a mesma fila de lembrete de qualquer financial_entries,
+    // so com uma voz mais direta para quem cobra o cliente. Toda outra
+    // notificacao (inclusive as demais parcelas a receber) segue a mensagem de cima, intocada.
+    if (e.event_type === "reminder" && e.source === "financial_entries") {
+      const entry = await db.prepare(
+        `SELECT f.category, f.amount_cents, c.name AS customer_name
+           FROM financial_entries f LEFT JOIN customers c ON c.id = f.customer_id WHERE f.id = ?`,
+      ).bind(e.source_id).first<{ category: string; amount_cents: number; customer_name: string | null }>();
+      if (entry?.category === "Adiantamento" && entry.customer_name) {
+        // dias ate o vencimento a partir de quando o aviso dispara: 1440min
+        // (24h) antes do vencimento e o vencimento em si e sempre "amanha"
+        const dias = Math.round(e.offset_minutes / 1440);
+        const msg = dias >= 1
+          ? mensagemLembreteAntecipado(entry.customer_name, entry.amount_cents, dias)
+          : mensagemLembreteHoje(entry.customer_name, entry.amount_cents);
+        title = msg.title; body = msg.body;
+      }
+    }
     // Same precedence as eligible(), evaluated atomically with the source revision.
     // Bulk INSERTs keep the D1 query count bounded independently of team size.
     const results = await db.batch([

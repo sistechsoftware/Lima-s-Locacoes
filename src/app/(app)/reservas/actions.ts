@@ -17,6 +17,7 @@ import {
   stamp,
 } from "@/lib/stock";
 import { aoConcluirLocacao, devolverRecompensaDaReserva, reverterReserva } from "@/lib/fidelidade-db";
+import { criarAdiantamento } from "@/lib/receber";
 import { HOLDING_STATUSES } from "@/lib/domain";
 import { money, parseMoney, today } from "@/lib/format";
 
@@ -98,8 +99,24 @@ export async function createReservation(_prev: string | null, fd: FormData): Pro
   await recalcReservation(id);
   await syncOperations(id);
   await logAction(user, "criar", "reserva", id, `${user.name} criou a reserva ${number}`, { items: items.length });
+
+  // adiantamento e opcional na criacao: a reserva ja esta gravada quando isto
+  // roda, entao um valor invalido aqui nunca pode custar a reserva inteira —
+  // so avisa, e o adiantamento continua disponivel para lancar na tela dela
+  let avisoAdiantamento: string | null = null;
+  if (fd.get("advance_has") === "1") {
+    avisoAdiantamento = await criarAdiantamento({
+      reservationId: id,
+      amountCents: parseMoney(String(fd.get("advance_amount") ?? "")),
+      imediato: String(fd.get("advance_type") ?? "agendado") === "agora",
+      dataPrevista: String(fd.get("advance_date") ?? "") || today(),
+      method: String(fd.get("advance_method") ?? "pix"),
+      userId: user.id,
+    });
+  }
+
   revalidatePath("/", "layout");
-  redirect(`/reservas/${id}`);
+  redirect(`/reservas/${id}${avisoAdiantamento ? `?aviso=${encodeURIComponent(avisoAdiantamento)}` : ""}`);
 }
 
 export async function updateReservation(_prev: string | null, fd: FormData): Promise<string | null> {

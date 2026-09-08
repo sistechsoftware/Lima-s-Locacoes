@@ -8,6 +8,7 @@ import { listNotifications, rebuildNotifications } from "@/lib/notifications";
 import { dateBR, money, moneyShort, today } from "@/lib/format";
 import { Alerta, Card, LinkButton, PageHeader, Section, Stat } from "@/components/ui";
 import { resumoAniversarios } from "@/lib/aniversarios-db";
+import { adiantamentosPendentes } from "@/lib/receber";
 import { OperationCard } from "@/components/OperationCard";
 import { Icon } from "@/components/Icons";
 
@@ -42,10 +43,11 @@ export default async function DashboardPage({
     agendaEvents(d0, d0),
   ]);
   // os indicadores contam alertas, entao so podem ser lidos depois do recalculo
-  const [s, todosAlertas, aniversarios] = await Promise.all([
+  const [s, todosAlertas, aniversarios, adiantamentos] = await Promise.all([
     dashboardStats(query, options),
     listNotifications(true),
     resumoAniversarios(),
+    adiantamentosPendentes(d0),
   ]);
   const doTipo = (kind: string) => operacoesHoje.filter((o: any) => o.kind === kind);
   const entregas = doTipo("entrega");
@@ -107,6 +109,23 @@ export default async function DashboardPage({
                   Ver aniversariantes
                   {aniversarios.proximos > 0 ? ` (${aniversarios.proximos} nos proximos dias)` : ""}
                 </Link>
+              </div>
+            </Alerta>
+          )}
+
+          {adiantamentos.length > 0 && (
+            <Alerta tone="ambar" title={`Adiantamentos para cobrar: ${adiantamentos.length}`}>
+              <div className="mt-1 space-y-0.5">
+                {adiantamentos.slice(0, 4).map((a: any) => (
+                  <Link
+                    key={a.id}
+                    href={`/reservas/${a.reservation_id}`}
+                    className="block underline underline-offset-2"
+                  >
+                    {a.customer_name} - {money(a.amount_cents)}
+                    {a.due_date < d0 ? " (atrasado)" : ""}
+                  </Link>
+                ))}
               </div>
             </Alerta>
           )}

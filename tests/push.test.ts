@@ -160,3 +160,70 @@ describe("envio real ao servico de push", () => {
     assert.equal(chamou, false, "nao pode sair requisicao para host desconhecido");
   });
 });
+
+describe("lembrete de adiantamento", () => {
+  // a atividade de financial_entries agenda sempre para due_date+"T08:00"; para
+  // o teste nao depender da hora real em que a suite roda, ancoramos "agora"
+  // no proprio 08:00 de Brasilia de hoje, que e quando o offset=0 dispara
+  const hojeBrasilia = local(NOW).slice(0, 10);
+  const ancora = Math.floor(Date.parse(`${hojeBrasilia}T11:00:00Z`) / 1000);
+  const amanhaBrasilia = local(NOW + 86400).slice(0, 10);
+
+  async function cenarioAdiantamento(dueDate: string, extraOffsets = false) {
+    const cliente = await insert(`INSERT INTO customers (name) VALUES ('Joao da Silva')`);
+    const reserva = await insert(
+      `INSERT INTO reservations (number, customer_id, status, event_date, total_cents) VALUES ('LIMA-900',?,'confirmada','2026-10-10',100000)`,
+      [cliente],
+    );
+    if (extraOffsets) await run(`UPDATE notification_rules SET offsets='[1440,60,0]' WHERE type='financeiro'`);
+    await insert(
+      `INSERT INTO financial_entries (number, direction, origin, customer_id, reservation_id, category, description, amount_cents, due_date, installment, installments_total)
+       VALUES ('REC-900','receber','locacao',?,?,'Adiantamento','Adiantamento LIMA-900 - Joao da Silva',20000,?,1,1)`,
+      [cliente, reserva, dueDate],
+    );
+    return { cliente, reserva };
+  }
+
+  it("no dia do vencimento, o aviso usa a voz amigavel pedida, nao o titulo generico", async () => {
+    const op = await user(["financeiro"]);
+    await device(op);
+    await cenarioAdiantamento(hojeBrasilia);
+    await tick(undefined, ancora);
+
+    const aviso = await one<any>(`SELECT * FROM user_notifications ORDER BY id DESC LIMIT 1`);
+    assert.match(aviso.body, /Opa! Hoje e dia de cobrar o adiantamento do cliente Joao da Silva/);
+    assert.match(aviso.body, /R\$ 200,00/);
+    assert.ok(!aviso.title.includes("Vencimento"), "nao pode sobrar o titulo generico");
+  });
+
+  it("um dia antes, avisa que o adiantamento se aproxima", async () => {
+    const op = await user(["financeiro"]);
+    await device(op);
+    await cenarioAdiantamento(amanhaBrasilia, true);
+    await tick(undefined, ancora);
+
+    const aviso = await one<any>(`SELECT * FROM user_notifications WHERE body LIKE '%previsto%' LIMIT 1`);
+    assert.ok(aviso, "o lembrete antecipado precisa existir");
+    assert.match(aviso.body, /adiantamento de Joao da Silva.*R\$ 200,00.*previsto para amanha/);
+  });
+
+  it("um lembrete de parcela comum (sem categoria Adiantamento) mantem a mensagem generica de sempre", async () => {
+    const op = await user(["financeiro"]);
+    await device(op);
+    const cliente = await insert(`INSERT INTO customers (name) VALUES ('Maria')`);
+    const reserva = await insert(
+      `INSERT INTO reservations (number, customer_id, status, event_date, total_cents) VALUES ('LIMA-901',?,'confirmada','2026-10-10',100000)`,
+      [cliente],
+    );
+    await insert(
+      `INSERT INTO financial_entries (number, direction, origin, customer_id, reservation_id, category, description, amount_cents, due_date, installment, installments_total)
+       VALUES ('REC-901','receber','locacao',?,?,'Locacao','LIMA-901 1/2 - Maria',30000,?,1,2)`,
+      [cliente, reserva, hojeBrasilia],
+    );
+    await tick(undefined, ancora);
+
+    const aviso = await one<any>(`SELECT * FROM user_notifications ORDER BY id DESC LIMIT 1`);
+    assert.match(aviso.title, /Vencimento/, "parcela comum continua com o titulo de sempre");
+    assert.ok(!aviso.body.includes("Opa!"), "a voz do adiantamento nao vaza para outras parcelas");
+  });
+});

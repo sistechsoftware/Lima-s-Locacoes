@@ -7,7 +7,7 @@ import ConflictList from "@/components/ConflictList";
 import { Field, Grid, Alerta } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { money, parseMoney } from "@/lib/format";
-import { RESERVATION_STATUS } from "@/lib/domain";
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABEL, RESERVATION_STATUS } from "@/lib/domain";
 import { checkStock } from "./actions";
 import { useStockCheck } from "@/components/useStockCheck";
 import PreparationChoice from "@/components/PreparationChoice";
@@ -54,6 +54,15 @@ export default function ReservationForm({
   const [disassembly, setDisassembly] = useState(cents(reservation?.disassembly_cents));
   const [other, setOther] = useState(cents(reservation?.other_cents));
   const [discount, setDiscount] = useState(cents(reservation?.discount_cents));
+
+  // adiantamento so se aplica na criacao: numa reserva ja existente ele e
+  // gerenciado na tela dela, onde da para editar, confirmar e cancelar sem
+  // misturar isso com a edicao geral da reserva
+  const [hasAdvance, setHasAdvance] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceMethod, setAdvanceMethod] = useState("pix");
+  const [advanceType, setAdvanceType] = useState<"agora" | "agendado">("agora");
+  const [advanceDate, setAdvanceDate] = useState("");
 
   const [considerPreparation, setConsiderPreparation] = useState(reservation?.stock_consider_preparation !== 0);
   const { conflicts, checking, error: stockError } = useStockCheck(items, deliveryAt, pickupAt, considerPreparation, reservation?.id);
@@ -288,6 +297,119 @@ export default function ReservationForm({
           </div>
         </div>
       </section>
+
+      {!reservation && (
+        <section className="cartao p-4">
+          <label className="flex items-center gap-2 text-sm font-bold text-tinta-900">
+            <input
+              type="checkbox"
+              checked={hasAdvance}
+              onChange={(e) => setHasAdvance(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Possui adiantamento
+          </label>
+          <input type="hidden" name="advance_has" value={hasAdvance ? "1" : "0"} />
+
+          {hasAdvance && (
+            <div className="mt-3 space-y-3">
+              <Grid>
+                <Field label="Valor do adiantamento (R$)">
+                  <input
+                    name="advance_amount"
+                    value={advanceAmount}
+                    onChange={(e) => setAdvanceAmount(e.target.value)}
+                    inputMode="decimal"
+                    className="campo"
+                  />
+                </Field>
+                <Field label="Forma de pagamento">
+                  <select
+                    name="advance_method"
+                    value={advanceMethod}
+                    onChange={(e) => setAdvanceMethod(e.target.value)}
+                    className="campo"
+                  >
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m} value={m}>
+                        {PAYMENT_METHOD_LABEL[m]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </Grid>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <label
+                  className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm ${
+                    advanceType === "agora" ? "border-marca-400 bg-marca-50" : "border-nuvem-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="advance_type"
+                    value="agora"
+                    checked={advanceType === "agora"}
+                    onChange={() => setAdvanceType("agora")}
+                  />
+                  <span>
+                    <span className="block font-semibold text-tinta-900">Pago agora</span>
+                    <span className="block text-xs text-stone-500">Entra como recebido, abate do saldo na hora.</span>
+                  </span>
+                </label>
+                <label
+                  className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm ${
+                    advanceType === "agendado" ? "border-marca-400 bg-marca-50" : "border-nuvem-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="advance_type"
+                    value="agendado"
+                    checked={advanceType === "agendado"}
+                    onChange={() => setAdvanceType("agendado")}
+                  />
+                  <span>
+                    <span className="block font-semibold text-tinta-900">Agendar pagamento</span>
+                    <span className="block text-xs text-stone-500">Fica como previsto ate confirmar o recebimento.</span>
+                  </span>
+                </label>
+              </div>
+
+              {advanceType === "agendado" && (
+                <Field label="Data prevista">
+                  <input
+                    name="advance_date"
+                    type="date"
+                    value={advanceDate}
+                    onChange={(e) => setAdvanceDate(e.target.value)}
+                    className="campo max-w-56"
+                  />
+                </Field>
+              )}
+
+              <div className="rounded-xl bg-nuvem-100 p-3 text-sm">
+                {advanceType === "agora" ? (
+                  <>
+                    <Linha label="Adiantamento recebido" value={money(parseMoney(advanceAmount))} />
+                    <div className="flex items-center justify-between pt-1 text-sm font-bold">
+                      <span>Saldo restante</span>
+                      <span>{money(Math.max(0, total - parseMoney(advanceAmount)))}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Linha label="Adiantamento agendado (a receber)" value={money(parseMoney(advanceAmount))} />
+                    <p className="pt-1 text-xs text-stone-500">
+                      Nada e descontado do saldo ate o recebimento ser confirmado.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="cartao p-4">
         <Grid>

@@ -124,12 +124,21 @@ export type ReservationMoney = {
   deposit: number;
   depositStatus: string;
   depositRetained: number;
+  /** Adiantamento agendado, ainda nao recebido. Nao entra em `paid` nem reduz `balance`. */
+  scheduledAdvance: number;
 };
 
 export async function reservationMoney(id: number): Promise<ReservationMoney> {
   const total = await scalar<number>(`SELECT COALESCE(total_cents,0) FROM reservations WHERE id = ?`, [id]);
   const paid = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE reservation_id = ?`, [id]);
   const dep = await one<any>(`SELECT * FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`, [id]);
+  // adiantamento combinado para o futuro: e promessa, nao caixa, entao fica
+  // separado do que a reserva ja recebeu de verdade
+  const scheduledAdvance = await scalar<number>(
+    `SELECT COALESCE(SUM(amount_cents),0) FROM financial_entries
+      WHERE reservation_id = ? AND category = 'Adiantamento' AND status = 'aberta'`,
+    [id],
+  );
   return {
     total,
     paid,
@@ -137,6 +146,7 @@ export async function reservationMoney(id: number): Promise<ReservationMoney> {
     deposit: dep?.amount_cents ?? 0,
     depositStatus: dep?.status ?? "nao_recebida",
     depositRetained: dep?.retained_cents ?? 0,
+    scheduledAdvance,
   };
 }
 
