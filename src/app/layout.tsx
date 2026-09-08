@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lima's Locacoes",
-  description: "Gestao de Locacoes e Eventos",
-  applicationName: "Lima's Locacoes",
+  title: "Lima's Locações",
+  description: "Gestao de Locações e Eventos",
+  applicationName: "Lima's Locações",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
