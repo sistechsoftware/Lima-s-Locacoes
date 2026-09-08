@@ -63,7 +63,7 @@ export default async function AgendaPage({
         items={[
           { value: "dia", label: "Dia" },
           { value: "semana", label: "Semana" },
-          { value: "mes", label: "Mes" },
+          { value: "mes", label: "Mês" },
         ]}
         current={view}
         base={`/agenda?data=${data}${tipo ? `&tipo=${tipo}` : ""}`}
@@ -82,7 +82,7 @@ export default async function AgendaPage({
             <button className="rounded-xl bg-marca-600 px-3 py-2 text-sm font-semibold text-white">Ir</button>
           </form>
           <Link href={nav(1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
-            Proximo
+            Próximo
           </Link>
         </div>
       </Card>

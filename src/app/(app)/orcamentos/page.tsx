@@ -39,9 +39,9 @@ export default async function OrcamentosPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Orcamentos"
+        title="Orçamentos"
         subtitle={`${total} orcamento(s)`}
-        action={<LinkButton href="/orcamentos/novo" variant="primario">+ Novo orcamento</LinkButton>}
+        action={<LinkButton href="/orcamentos/novo" variant="primario">+ Novo orçamento</LinkButton>}
       />
 
       <SearchForm action="/orcamentos" placeholder="ORC-001, cliente..." defaultValue={q} hidden={{ aba }} />

@@ -19,14 +19,14 @@ export default async function NovoOrcamentoPage({
   const customers = await all<any>(`SELECT id, name, address, district, city FROM customers WHERE active = 1 ORDER BY name`);
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader title="Novo orcamento" subtitle="Depois basta converter em reserva" />
+      <PageHeader title="Novo orçamento" subtitle="Depois basta converter em reserva" />
       <QuoteForm
         preparationMinutes={await preparationMinutes()}
         action={createQuote}
         products={products}
         customers={customers}
         defaultCustomerId={cliente ? Number(cliente) : undefined}
-        submitLabel="Criar orcamento"
+        submitLabel="Criar orçamento"
       />
     </div>
   );

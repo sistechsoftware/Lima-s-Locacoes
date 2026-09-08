@@ -219,7 +219,7 @@ export function BottomNav() {
 
 const ACOES = [
   { href: "/reservas/nova", label: "Nova reserva", icon: "reservas" },
-  { href: "/orcamentos/novo", label: "Novo orcamento", icon: "orcamento" },
+  { href: "/orcamentos/novo", label: "Novo orçamento", icon: "orcamento" },
   { href: "/clientes/novo", label: "Novo cliente", icon: "clientes" },
   { href: "/operacao/nova", label: "Nova entrega", icon: "operacao" },
   { href: "/fretes/novo", label: "Novo frete", icon: "fretes" },
