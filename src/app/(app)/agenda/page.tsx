@@ -71,23 +71,36 @@ export default async function AgendaPage({
       />
 
       <Card padded={false}>
-        <div className="flex items-center justify-between gap-2 p-2">
-          <Link href={nav(-1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
+        {/* Encaixa em 320px: os tres blocos se encolhem juntos em vez de
+            estourar a largura e apertar o campo de data */}
+        <div className="flex items-center justify-between gap-1.5 p-2 sm:gap-2">
+          <Link
+            href={nav(-1)}
+            className="shrink-0 whitespace-nowrap rounded-xl border border-nuvem-300 bg-white px-3 py-2 text-sm font-semibold sm:px-4"
+          >
             Anterior
           </Link>
-          <form className="flex items-center gap-2">
+          <form className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
             <input type="hidden" name="view" value={view} />
             {tipo && <input type="hidden" name="tipo" value={tipo} />}
-            <input type="date" name="data" defaultValue={data} className="campo py-2" />
-            <button className="rounded-xl bg-marca-600 px-3 py-2 text-sm font-semibold text-white">Ir</button>
+            <input type="date" name="data" defaultValue={data} className="campo data-hora min-w-0 flex-1 py-2" />
+            <button
+              className="shrink-0 rounded-xl bg-marca-600 px-3 py-2 text-sm font-semibold text-white"
+              aria-label="Ir para a data"
+            >
+              Ir
+            </button>
           </form>
-          <Link href={nav(1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
+          <Link
+            href={nav(1)}
+            className="shrink-0 whitespace-nowrap rounded-xl border border-nuvem-300 bg-white px-3 py-2 text-sm font-semibold sm:px-4"
+          >
             Próximo
           </Link>
         </div>
       </Card>
 
-      <div className="scroll-x -mx-3 flex gap-1.5 px-3 sm:mx-0 sm:px-0">
+      <div className="scroll-x -mx-3 abas-barra px-3 sm:mx-0 sm:px-0">
         <Link
           href={`/agenda?view=${view}&data=${data}`}
           className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${

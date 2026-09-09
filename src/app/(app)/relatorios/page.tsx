@@ -160,17 +160,17 @@ export default async function RelatoriosPage({
 
       {p === "personalizado" && (
         <Card>
-          <form className="flex flex-wrap items-end gap-2">
+          <form className="pilha-filtros">
             <input type="hidden" name="p" value="personalizado" />
-            <label className="min-w-[8rem] flex-1">
+            <label className="min-w-0 flex-1 basis-40">
               <span className="rotulo">De</span>
-              <input type="date" name="de" defaultValue={de} className="campo" />
+              <input type="date" name="de" defaultValue={de} className="campo data-hora" />
             </label>
-            <label className="min-w-[8rem] flex-1">
-              <span className="rotulo">Ate</span>
-              <input type="date" name="ate" defaultValue={ate} className="campo" />
+            <label className="min-w-0 flex-1 basis-40">
+              <span className="rotulo">Até</span>
+              <input type="date" name="ate" defaultValue={ate} className="campo data-hora" />
             </label>
-            <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Aplicar</button>
+            <button className="w-full rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white sm:w-auto">Aplicar</button>
           </form>
         </Card>
       )}

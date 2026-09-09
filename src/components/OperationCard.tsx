@@ -18,7 +18,7 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
     <div className="cartao overflow-hidden">
       <Link href={`/operacao/${op.id}`} className="block p-3">
         <div className="flex items-start gap-3">
-          <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-nuvem-100 py-2">
+          <div className="flex w-14 shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-nuvem-100 py-2">
             <span className="text-base leading-none">{kind.icon}</span>
             <span className="mt-1 text-sm font-bold leading-none text-tinta-900">
               {timeBR(op.scheduled_at)}

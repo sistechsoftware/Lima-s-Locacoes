@@ -79,7 +79,9 @@ export default async function ReservasPage({
       />
 
       <SearchForm action="/reservas" placeholder="LIMA-001, cliente, endereco..." defaultValue={q}>
-        <select name="status" defaultValue={status} className="campo w-auto min-w-[9rem]">
+        {/* min-w-0: dentro do flex do SearchForm, deixa o select encolher no
+            celular sem empurrar o campo de busca para fora da tela */}
+        <select name="status" defaultValue={status} className="campo min-w-[9rem] basis-36 sm:w-auto">
           <option value="">Todos os status</option>
           {RESERVATION_STATUS.map((s) => (
             <option key={s.value} value={s.value}>

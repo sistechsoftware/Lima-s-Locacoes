@@ -54,14 +54,16 @@ export default async function OperacaoPage({
       />
 
       <Card>
-        <form className="flex flex-wrap items-end gap-2">
+        {/* Os campos dividem a largura em partes iguais e o rotulo fica inteiro
+            em cima — antes, "Data" e "Proximos dias" colidiam no celular */}
+        <form className="pilha-filtros">
           <input type="hidden" name="aba" value={aba} />
-          <label className="min-w-[8rem] flex-1">
+          <label className="min-w-0 flex-1 basis-40">
             <span className="rotulo">Data</span>
-            <input type="date" name="data" defaultValue={data} className="campo" />
+            <input type="date" name="data" defaultValue={data} className="campo data-hora" />
           </label>
-          <label className="min-w-[8rem] flex-1">
-            <span className="rotulo">Proximos dias</span>
+          <label className="min-w-0 flex-1 basis-40">
+            <span className="rotulo">Próximos dias</span>
             <select name="dias" defaultValue={String(dias)} className="campo">
               <option value="0">Somente este dia</option>
               <option value="1">+1 dia</option>
@@ -70,7 +72,7 @@ export default async function OperacaoPage({
               <option value="30">+30 dias</option>
             </select>
           </label>
-          <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Filtrar</button>
+          <button className="w-full rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white sm:w-auto">Filtrar</button>
         </form>
       </Card>
 

@@ -1,5 +1,82 @@
 @import "tailwindcss";
 
+/*
+ * Utilitarios do app fora das camadas do Tailwind: vale a regra classica de
+ * especificidade — utilitario vence componente. Assim `campo pl-9` empurra o
+ * texto para abrir espaco para o icone de busca, e `py-2` encolhe a altura do
+ * campo dentro da barra da agenda, em qualquer largura de tela.
+ */
+@layer components {
+  /* Campos de formulario padronizados */
+  .campo {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-nuvem-300);
+    background: #fff;
+    padding: 0.7rem 0.85rem;
+    font-size: 1rem;
+    color: var(--color-tinta-900);
+    outline: none;
+  }
+  .campo:focus {
+    border-color: var(--color-marca-400);
+    box-shadow: 0 0 0 3px rgba(5, 16, 148, 0.14);
+  }
+  .campo:disabled {
+    background: var(--color-nuvem-100);
+    color: #6B7280;
+  }
+
+  label.rotulo,
+  span.rotulo,
+  .rotulo {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6B7280;
+    margin-bottom: 0.3rem;
+  }
+
+  .cartao {
+    background: #fff;
+    border: 1px solid var(--color-nuvem-300);
+    border-radius: 1rem;
+  }
+
+  /*
+   * Data e hora em tela pequena: o Safari no iOS aumenta o zoom da pagina
+   * quando o campo focado tem fonte menor que 16px. Em telas estreitas o
+   * campo de data/hora ocupa a linha inteira, entao pode ficar grande.
+   */
+  @media (max-width: 639px) {
+    .data-hora {
+      font-size: 1rem;
+    }
+  }
+
+  /* Barras de filtro empilhadas no celular e lado a lado no desktop */
+  .pilha-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+  @media (min-width: 640px) {
+    .pilha-filtros {
+      flex-wrap: nowrap;
+      align-items: flex-end;
+    }
+  }
+
+  /* Abas de filtro com rolagem horizontal no celular */
+  .abas-barra {
+    display: flex;
+    gap: 0.375rem;
+  }
+}
+
 @theme {
   /*
    * Paleta da marca. A hierarquia pretendida e 60% azul (navegacao, acoes
@@ -64,41 +141,6 @@ body {
 }
 .scroll-x::-webkit-scrollbar {
   display: none;
-}
-
-/* Campos de formulario padronizados */
-.campo {
-  width: 100%;
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-nuvem-300);
-  background: #fff;
-  padding: 0.7rem 0.85rem;
-  font-size: 1rem;
-  color: var(--color-tinta-900);
-  outline: none;
-}
-.campo:focus {
-  border-color: var(--color-marca-400);
-  box-shadow: 0 0 0 3px rgba(5, 16, 148, 0.14);
-}
-.campo:disabled {
-  background: var(--color-nuvem-100);
-  color: #6B7280;
-}
-label.rotulo {
-  display: block;
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #6B7280;
-  margin-bottom: 0.3rem;
-}
-
-.cartao {
-  background: #fff;
-  border: 1px solid var(--color-nuvem-300);
-  border-radius: 1rem;
 }
 
 /* Impressao de contratos e orcamentos */
@@ -166,6 +208,12 @@ label.rotulo {
 @media (max-width: 767px) {
   /* espaco para a barra inferior de navegacao */
   .com-barra-inferior {
+    padding-bottom: 5.5rem;
+  }
+
+  /* A tela de chat usa altura cheia entre a barra superior e a barra inferior.
+     dvh acompanha a barra de endereco dos navegadores mobile. */
+  .com-barra-inferior:has(.chat-tela) {
     padding-bottom: 5.5rem;
   }
 }

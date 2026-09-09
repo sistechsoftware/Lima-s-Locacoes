@@ -98,17 +98,17 @@ export default async function FinanceiroPage({
       {sp.ok && <Alerta tone="verde" title="Pronto">{sp.ok}</Alerta>}
 
       <Card>
-        <form className="flex flex-wrap items-end gap-2">
+        <form className="pilha-filtros">
           <input type="hidden" name="aba" value={aba} />
-          <label className="min-w-[8rem] flex-1">
+          <label className="min-w-0 flex-1 basis-40">
             <span className="rotulo">De</span>
-            <input type="date" name="de" defaultValue={de} className="campo" />
+            <input type="date" name="de" defaultValue={de} className="campo data-hora" />
           </label>
-          <label className="min-w-[8rem] flex-1">
-            <span className="rotulo">Ate</span>
-            <input type="date" name="ate" defaultValue={ate} className="campo" />
+          <label className="min-w-0 flex-1 basis-40">
+            <span className="rotulo">Até</span>
+            <input type="date" name="ate" defaultValue={ate} className="campo data-hora" />
           </label>
-          <button className="rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white">Filtrar</button>
+          <button className="w-full rounded-xl bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white sm:w-auto">Filtrar</button>
         </form>
       </Card>
 
@@ -247,7 +247,7 @@ export default async function FinanceiroPage({
                   + Nova finalidade
                 </summary>
                 {/* form separado: um formulario dentro do outro seria HTML invalido */}
-                <form action={createPurpose} className="mt-2 flex flex-wrap items-end gap-2">
+                <form action={createPurpose} className="mt-2 pilha-filtros">
                   <input type="hidden" name="aba" value="saidas" />
                   <input type="hidden" name="de" value={de} />
                   <input type="hidden" name="ate" value={ate} />
@@ -256,7 +256,7 @@ export default async function FinanceiroPage({
                     placeholder="Ex.: Manutencao do veiculo"
                     maxLength={60}
                     required
-                    className="campo min-w-[12rem] flex-1"
+                    className="campo min-w-0 flex-1 basis-48"
                   />
                   <SubmitButton variant="secundario">Salvar finalidade</SubmitButton>
                 </form>

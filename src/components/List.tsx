@@ -16,16 +16,20 @@ export function SearchForm({
   children?: React.ReactNode;
 }) {
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form action={action} className="pilha-filtros">
       {Object.entries(hidden).map(([k, v]) =>
         v ? <input key={k} type="hidden" name={k} value={v} /> : null,
       )}
-      <div className="relative min-w-[10rem] flex-1">
+      {/* min-w-0: dentro de um flex, deixa o campo encolher ate caber na tela
+          de 320px em vez de estourar a largura com o icone por cima do texto */}
+      <div className="relative min-w-0 flex-1 basis-48">
         <Icon name="busca" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
         <input name="q" defaultValue={defaultValue} placeholder={placeholder} className="campo pl-9" />
       </div>
       {children}
-      <button className="rounded-xl bg-marca-600 px-4 py-2.5 text-sm font-semibold text-white">Buscar</button>
+      <button className="w-full rounded-xl bg-marca-600 px-4 py-2.5 text-sm font-semibold text-white sm:w-auto">
+        Buscar
+      </button>
     </form>
   );
 }
@@ -43,7 +47,7 @@ export function Tabs({
   param?: string;
 }) {
   return (
-    <div className="scroll-x -mx-3 flex gap-1.5 px-3 sm:mx-0 sm:px-0">
+    <div className="scroll-x -mx-3 abas-barra px-3 sm:mx-0 sm:px-0">
       {items.map((t) => {
         const active = t.value === current;
         const sep = base.includes("?") ? "&" : "?";
@@ -51,7 +55,7 @@ export function Tabs({
           <Link
             key={t.value}
             href={`${base}${sep}${param}=${t.value}`}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+            className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
               active
                 ? "border-marca-600 bg-marca-600 text-white"
                 : "border-nuvem-300 bg-white text-tinta-700 hover:bg-nuvem-50"
@@ -84,17 +88,23 @@ export function Pagination({
   return (
     <nav className="flex items-center justify-between gap-2 pt-1">
       {page > 1 ? (
-        <Link href={build(page - 1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
+        <Link
+          href={build(page - 1)}
+          className="min-h-11 rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold"
+        >
           Anterior
         </Link>
       ) : (
         <span />
       )}
-      <span className="text-xs text-stone-500">
+      <span className="text-center text-xs text-stone-500">
         Pagina {page} de {pages} - {total} registro(s)
       </span>
       {page < pages ? (
-        <Link href={build(page + 1)} className="rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold">
+        <Link
+          href={build(page + 1)}
+          className="min-h-11 rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold"
+        >
           Proxima
         </Link>
       ) : (

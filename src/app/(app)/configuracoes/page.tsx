@@ -284,9 +284,9 @@ export default async function ConfiguracoesPage({
             <b>nao altera nenhum lancamento ja registrado</b>: cada saida guarda o texto escolhido no dia.
           </p>
 
-          <form action={createPurpose} className="mb-4 flex flex-wrap items-end gap-2">
+          <form action={createPurpose} className="mb-4 pilha-filtros">
             <input type="hidden" name="aba" value="finalidades" />
-            <input name="name" placeholder="Nova finalidade" maxLength={60} required className="campo min-w-[12rem] flex-1" />
+            <input name="name" placeholder="Nova finalidade" maxLength={60} required className="campo min-w-0 flex-1 basis-48" />
             <SubmitButton>Adicionar</SubmitButton>
           </form>
 
