@@ -14,6 +14,27 @@ import { insert, all, one, run, getDb } from "./db";
 const MAX_BYTES = 1_500_000;
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+/**
+ * Formatos aceitos no chat. Executaveis, instaladores e scripts ficam de fora
+ * (a lista e fechada — o que nao esta aqui, nao entra), mesmo comprimidos.
+ */
+const CHAT_ALLOWED = [
+  "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif",
+  "application/pdf",
+  "audio/webm", "audio/ogg", "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/x-wav", "audio/mp4a",
+  "text/plain", "text/csv", "text/markdown",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/json",
+];
+
+/** Extensoes perigosas, bloqueadas mesmo se o mime declarado for aceito. */
+const CHAT_FORBIDDEN_EXT = /\.(exe|msi|bat|cmd|com|scr|ps1|sh|js|mjs|jar|apk|dll|vbs|wsf|hta|cpl|pif|gadget|applescript|deb|rpm|dmg|iso|appimage|app|action|workflow|terminal|command|scpt)$/i;
+
 export class UploadError extends Error {}
 
 function randomId() {
@@ -49,6 +70,65 @@ export async function saveUpload(file: File | null, userId?: number): Promise<st
 }
 
 export type StoredFile = { id: string; mime: string; size: number; data: Uint8Array };
+
+export type ChatSaveOptions = {
+  maxBytes?: number;
+  /** "audio" exige mime de audio e grava audio_seconds; ausente aceita a lista geral. */
+  tipo?: "audio";
+  esperado?: string;
+  audioSeconds?: number | null;
+};
+
+export type ChatSavedFile = {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  audioSeconds?: number | null;
+};
+
+/**
+ * Arquivo de chat: mesma tabela `files`, validacao mais larga (pdf, docs,
+ * planilhas, audio) e nome preservado pelo remetente. O acesso NAO e publico:
+ * a leitura sai por /api/chat/arquivo/<id>, que confere participacao na
+ * conversa antes de servir os bytes.
+ */
+export async function saveChatAttachment(file: File, opts: ChatSaveOptions = {}): Promise<ChatSavedFile> {
+  const maxBytes = opts.maxBytes ?? 1_500_000;
+  const nome = (file.name || "arquivo").slice(0, 200);
+  if (CHAT_FORBIDDEN_EXT.test(nome)) {
+    throw new UploadError("Este tipo de arquivo nao e permitido no chat por seguranca.");
+  }
+  if (file.size > maxBytes) {
+    throw new UploadError(
+      `Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)} MB). O limite e de ${(maxBytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB.`,
+    );
+  }
+  if (file.size === 0) throw new UploadError("Arquivo vazio ou corrompido.");
+
+  let mime = (file.type || "").toLowerCase().split(";")[0].trim();
+  if (opts.tipo === "audio") {
+    // Safari grava MP4/AAC, Chrome grava webm/ogg; aceita variacoes do mesmo grupo
+    if (!mime.startsWith("audio/")) mime = mime === "video/webm" ? "audio/webm" : mime;
+    if (!mime.startsWith("audio/")) throw new UploadError("Formato de audio nao suportado pelo navegador.");
+  } else if (!CHAT_ALLOWED.includes(mime)) {
+    throw new UploadError("Formato nao suportado. Envie imagem, PDF, documento, planilha, texto ou audio.");
+  }
+
+  const id = randomId();
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!bytes.length) throw new UploadError("Arquivo corrompido no upload. Tente novamente.");
+
+  await getDb()
+    .prepare(`INSERT INTO files (id, mime, size, data, created_by) VALUES (?,?,?,?,?)`)
+    .bind(id, mime, bytes.length, bytes, null)
+    .run();
+  return { id, name: nome, mime, size: bytes.length, audioSeconds: opts.audioSeconds ?? null };
+}
+
+export async function getFileById(id: string): Promise<StoredFile | undefined> {
+  return getFile(id);
+}
 
 export async function getFile(id: string): Promise<StoredFile | undefined> {
   const row = await one<{ id: string; mime: string; size: number; data: unknown }>(
@@ -121,7 +201,6 @@ export async function removeFileByUrl(url: string | null | undefined) {
   if (emUso.length) return;
   await run(`DELETE FROM files WHERE id = ?`, [id]);
 }
-
 export function fileIdFromUrl(url: string | null | undefined): string | null {
   const m = /^\/api\/arquivo\/([0-9a-f]{32})$/.exec(url ?? "");
   return m ? m[1] : null;
