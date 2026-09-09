@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icons";
+import ChatBell from "./ChatBell";
 import { EXTRA_NAV, MOBILE_NAV, NAV } from "@/lib/nav";
 import { initials } from "@/lib/format";
 
@@ -68,7 +69,7 @@ export function TopBar({
   return (
     <header className="nao-imprimir sticky top-0 z-30 border-b border-nuvem-300 bg-white/95 backdrop-blur">
       <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
-        <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
+        <Link href="/dashboard" className="flex shrink-0 items-center gap-2 md:hidden">
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logo} alt="" className="h-8 w-8 rounded-lg object-contain" />
@@ -81,6 +82,8 @@ export function TopBar({
         </Link>
 
         <GlobalSearch />
+
+        <ChatBell />
 
         <Link
           href="/notificacoes"
@@ -188,9 +191,11 @@ export function BottomNav() {
         </div>
       )}
 
+      {/* Uma unica linha garantida: grid-cols-5 fixo (4 itens + "Mais"),
+          nunca quebra mesmo se MOBILE_NAV crescer — o slice protege o invariante. */}
       <nav className="nao-imprimir fixed inset-x-0 bottom-0 z-30 border-t border-nuvem-300 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="grid grid-cols-5">
-          {MOBILE_NAV.map((n) => (
+          {MOBILE_NAV.slice(0, 4).map((n) => (
             <Link
               key={n.href}
               href={n.href}
@@ -198,15 +203,17 @@ export function BottomNav() {
                 active(pathname, n.href) ? "text-marca-600" : "text-stone-500"
               }`}
             >
-              <Icon name={n.icon} className="h-[22px] w-[22px]" />
+              <Icon name={n.icon} className="mt-1 h-[22px] w-[22px]" />
               <span className="leading-none">{n.label.split(" ")[0]}</span>
             </Link>
           ))}
           <button
             onClick={() => setSheet(true)}
-            className="flex flex-col items-center gap-0.5 py-2 text-[0.63rem] font-semibold text-stone-500"
+            className={`flex flex-col items-center gap-0.5 py-2 text-[0.63rem] font-semibold ${
+              sheet || EXTRA_NAV.some((n) => active(pathname, n.href)) ? "text-marca-600" : "text-stone-500"
+            }`}
           >
-            <Icon name="menu" className="h-[22px] w-[22px]" />
+            <Icon name="menu" className="mt-1 h-[22px] w-[22px]" />
             <span className="leading-none">Mais</span>
           </button>
         </div>
@@ -231,6 +238,11 @@ export function FloatingAction() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => setOpen(false), [pathname]);
+
+  /* No chat a tela usa a altura inteira e o composer (anexo/mic/enviar) ocupa a
+     base: o botao flutuante cobria o microfone e roubava toques. Fora do chat
+     ele continua igual, com as mesmas acoes. */
+  if (pathname === "/chat") return null;
 
   return (
     <>
