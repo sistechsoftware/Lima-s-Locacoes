@@ -20,7 +20,7 @@ export function useStockCheck(items: ItemInput[], from: string, to: string, cons
         const conflicts = await checkStock(JSON.parse(key));
         if (active) setState({ key, conflicts, error: null, checking: false });
       } catch {
-        if (active) setState({ key, conflicts: [], error: "Nao foi possivel verificar o estoque. Tente novamente; a gravacao sempre refaz a verificacao.", checking: false });
+        if (active) setState({ key, conflicts: [], error: "Não foi possível verificar o estoque. Tente novamente; a gravação sempre refaz a verificação.", checking: false });
       }
     }, 350);
     return () => { active = false; clearTimeout(timer); };

@@ -11,8 +11,8 @@ export default async function NovaPromocaoPage() {
   const produtos = await sellableProducts();
   return (
     <div className="space-y-4">
-      <PageHeader title="Nova promocao" subtitle="O preco da faixa vale para todas as unidades do item" />
-      <PromotionForm action={createPromotion} produtos={produtos} submitLabel="Criar promocao" />
+      <PageHeader title="Nova Promoção" subtitle="O preço da faixa vale para todas as unidades do item" />
+      <PromotionForm action={createPromotion} produtos={produtos} submitLabel="Criar Promoção" />
     </div>
   );
 }

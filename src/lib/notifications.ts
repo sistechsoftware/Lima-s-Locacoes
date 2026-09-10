@@ -101,7 +101,7 @@ export async function rebuildNotifications({ force = false } = {}) {
       dedupe_key: `op-${o.id}`,
       type: o.kind,
       severity: late ? "critico" : "aviso",
-      title: `${late ? "Atrasada" : "Hoje"}: ${o.kind} - ${o.customer ?? "sem cliente"}`,
+      title: `${late ? "Atrasada" : "Hoje"}: ${o.kind} · ${o.customer ?? "sem cliente"}`,
       body: `${o.number ?? ""} agendada para ${o.scheduled_at.replace("T", " ")}`,
       link: o.reservation_id ? `/reservas/${o.reservation_id}` : "/operacao",
     });
@@ -112,7 +112,7 @@ export async function rebuildNotifications({ force = false } = {}) {
       dedupe_key: `pay-${r.id}`,
       type: "pagamento",
       severity: "critico",
-      title: `Pagamento pendente - ${r.customer}`,
+      title: `Pagamento pendente · ${r.customer}`,
       body: `${r.number}: saldo de R$ ${((r.total_cents - r.paid) / 100).toFixed(2)}`,
       link: `/reservas/${r.id}`,
     });
@@ -123,7 +123,7 @@ export async function rebuildNotifications({ force = false } = {}) {
       dedupe_key: `soon-${r.id}`,
       type: "reserva",
       severity: "aviso",
-      title: `Pre-reserva proxima - ${r.customer}`,
+      title: `Pré-reserva próxima · ${r.customer}`,
       body: `${r.number} para ${r.event_date}. Confirmar com o cliente.`,
       link: `/reservas/${r.id}`,
     });
@@ -135,8 +135,8 @@ export async function rebuildNotifications({ force = false } = {}) {
       dedupe_key: `contract-${r.id}`,
       type: "contrato",
       severity: "aviso",
-      title: `Contrato pendente - ${r.customer}`,
-      body: `${r.number}: ${r.cstatus ? "contrato " + r.cstatus : "contrato ainda nao gerado"}.`,
+      title: `Contrato pendente · ${r.customer}`,
+      body: `${r.number}: ${r.cstatus ? "contrato " + r.cstatus : "contrato ainda não gerado"}.`,
       link: `/reservas/${r.id}`,
     });
   }
@@ -146,7 +146,7 @@ export async function rebuildNotifications({ force = false } = {}) {
       dedupe_key: `deposit-${r.id}`,
       type: "caucao",
       severity: "aviso",
-      title: `Caucao nao recebida - ${r.customer}`,
+      title: `Caução não recebida · ${r.customer}`,
       body: `${r.number}: R$ ${(r.amount_cents / 100).toFixed(2)} pendente.`,
       link: `/reservas/${r.id}`,
     });
@@ -158,7 +158,7 @@ export async function rebuildNotifications({ force = false } = {}) {
       type: "estoque",
       severity: "aviso",
       title: `Estoque baixo: ${p.name}`,
-      body: `${p.total_qty - p.maintenance_qty} disponiveis, minimo ${p.min_qty}.`,
+      body: `${p.total_qty - p.maintenance_qty} disponíveis, mínimo ${p.min_qty}.`,
       link: `/estoque/${p.id}`,
     });
   }
@@ -168,8 +168,8 @@ export async function rebuildNotifications({ force = false } = {}) {
       dedupe_key: `maint-${m.id}`,
       type: "manutencao",
       severity: "info",
-      title: `Manutencao aberta: ${m.name}`,
-      body: `${m.qty} unidade(s) fora de operacao.`,
+      title: `Manutenção aberta: ${m.name}`,
+      body: `${m.qty} unidade(s) fora de operação.`,
       link: `/estoque`,
     });
   }
@@ -179,7 +179,7 @@ export async function rebuildNotifications({ force = false } = {}) {
       dedupe_key: `conflict-${r.reservation_id}`,
       type: "conflito",
       severity: "critico",
-      title: `Conflito de estoque - ${r.customer}`,
+      title: `Conflito de estoque · ${r.customer}`,
       body: `${r.number}: ${r.faltas.map((f) => `${f.product} faltam ${f.missing}`).join("; ")}`,
       link: `/reservas/${r.reservation_id}`,
     });

@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const ATALHOS = [
   { href: "/reservas/nova", label: "Reserva", icon: "reservas" },
-  { href: "/orcamentos/novo", label: "Orcamento", icon: "orcamento" },
+  { href: "/orcamentos/novo", label: "Orçamento", icon: "orcamento" },
   { href: "/clientes/novo", label: "Cliente", icon: "clientes" },
   { href: "/operacao/nova", label: "Entrega", icon: "operacao" },
   { href: "/fretes/novo", label: "Frete", icon: "fretes" },
@@ -59,14 +59,14 @@ export default async function DashboardPage({
   return (
     <div className="space-y-5">
       <PageHeader
-        title={`Ola, ${user.name.split(" ")[0]}`}
-        subtitle={`Operacao de ${dateBR(d0)}`}
-        action={<LinkButton href="/reservas/nova" variant="primario">+ Nova reserva</LinkButton>}
+        title={`Olá, ${user.name.split(" ")[0]}`}
+        subtitle={`Operação de ${dateBR(d0)}`}
+        action={<LinkButton href="/reservas/nova" variant="primario">+ Nova Reserva</LinkButton>}
       />
 
       {erro === "permissao" && (
         <Alerta tone="vermelho" title="Acesso restrito">
-          Esta area e exclusiva do administrador.
+          Esta área é exclusiva do administrador.
         </Alerta>
       )}
 
@@ -86,9 +86,9 @@ export default async function DashboardPage({
       {/* ------------------------- OPERACAO DE HOJE ------------------------- */}
       <section className="cartao overflow-hidden border-marca-200">
         <header className="flex items-center justify-between bg-marca-600 px-4 py-3 text-white">
-          <h2 className="text-sm font-black uppercase tracking-wide">Operacao de hoje</h2>
+          <h2 className="text-sm font-black uppercase tracking-wide">Operação de hoje</h2>
           <Link href="/operacao" className="text-xs font-semibold underline underline-offset-2">
-            ver tudo
+            Ver tudo
           </Link>
         </header>
 
@@ -96,7 +96,7 @@ export default async function DashboardPage({
           {aniversarios.ativo && aniversarios.hoje.length > 0 && (
             <Alerta
               tone="verde"
-              title={`Hoje e aniversario de ${aniversarios.hoje.length} cliente(s)`}
+              title={`Hoje é aniversário de ${aniversarios.hoje.length} cliente(s)`}
             >
               <div className="mt-1 space-y-0.5">
                 {aniversarios.hoje.slice(0, 4).map((a) => (
@@ -107,7 +107,7 @@ export default async function DashboardPage({
                 ))}
                 <Link href="/aniversarios" className="block font-semibold underline underline-offset-2">
                   Ver aniversariantes
-                  {aniversarios.proximos > 0 ? ` (${aniversarios.proximos} nos proximos dias)` : ""}
+                  {aniversarios.proximos > 0 ? ` (${aniversarios.proximos} nos próximos dias)` : ""}
                 </Link>
               </div>
             </Alerta>
@@ -131,7 +131,7 @@ export default async function DashboardPage({
           )}
 
           {atrasadas.length > 0 && (
-            <Alerta tone="vermelho" title={`${atrasadas.length} operacao(oes) em atraso`}>
+            <Alerta tone="vermelho" title={`${atrasadas.length} operação(ões) em atraso`}>
               <div className="mt-1.5 space-y-1">
                 {atrasadas.slice(0, 4).map((o: any) => (
                   <Link key={o.id} href={`/operacao/${o.id}`} className="block underline underline-offset-2">
@@ -174,7 +174,7 @@ export default async function DashboardPage({
                   </Link>
                 ))}
                 <Link href="/notificacoes" className="block pt-1 text-xs font-semibold text-marca-600">
-                  Ver todas as notificacoes
+                  Ver todas as notificações
                 </Link>
               </div>
             )}
@@ -187,7 +187,7 @@ export default async function DashboardPage({
         title="Agenda de hoje"
         action={
           <Link href="/agenda" className="text-xs font-semibold text-marca-600">
-            abrir agenda
+            Abrir agenda
           </Link>
         }
       >
@@ -220,9 +220,9 @@ export default async function DashboardPage({
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Hoje" value={s.reservas.hoje} href="/reservas?periodo=hoje" />
           <Stat label="Nesta semana" value={s.reservas.semana} href="/reservas?periodo=semana" />
-          <Stat label="Proximas" value={s.reservas.proximas} href="/reservas?periodo=futuras" />
+          <Stat label="Próximas" value={s.reservas.proximas} href="/reservas?periodo=futuras" />
           <Stat label="Confirmadas" value={s.reservas.confirmadas} href="/reservas?status=confirmada" />
-          <Stat label="Orcamentos pendentes" value={s.reservas.orcamentosPendentes} href="/orcamentos" />
+          <Stat label="Orçamentos pendentes" value={s.reservas.orcamentosPendentes} href="/orcamentos" />
           <Stat
             label="Em conflito"
             value={s.reservas.conflitos}
@@ -233,7 +233,7 @@ export default async function DashboardPage({
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Operacao</h2>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Operação</h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Entregas hoje" value={s.operacao.entregas} icon="🚚" href="/operacao" />
           <Stat label="Retiradas hoje" value={s.operacao.retiradas} icon="🔄" href="/operacao?aba=retiradas" />
@@ -260,7 +260,7 @@ export default async function DashboardPage({
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Financeiro do mes</h2>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Financeiro do Mês</h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
           <Stat label="Faturamento" value={moneyShort(s.financeiro.faturamentoMes)} href="/financeiro" />
           <Stat label="Recebido" value={moneyShort(s.financeiro.recebidoMes)} tone="verde" href="/financeiro" />
@@ -276,12 +276,12 @@ export default async function DashboardPage({
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Disponibilidade do estoque</h2>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Disponibilidade do Estoque</h2>
         <AvailabilityFilter query={query} minutes={options.preparationMinutes} />
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <Stat label="Disponiveis" value={s.estoque.disponiveis} href={`/disponibilidade?${query.queryString}`} />
+          <Stat label="Disponíveis" value={s.estoque.disponiveis} href={`/disponibilidade?${query.queryString}`} />
           <Stat label="Reservados" value={s.estoque.reservados} href={`/disponibilidade?${query.queryString}`} />
-          <Stat label="Em manutencao" value={s.estoque.manutencao} href="/estoque" />
+          <Stat label="Em manutenção" value={s.estoque.manutencao} href="/estoque" />
           <Stat
             label="Estoque baixo"
             value={s.estoque.baixos}
@@ -293,7 +293,7 @@ export default async function DashboardPage({
 
       {s.kits.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Kits montaveis na consulta</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Kits Montáveis na Consulta</h2>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
             {s.kits.map((k) => (
               <Stat
@@ -310,7 +310,7 @@ export default async function DashboardPage({
       )}
 
       <Card className="text-xs text-stone-500">
-        Faturamento considera reservas do mes com status ativo mais fretes concluidos. A receber soma o saldo em
+        Faturamento considera reservas do mês com status ativo mais fretes concluídos. A receber soma o saldo em
         aberto de todas as reservas ativas. Valores em {money(0).slice(0, 2)}.
       </Card>
     </div>

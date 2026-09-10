@@ -38,10 +38,10 @@ export default async function ClientesPage({
       <PageHeader
         title="Clientes"
         subtitle={`${total} cliente(s)`}
-        action={<LinkButton href="/clientes/novo" variant="primario">+ Novo cliente</LinkButton>}
+        action={<LinkButton href="/clientes/novo" variant="primario">+ Novo Cliente</LinkButton>}
       />
 
-      <SearchForm action="/clientes" placeholder="Nome, telefone, CPF, bairro..." defaultValue={q}>
+      <SearchForm action="/clientes" placeholder="Nome, telefone, CPF, bairro…" defaultValue={q}>
         <label className="flex items-center gap-2 rounded-xl border border-nuvem-300 bg-white px-3 py-2.5 text-sm">
           <input type="checkbox" name="inativos" value="1" defaultChecked={inativos} className="h-4 w-4" />
           Incluir inativos
@@ -60,12 +60,12 @@ export default async function ClientesPage({
                 <>
                   {!c.active && <Badge tone="cinza">Inativo</Badge>}
                   {c.saldo_cents > 0 && <Badge tone="vermelho">Saldo {money(c.saldo_cents)}</Badge>}
-                  {c.proxima && <Badge tone="verde">Proxima {dateBR(c.proxima)}</Badge>}
+                  {c.proxima && <Badge tone="verde">Próxima {dateBR(c.proxima)}</Badge>}
                 </>
               }
               title={c.name}
-              subtitle={[phoneBR(c.phone), c.district, c.city].filter(Boolean).join(" - ")}
-              meta={`${c.locacoes} locacao(oes) - total ${money(c.total_cents)}${c.ultima ? ` - ultima ${dateBR(c.ultima)}` : ""}`}
+              subtitle={[phoneBR(c.phone), c.district, c.city].filter(Boolean).join(" · ")}
+              meta={`${c.locacoes} locação(ões) · total ${money(c.total_cents)}${c.ultima ? ` · última ${dateBR(c.ultima)}` : ""}`}
             />
           ))}
         </div>

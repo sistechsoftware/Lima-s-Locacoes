@@ -15,13 +15,13 @@ function periodo(nome: string, de?: string, ate?: string) {
     case "hoje":
       return { de: d0, ate: d0, label: "Hoje" };
     case "semana":
-      return { de: startOfWeek(d0), ate: addDays(startOfWeek(d0), 6), label: "Esta semana" };
+      return { de: startOfWeek(d0), ate: addDays(startOfWeek(d0), 6), label: "Esta Semana" };
     case "ano":
       return { de: `${d0.slice(0, 4)}-01-01`, ate: `${d0.slice(0, 4)}-12-31`, label: "Este ano" };
     case "personalizado":
-      return { de: de || startOfMonth(d0), ate: ate || endOfMonth(d0), label: "Periodo personalizado" };
+      return { de: de || startOfMonth(d0), ate: ate || endOfMonth(d0), label: "Período personalizado" };
     default:
-      return { de: startOfMonth(d0), ate: endOfMonth(d0), label: "Este mes" };
+      return { de: startOfMonth(d0), ate: endOfMonth(d0), label: "Este Mês" };
   }
 }
 
@@ -143,13 +143,13 @@ export default async function RelatoriosPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Relatorios" subtitle={`${label}: ${dateBR(de)} ate ${dateBR(ate)}`} />
+      <PageHeader title="Relatórios" subtitle={`${label}: ${dateBR(de)} até ${dateBR(ate)}`} />
 
       <Tabs
         items={[
           { value: "hoje", label: "Hoje" },
           { value: "semana", label: "Semana" },
-          { value: "mes", label: "Mes" },
+          { value: "mes", label: "Mês" },
           { value: "ano", label: "Ano" },
           { value: "personalizado", label: "Personalizado" },
         ]}
@@ -179,7 +179,7 @@ export default async function RelatoriosPage({
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Financeiro</h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Faturamento" value={money(faturado + fretes)} />
-          <Stat label="Locacoes" value={money(faturado)} />
+          <Stat label="Locações" value={money(faturado)} />
           <Stat label="Fretes" value={money(fretes)} />
           <Stat label="Recebido" value={money(recebido)} tone="verde" />
           <Stat label="Despesas" value={money(despesas)} tone="vermelho" />
@@ -194,17 +194,17 @@ export default async function RelatoriosPage({
       <div>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Operacional</h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-          <Stat label="Locacoes" value={locacoes} />
+          <Stat label="Locações" value={locacoes} />
           <Stat label="Canceladas" value={canceladas} />
           <Stat label="Entregas" value={opCount("entrega")} />
           <Stat label="Retiradas" value={opCount("retirada")} />
           <Stat label="Montagens" value={opCount("montagem")} />
           <Stat label="Fretes" value={fretesQtd} />
         </div>
-        <p className="mt-2 text-xs text-stone-500">A receber no periodo: {money(aReceber)}.</p>
+        <p className="mt-2 text-xs text-stone-500">A receber no período: {money(aReceber)}.</p>
       </div>
 
-      <Section title="Faturamento por mes">
+      <Section title="Faturamento por Mês">
         {meses.length === 0 ? (
           <Empty>Sem dados suficientes.</Empty>
         ) : (
@@ -214,7 +214,7 @@ export default async function RelatoriosPage({
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-semibold text-tinta-900">{m.mes}</span>
                   <span className="text-stone-500">
-                    {m.reservas} reserva(s) - <b className="text-tinta-900">{money(m.total)}</b>
+                    {m.reservas} reserva(s) · <b className="text-tinta-900">{money(m.total)}</b>
                   </span>
                 </div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-nuvem-200">
@@ -227,9 +227,9 @@ export default async function RelatoriosPage({
       </Section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="Mais alugados no periodo (linhas contratadas)">
+        <Section title="Mais alugados no período (linhas contratadas)">
           {produtos.filter((x) => x.unidades > 0).length === 0 ? (
-            <Empty>Nenhuma locacao no periodo.</Empty>
+            <Empty>Nenhuma locação no período.</Empty>
           ) : (
             <ul className="divide-y divide-nuvem-200">
               {produtos
@@ -251,13 +251,13 @@ export default async function RelatoriosPage({
           )}
         </Section>
 
-        <Section title="Consumo fisico de equipamentos">
+        <Section title="Consumo Físico de Equipamentos">
           {consumoFisico.length === 0 ? (
-            <Empty>Nenhuma locacao no periodo.</Empty>
+            <Empty>Nenhuma locação no período.</Empty>
           ) : (
             <>
               <p className="mb-2 text-xs text-stone-500">
-                Kits ja expandidos nos componentes: e o que realmente saiu do estoque.
+                Kits já expandidos nos componentes: é o que realmente saiu do estoque.
               </p>
               <ul className="divide-y divide-nuvem-200">
                 {consumoFisico.slice(0, 10).map((x) => (
@@ -293,9 +293,9 @@ export default async function RelatoriosPage({
           </ul>
         </Section>
 
-        <Section title="Melhores clientes do periodo">
+        <Section title="Melhores clientes do período">
           {melhores.length === 0 ? (
-            <Empty>Sem dados no periodo.</Empty>
+            <Empty>Sem dados no período.</Empty>
           ) : (
             <ul className="divide-y divide-nuvem-200">
               {melhores.map((c) => (
@@ -305,7 +305,7 @@ export default async function RelatoriosPage({
                   </Link>
                   <span className="shrink-0 text-right">
                     <b className="text-tinta-900">{money(c.total)}</b>
-                    <span className="block text-xs text-stone-500">{c.locacoes} locacao(oes)</span>
+                    <span className="block text-xs text-stone-500">{c.locacoes} locação(ões)</span>
                   </span>
                 </li>
               ))}
@@ -315,7 +315,7 @@ export default async function RelatoriosPage({
 
         <Section title="Clientes recorrentes">
           {recorrentes.length === 0 ? (
-            <Empty>Nenhum cliente com duas ou mais locacoes.</Empty>
+            <Empty>Nenhum cliente com duas ou mais locações.</Empty>
           ) : (
             <ul className="divide-y divide-nuvem-200">
               {recorrentes.map((c) => (
@@ -323,14 +323,14 @@ export default async function RelatoriosPage({
                   <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-marca-600">
                     {c.name}
                   </Link>
-                  <span className="shrink-0 text-stone-500">{c.locacoes} locacoes</span>
+                  <span className="shrink-0 text-stone-500">{c.locacoes} locações</span>
                 </li>
               ))}
             </ul>
           )}
         </Section>
 
-        <Section title="Clientes sem alugar ha mais de 90 dias">
+        <Section title="Clientes sem alugar há mais de 90 dias">
           {inativos.length === 0 ? (
             <Empty>Nenhum cliente inativo.</Empty>
           ) : (
@@ -340,7 +340,7 @@ export default async function RelatoriosPage({
                   <Link href={`/clientes/${c.id}`} className="min-w-0 truncate text-marca-600">
                     {c.name}
                   </Link>
-                  <span className="shrink-0 text-stone-500">ultima em {dateBR(c.ultima)}</span>
+                  <span className="shrink-0 text-stone-500">última em {dateBR(c.ultima)}</span>
                 </li>
               ))}
             </ul>

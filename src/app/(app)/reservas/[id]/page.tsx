@@ -111,7 +111,7 @@ export default async function ReservaPage({
     <div className="space-y-4">
       <PageHeader
         title={r.number}
-        subtitle={`${r.customer_name} - evento em ${dateBR(r.event_date)}${r.event_time ? ` as ${r.event_time}` : ""}`}
+        subtitle={`${r.customer_name} - evento em ${dateBR(r.event_date)}${r.event_time ? ` às ${r.event_time}` : ""}`}
         action={
           <>
             <LinkButton href={`/reservas/${r.id}/editar`}>Editar</LinkButton>
@@ -120,39 +120,39 @@ export default async function ReservaPage({
         }
       />
 
-      {erro && <Alerta tone="vermelho" title="Nao foi possivel concluir">{erro}</Alerta>}
-      {aviso && <Alerta tone="ambar" title="Atencao">{aviso}</Alerta>}
+      {erro && <Alerta tone="vermelho" title="Não foi possível concluir">{erro}</Alerta>}
+      {aviso && <Alerta tone="ambar" title="Atenção">{aviso}</Alerta>}
 
       <AvailabilityFilter query={query} minutes={options.preparationMinutes} fixed />
-      <p className="text-xs text-stone-500">Conferencia da composicao fisica gravada, excluindo a propria reserva. Fim da janela com preparacao: {dateTimeBR(occupiedUntil)}. {(HOLDING_STATUSES as readonly string[]).includes(r.status) ? "Este status bloqueia estoque." : "Este status nao bloqueia estoque."}</p>
+      <p className="text-xs text-stone-500">Conferência da composição física gravada, excluindo a própria reserva. Fim da janela com preparação: {dateTimeBR(occupiedUntil)}. {(HOLDING_STATUSES as readonly string[]).includes(r.status) ? "Este status bloqueia estoque." : "Este status não bloqueia estoque."}</p>
 
       {conflicts.length > 0 && (
         <Alerta tone="vermelho" title="Conflito de estoque nesta reserva">
           <ul className="mt-1 space-y-0.5 text-xs">
             {conflicts.map((c) => (
               <li key={c.product_id}>
-                <b>{c.product}</b>: reservados {c.requested}, disponivel {c.available} (faltam {c.missing}).
+                <b>{c.product}</b>: reservados {c.requested}, disponível {c.available} (faltam {c.missing}).
               </li>
             ))}
           </ul>
           {r.stock_override ? (
             <p className="mt-1 text-xs font-semibold">Autorizado manualmente pelo administrador.</p>
           ) : (
-            <p className="mt-1 text-xs font-semibold">Ajuste as quantidades ou as datas para resolver.</p>
+            <p className="mt-1 text-xs font-semibold">Ajuste as quantidades ou as datas para resolver o conflito.</p>
           )}
         </Alerta>
       )}
 
       {divergencia.length > 0 && (
-        <Alerta tone="ambar" title="A composicao do kit mudou depois desta reserva">
+        <Alerta tone="ambar" title="A composição do kit mudou depois desta reserva">
           <p className="mt-0.5 text-xs">
-            Esta reserva foi gravada com a composicao antiga, entao o estoque considera o consumo abaixo. Atualize para
-            usar a composicao atual dos kits. Quantidades, precos e total nao mudam.
+            Esta reserva foi gravada com a composição antiga, então o estoque considera o consumo abaixo. Atualize para
+            usar a composição atual dos kits. Quantidades, preços e total não mudam.
           </p>
           <ul className="mt-1 space-y-0.5 text-xs">
             {divergencia.map((d) => (
               <li key={d.product}>
-                <b>{d.product}</b>: gravado {d.gravado}, pela composicao atual seria {d.atual}.
+                <b>{d.product}</b>: gravado {d.gravado}, pela composição atual seria {d.atual}.
               </li>
             ))}
           </ul>
@@ -160,7 +160,7 @@ export default async function ReservaPage({
             <input type="hidden" name="consider_preparation" value={query.considerPreparation ? "1" : "0"} />
             <input type="hidden" name="id" value={r.id} />
             <SubmitButton variant="secundario" className="px-3 py-1.5 text-xs">
-              Atualizar composicao
+              Atualizar composição
             </SubmitButton>
           </form>
         </Alerta>
@@ -172,7 +172,7 @@ export default async function ReservaPage({
           <StatusBadge defs={RESERVATION_STATUS} value={r.status} />
           <Badge tone={pay.tone}>Pagamento: {pay.label}</Badge>
           <Badge tone={m.depositStatus === "recebida" ? "verde" : "ambar"}>
-            Caucao: {statusLabel(DEPOSIT_STATUS, m.depositStatus)}
+            Caução: {statusLabel(DEPOSIT_STATUS, m.depositStatus)}
           </Badge>
           {r.contract_status && (
             <Badge tone={r.contract_status === "assinado" ? "verde" : "ambar"}>
@@ -188,7 +188,7 @@ export default async function ReservaPage({
               <input type="hidden" name="id" value={r.id} />
               <input type="hidden" name="status" value={proximo} />
               <SubmitButton variant="sucesso">
-                Avancar para: {statusLabel(RESERVATION_STATUS, proximo)}
+                Avançar para: {statusLabel(RESERVATION_STATUS, proximo)}
               </SubmitButton>
             </form>
           )}
@@ -211,19 +211,19 @@ export default async function ReservaPage({
         <Stat label="Total" value={money(m.total)} />
         <Stat label="Pago" value={money(m.paid)} tone="verde" />
         <Stat label="Saldo" value={money(m.balance)} tone={m.balance > 0 ? "vermelho" : "verde"} />
-        <Stat label="Caucao" value={money(m.deposit)} />
+        <Stat label="Caução" value={money(m.deposit)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="Dados da reserva">
           <Row label="Cliente" value={<Link href={`/clientes/${r.customer_id}`} className="text-marca-600">{r.customer_name}</Link>} />
           <Row label="Telefone" value={phoneBR(r.customer_phone) || "-"} />
-          <Row label="Data do evento" value={`${dateBR(r.event_date)}${r.event_time ? ` as ${r.event_time}` : ""}`} />
-          <Row label="Endereco" value={[r.address, r.district, r.city].filter(Boolean).join(", ") || "-"} />
+          <Row label="Data do evento" value={`${dateBR(r.event_date)}${r.event_time ? ` às ${r.event_time}` : ""}`} />
+          <Row label="Endereço" value={[r.address, r.district, r.city].filter(Boolean).join(", ") || "-"} />
           <Row label="Entrega" value={dateTimeBR(r.delivery_at)} />
           <Row label="Retirada" value={dateTimeBR(r.pickup_at)} />
           <Row
-            label="Servicos"
+            label="Serviços"
             value={
               [
                 r.needs_delivery && "entrega",
@@ -235,7 +235,7 @@ export default async function ReservaPage({
                 .join(", ") || "-"
             }
           />
-          {r.notes && <Row label="Observacoes" value={r.notes} />}
+          {r.notes && <Row label="Observações" value={r.notes} />}
           {r.cancel_reason && <Row label="Motivo do cancelamento" value={r.cancel_reason} />}
 
           {maps && (
@@ -268,7 +268,7 @@ export default async function ReservaPage({
                     </span>
                     <span className="block text-xs text-stone-500">
                       {money(i.unit_price_cents)} cada
-                      {i.discount_cents > 0 ? ` - desconto ${money(i.discount_cents)}` : ""}
+                      {i.discount_cents > 0 ? ` · desconto ${money(i.discount_cents)}` : ""}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm font-bold">{money(i.subtotal_cents)}</span>
@@ -294,7 +294,7 @@ export default async function ReservaPage({
       {temKit && (
         <Section title="Consumo de estoque">
           <p className="mb-2 text-sm text-stone-600">
-            Itens fisicos que esta reserva ocupa. Kits aparecem expandidos nos seus componentes.
+            Itens físicos que esta reserva ocupa. Kits aparecem expandidos nos seus componentes.
           </p>
           <ul className="divide-y divide-nuvem-200">
             {consumoFisico.map((c: any) => (
@@ -312,10 +312,10 @@ export default async function ReservaPage({
       {/* operacoes */}
       <Section
         title="Agenda operacional"
-        action={<Link href="/operacao" className="text-xs font-semibold text-marca-600">ver operacao</Link>}
+        action={<Link href="/operacao" className="text-xs font-semibold text-marca-600">Ver operação</Link>}
       >
         {ops.length === 0 ? (
-          <Empty>Nenhuma operacao agendada. Marque entrega, retirada ou montagem ao editar a reserva.</Empty>
+          <Empty>Nenhuma operação agendada. Marque entrega, retirada ou montagem ao editar a reserva.</Empty>
         ) : (
           <div className="space-y-2">
             {ops.map((o) => {
@@ -332,7 +332,7 @@ export default async function ReservaPage({
                       {kind.label} - {dateBR(o.scheduled_at)} {timeBR(o.scheduled_at)}
                     </span>
                     <span className="block text-xs text-stone-500">
-                      {o.assignee ? `Responsavel: ${o.assignee}` : "Sem responsavel definido"}
+                      {o.assignee ? `Responsável: ${o.assignee}` : "Sem responsável definido"}
                       {o.vehicle_name ? ` - ${o.vehicle_name}` : ""}
                     </span>
                   </span>
@@ -347,29 +347,29 @@ export default async function ReservaPage({
       {(recompensaUsada || previaRecompensas.length > 0) && (
         <Section title="Fidelidade">
           {recompensaUsada ? (
-            <Alerta tone="verde" title="Recompensa aplicada nesta locacao">
+            <Alerta tone="verde" title="Recompensa aplicada nesta locação">
               {recompensaUsada.used_kits} kit(s) gratuitos, {money(recompensaUsada.used_discount_cents ?? 0)} de
               desconto. O valor entrou no desconto da reserva; frete e itens avulsos seguem cobrados.
             </Alerta>
           ) : (
             <>
               <p className="mb-2 text-sm text-stone-600">
-                Este cliente tem recompensa disponivel. Aplicar lanca o desconto no campo de desconto da reserva.
+                Este cliente tem recompensa disponível. Aplicar lança o desconto no campo de desconto da reserva.
               </p>
               <ul className="space-y-2">
                 {previaRecompensas.map(({ rec, previa }) => (
                   <li key={rec.id} className="rounded-xl border border-nuvem-300 bg-white p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span>
-                        <span className="text-sm font-bold text-tinta-900">Ate {rec.kit_quantity} kits gratis</span>
+                        <span className="text-sm font-bold text-tinta-900">Até {rec.kit_quantity} kits grátis</span>
                         <span className="ml-2 text-xs text-stone-500">
                           conquistada em {dateBR(rec.earned_at)}
-                          {rec.expires_on ? ` - vale ate ${dateBR(rec.expires_on)}` : ""}
+                          {rec.expires_on ? ` · vale até ${dateBR(rec.expires_on)}` : ""}
                         </span>
                       </span>
                       {previa && previa.kitsGratis > 0 ? (
                         <Badge tone="verde">
-                          cobre {previa.kitsGratis} kit(s) - {money(previa.descontoCents)}
+                          cobre {previa.kitsGratis} kit(s) · {money(previa.descontoCents)}
                         </Badge>
                       ) : (
                         <Badge tone="cinza">sem kit nesta reserva</Badge>
@@ -398,7 +398,7 @@ export default async function ReservaPage({
         ) : r.status !== "cancelada" ? (
           <>
             <p className="mb-2 text-sm text-stone-600">
-              Saldo disponivel para adiantar: {money(Math.max(0, m.total - m.paid - m.scheduledAdvance))}.
+              Saldo disponível para adiantar: {money(Math.max(0, m.total - m.paid - m.scheduledAdvance))}.
             </p>
             <form action={criarAdiantamentoAction} className="space-y-3">
               <input type="hidden" name="reservation_id" value={r.id} />
@@ -429,7 +429,7 @@ export default async function ReservaPage({
                 </label>
               </div>
               <label className="block max-w-56">
-                <span className="rotulo">Data (do pagamento, ou prevista se agendar)</span>
+                <span className="rotulo">Data do pagamento (ou prevista, se agendado)</span>
                 <input name="date" type="date" defaultValue={today()} className="campo" />
               </label>
               <SubmitButton>Registrar adiantamento</SubmitButton>
@@ -442,7 +442,7 @@ export default async function ReservaPage({
         {historicoAdiantamentos.length > 0 && (
           <details className="mt-3">
             <summary className="cursor-pointer text-xs font-semibold text-marca-600">
-              Historico de adiantamentos ({historicoAdiantamentos.length})
+              Histórico de adiantamentos ({historicoAdiantamentos.length})
             </summary>
             <ul className="mt-2 space-y-1.5">
               {historicoAdiantamentos.map((a: any) => {
@@ -453,7 +453,7 @@ export default async function ReservaPage({
                     <span>
                       {money(a.amount_cents)}
                       <span className="ml-2 text-xs text-stone-500">
-                        {sit === "recebido" ? `recebido em ${dateBR(pagamento?.paid_at ?? a.due_date)}` : `previsto ${dateBR(a.due_date)}`}
+                        {sit === "recebido" ? `recebido em ${dateBR(pagamento?.paid_at ?? a.due_date)}` : `previsto para ${dateBR(a.due_date)}`}
                       </span>
                     </span>
                     <Badge tone={sit === "recebido" ? "verde" : sit === "cancelado" ? "cinza" : "vermelho"}>{sit}</Badge>
@@ -471,8 +471,8 @@ export default async function ReservaPage({
             <p className="mb-2 text-sm text-stone-600">
               Sem parcelamento.{" "}
               {m.paid > 0
-                ? `Ja recebidos ${money(m.paid)}; as parcelas dividem o saldo de ${money(Math.max(0, m.total - m.paid))}.`
-                : `O total de ${money(m.total)} vira uma conta a receber so, ou divida em parcelas com vencimento proprio.`}{" "}
+                ? `Já recebidos ${money(m.paid)}; as parcelas dividem o saldo de ${money(Math.max(0, m.total - m.paid))}.`
+                : `O total de ${money(m.total)} vira uma conta a receber só, ou divida em parcelas com vencimento próprio.`}{" "}
               O caixa registra apenas o que for efetivamente recebido.
             </p>
             <form action={parcelarReserva} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -482,7 +482,7 @@ export default async function ReservaPage({
                 <input name="parcelas" type="number" min={1} max={60} defaultValue={1} className="campo" />
               </label>
               <label className="block">
-                <span className="rotulo">1o vencimento</span>
+                <span className="rotulo">1º vencimento</span>
                 <input name="primeiro_vencimento" type="date" defaultValue={r.event_date} className="campo" />
               </label>
               <div className="flex items-end">
@@ -500,7 +500,7 @@ export default async function ReservaPage({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm font-bold text-tinta-900">
                       {p.installment}/{p.installments_total} - {money(p.amount_cents)}
-                      <span className="ml-2 text-xs font-normal text-stone-500">vence {dateBR(p.due_date)}</span>
+                      <span className="ml-2 text-xs font-normal text-stone-500">vence em {dateBR(p.due_date)}</span>
                     </span>
                     <Badge
                       tone={
@@ -554,7 +554,7 @@ export default async function ReservaPage({
                 </option>
               ))}
             </select>
-            <input name="notes" placeholder="Observacao" className="campo" />
+            <input name="notes" placeholder="Observação" className="campo" />
             <div className="col-span-2">
               <SubmitButton className="w-full">Registrar pagamento</SubmitButton>
             </div>
@@ -593,15 +593,15 @@ export default async function ReservaPage({
           </div>
         </Section>
 
-        <Section title="Caucao">
+        <Section title="Caução">
           <form action={saveDeposit} className="grid grid-cols-2 gap-2">
             <input type="hidden" name="reservation_id" value={r.id} />
             <label className="col-span-2 block">
-              <span className="rotulo">Valor da caucao</span>
+              <span className="rotulo">Valor da caução</span>
               <input name="amount" defaultValue={(m.deposit / 100).toFixed(2)} inputMode="decimal" className="campo" />
             </label>
             <label className="block">
-              <span className="rotulo">Forma recebida</span>
+              <span className="rotulo">Forma de recebimento</span>
               <select name="method" className="campo" defaultValue="pix">
                 {PAYMENT_METHODS.map((mth) => (
                   <option key={mth} value={mth}>
@@ -633,11 +633,11 @@ export default async function ReservaPage({
               <input name="retained" defaultValue={(m.depositRetained / 100).toFixed(2)} inputMode="decimal" className="campo" />
             </label>
             <label className="block">
-              <span className="rotulo">Motivo da retencao</span>
+              <span className="rotulo">Motivo da retenção</span>
               <input name="reason" className="campo" placeholder="Ex.: 2 cadeiras quebradas" />
             </label>
             <div className="col-span-2">
-              <SubmitButton className="w-full">Salvar caucao</SubmitButton>
+              <SubmitButton className="w-full">Salvar caução</SubmitButton>
             </div>
           </form>
 
@@ -647,7 +647,7 @@ export default async function ReservaPage({
               <ul className="space-y-1 text-sm">
                 {damages.map((d) => (
                   <li key={d.id} className="rounded-lg bg-red-50 px-3 py-2 text-red-800">
-                    {d.qty}x {d.product_name} - {d.damage_type ?? "dano"} - estimado {money(d.estimated_cents)}
+                    {d.qty}x {d.product_name} · {d.damage_type ?? "dano"} · estimado {money(d.estimated_cents)}
                     {d.charged_cents > 0 ? `, descontado ${money(d.charged_cents)}` : ""}
                     {d.description ? <span className="block text-xs opacity-80">{d.description}</span> : null}
                   </li>
@@ -660,15 +660,15 @@ export default async function ReservaPage({
 
       {/* contrato e whatsapp */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="Contrato / termo de responsabilidade">
+        <Section title="Contrato / Termo de Responsabilidade">
           {contracts.length === 0 ? (
             <>
               <p className="mb-3 text-sm text-stone-500">
-                Nenhum contrato gerado. O documento e montado automaticamente com os dados desta reserva.
+                Nenhum contrato gerado. O documento é montado automaticamente com os dados desta reserva.
               </p>
               <form action={generateContract}>
                 <input type="hidden" name="reservation_id" value={r.id} />
-                <SubmitButton>Gerar contrato</SubmitButton>
+                <SubmitButton>              Gerar Contrato</SubmitButton>
               </form>
             </>
           ) : (
@@ -716,7 +716,7 @@ export default async function ReservaPage({
       </div>
 
       {historico.length > 0 && (
-        <Section title="Historico da reserva">
+        <Section title="Histórico da reserva">
           <ul className="space-y-1.5 text-sm">
             {historico.slice(0, 20).map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
@@ -731,18 +731,18 @@ export default async function ReservaPage({
       {user.role === "admin" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
+            <p className="text-sm font-semibold text-tinta-900">Área do administrador</p>
             <p className="text-xs text-stone-500">
-              Prefira cancelar a reserva: o cancelamento preserva o historico e libera o estoque.
+              Prefira cancelar a reserva: o cancelamento preserva o histórico e libera o estoque.
             </p>
           </div>
           <form action={deleteReservation}>
             <input type="hidden" name="id" value={r.id} />
             <SubmitButton
               variant="perigo"
-              confirm={`Excluir definitivamente a reserva ${r.number} e todos os seus pagamentos? Esta acao nao pode ser desfeita.`}
+              confirm={`Excluir definitivamente a reserva ${r.number} e todos os seus pagamentos? Esta ação não pode ser desfeita.`}
             >
-              Excluir reserva
+              Excluir Reserva
             </SubmitButton>
           </form>
         </Card>
@@ -763,7 +763,7 @@ function AdiantamentoAberto({ entry, reservationId, hoje }: { entry: any; reserv
         <span>
           <span className="text-base font-bold text-tinta-900">{money(entry.amount_cents)}</span>
           <span className="ml-2 text-xs text-stone-500">
-            previsto {dateBR(entry.due_date)} - {PAYMENT_METHOD_LABEL[entry.expected_method] ?? entry.expected_method}
+            previsto para {dateBR(entry.due_date)} · {PAYMENT_METHOD_LABEL[entry.expected_method] ?? entry.expected_method}
           </span>
         </span>
         <Badge tone={sit === "atrasado" ? "vermelho" : "ambar"}>{sit}</Badge>

@@ -19,11 +19,11 @@ export const dynamic = "force-dynamic";
 
 const PERIODOS = [
   { value: "hoje", label: "Hoje" },
-  { value: "7", label: "Proximos 7 dias" },
+  { value: "7", label: "Próximos 7 dias" },
   { value: "15", label: "15 dias" },
   { value: "30", label: "30 dias" },
-  { value: "mes", label: "Este mes" },
-  { value: "proximo", label: "Proximo mes" },
+  { value: "mes", label: "Este mês" },
+  { value: "proximo", label: "Próximo mês" },
 ];
 
 export default async function AniversariosPage({
@@ -50,11 +50,11 @@ export default async function AniversariosPage({
     const mes = periodo === "mes" ? hojePartes.mes : (hojePartes.mes % 12) + 1;
     const ano = periodo === "mes" || hojePartes.mes < 12 ? hojePartes.ano : hojePartes.ano + 1;
     lista = await aniversariantesDoMes(ano, mes, d0);
-    tituloLista = periodo === "mes" ? "Aniversariantes deste mes" : "Aniversariantes do proximo mes";
+    tituloLista = periodo === "mes" ? "Aniversariantes deste mês" : "Aniversariantes do próximo mês";
   } else {
     const dias = periodo === "hoje" ? 0 : Math.max(0, Number(periodo) || 7);
     lista = await aniversariantesNaJanela(dias, d0);
-    tituloLista = dias === 0 ? "Aniversariantes de hoje" : `Proximos ${dias} dias`;
+    tituloLista = dias === 0 ? "Aniversariantes de hoje" : `Próximos ${dias} dias`;
   }
 
   const deHoje = lista.filter((a) => a.dias === 0);
@@ -70,13 +70,13 @@ export default async function AniversariosPage({
     <div className="space-y-4">
       <PageHeader
         title="Aniversariantes"
-        subtitle={`Avisos com ${cfg.diasAntecedencia} dia(s) de antecedencia`}
+        subtitle={`Avisos com ${cfg.diasAntecedencia} dia(s) de antecedência`}
         action={<LinkButton href="/configuracoes?aba=aniversarios">Configurar</LinkButton>}
       />
 
       {!cfg.ativo && (
         <Alerta tone="ambar" title="Avisos desativados">
-          A tela continua funcionando, mas o sistema nao gera aviso automatico. Ative em Configuracoes.
+          A tela continua funcionando, mas o sistema não gera aviso automático. Ative em Configurações.
         </Alerta>
       )}
 
@@ -86,7 +86,7 @@ export default async function AniversariosPage({
         <Stat label="Sem data cadastrada" value={semData} tone={semData > 0 ? "ambar" : undefined} />
       </div>
 
-      <SearchForm action="/aniversarios" placeholder="Nome ou telefone do cliente..." defaultValue={q} />
+      <SearchForm action="/aniversarios" placeholder="Nome ou telefone do cliente…" defaultValue={q} />
       {!q && <Tabs items={PERIODOS} current={periodo} base={base} param="periodo" />}
 
       {deHoje.length > 0 && (
@@ -104,15 +104,15 @@ export default async function AniversariosPage({
         </section>
       )}
 
-      <Section title={q ? tituloLista : proximos.length > 0 ? "Proximos aniversariantes" : tituloLista}>
+      <Section title={q ? tituloLista : proximos.length > 0 ? "Próximos aniversariantes" : tituloLista}>
         {lista.length === 0 ? (
           <Empty>
             {semData > 0
-              ? `Ninguem faz aniversario neste periodo. ${semData} cliente(s) ainda estao sem data de nascimento cadastrada.`
-              : "Ninguem faz aniversario neste periodo."}
+              ? `Ninguém faz aniversário neste período. ${semData} cliente(s) ainda estão sem data de nascimento cadastrada.`
+              : "Ninguém faz aniversário neste período."}
           </Empty>
         ) : porData.size === 0 && deHoje.length > 0 ? (
-          <p className="text-sm text-stone-500">Nenhum outro aniversario neste periodo.</p>
+          <p className="text-sm text-stone-500">Nenhum outro aniversário neste período.</p>
         ) : (
           <div className="space-y-3">
             {[...porData.entries()].map(([data, pessoas]) => (
@@ -120,7 +120,7 @@ export default async function AniversariosPage({
                 <p className="mb-1 text-xs font-bold uppercase tracking-wide text-stone-500">
                   {dateBR(data)}
                   <span className="ml-2 font-normal normal-case text-stone-400">
-                    {pessoas[0].dias === 1 ? "amanha" : `em ${pessoas[0].dias} dias`}
+                    {pessoas[0].dias === 1 ? "amanhã" : `em ${pessoas[0].dias} dias`}
                   </span>
                 </p>
                 <ul className="divide-y divide-nuvem-200 rounded-xl border border-nuvem-200 bg-white">
@@ -137,8 +137,8 @@ export default async function AniversariosPage({
       {semData > 0 && (
         <Card>
           <p className="text-sm text-stone-600">
-            <b>{semData}</b> cliente(s) ativos ainda nao tem data de nascimento cadastrada. A data e opcional, mas quem
-            nao tem nunca aparece aqui.{" "}
+            <b>{semData}</b> cliente(s) ativos ainda não têm data de nascimento cadastrada. A data é opcional, mas quem
+            não tem nunca aparece aqui.{" "}
             <Link href="/clientes" className="font-semibold text-marca-600">
               Ver clientes
             </Link>
@@ -164,7 +164,7 @@ function Pessoa({ a, empresa, destaque }: { a: Aniversariante; empresa: string; 
         <p className="text-xs text-stone-500">
           {dateBR(a.birth_date)}
           {a.idadeQueCompleta !== null && (
-            <> - {destaque ? `completa ${a.idadeQueCompleta} anos hoje` : `completa ${a.idadeQueCompleta} anos`}</>
+            <> · {destaque ? `completa ${a.idadeQueCompleta} anos hoje` : `completa ${a.idadeQueCompleta} anos`}</>
           )}
         </p>
       </div>
@@ -184,7 +184,7 @@ function Pessoa({ a, empresa, destaque }: { a: Aniversariante; empresa: string; 
           href={`/clientes/${a.id}`}
           className="rounded-lg border border-nuvem-300 bg-white px-2.5 py-1.5 text-xs font-semibold"
         >
-          Ver cliente
+          Ver Cliente
         </Link>
       </div>
     </li>

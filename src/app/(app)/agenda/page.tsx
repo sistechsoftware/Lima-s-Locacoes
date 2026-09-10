@@ -55,8 +55,8 @@ export default async function AgendaPage({
     <div className="space-y-4">
       <PageHeader
         title="Agenda"
-        subtitle={view === "dia" ? dateBR(data) : `${dateBR(from)} ate ${dateBR(to)}`}
-        action={<LinkButton href="/operacao/nova" variant="primario">+ Novo evento</LinkButton>}
+        subtitle={view === "dia" ? dateBR(data) : `${dateBR(from)} até ${dateBR(to)}`}
+        action={<LinkButton href="/operacao/nova" variant="primario">+ Novo Evento</LinkButton>}
       />
 
       <Tabs
@@ -125,7 +125,7 @@ export default async function AgendaPage({
       {view === "mes" && <MesGrid from={from} to={to} eventos={eventos} data={data} />}
 
       {eventos.length === 0 ? (
-        <Empty>Nenhum compromisso neste periodo.</Empty>
+        <Empty>Nenhum compromisso neste período.</Empty>
       ) : (
         <div className="space-y-4">
           {[...porDia.entries()].map(([dia, lista]) => (
@@ -179,7 +179,7 @@ function MesGrid({ from, to, eventos, data }: { from: string; to: string; evento
   return (
     <Card padded={false}>
       <div className="grid grid-cols-7 border-b border-nuvem-200 text-center text-[0.65rem] font-bold uppercase text-stone-400">
-        {["seg", "ter", "qua", "qui", "sex", "sab", "dom"].map((d) => (
+        {["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((d) => (
           <span key={d} className="py-2">
             {d}
           </span>

@@ -109,16 +109,16 @@ export function validarFaixas(faixas: Faixa[]): Problema[] {
 
   for (const f of faixas) {
     if (!Number.isInteger(f.min_qty) || f.min_qty < 1) {
-      problemas.push({ tipo: "erro", mensagem: "A quantidade minima precisa ser um numero inteiro a partir de 1." });
+      problemas.push({ tipo: "erro", mensagem: "A quantidade mínima precisa ser um número inteiro a partir de 1." });
     }
     if (f.max_qty !== null && (!Number.isInteger(f.max_qty) || f.max_qty < 1)) {
-      problemas.push({ tipo: "erro", mensagem: "A quantidade maxima precisa ser um numero inteiro a partir de 1, ou sem limite." });
+      problemas.push({ tipo: "erro", mensagem: "A quantidade máxima precisa ser um número inteiro a partir de 1, ou sem limite." });
     }
     if (f.max_qty !== null && f.max_qty < f.min_qty) {
-      problemas.push({ tipo: "erro", mensagem: `Faixa ${f.min_qty} a ${f.max_qty}: a maxima nao pode ser menor que a minima.` });
+      problemas.push({ tipo: "erro", mensagem: `Faixa ${f.min_qty} a ${f.max_qty}: a máxima não pode ser menor que a mínima.` });
     }
     if (f.unit_price_cents < 0) {
-      problemas.push({ tipo: "erro", mensagem: "O preco nao pode ser negativo." });
+      problemas.push({ tipo: "erro", mensagem: "O preço não pode ser negativo." });
     }
   }
 
@@ -126,7 +126,7 @@ export function validarFaixas(faixas: Faixa[]): Problema[] {
 
   const semLimite = ordenadas.filter((f) => f.max_qty === null);
   if (semLimite.length > 1) {
-    problemas.push({ tipo: "erro", mensagem: "So pode existir uma faixa sem limite superior." });
+    problemas.push({ tipo: "erro", mensagem: "Só pode existir uma faixa sem limite superior." });
   }
 
   for (let i = 0; i < ordenadas.length - 1; i++) {
@@ -135,18 +135,18 @@ export function validarFaixas(faixas: Faixa[]): Problema[] {
     if (atual.max_qty === null) {
       problemas.push({
         tipo: "erro",
-        mensagem: `A faixa ${atual.min_qty}+ nao tem limite e cobre a faixa que comeca em ${proxima.min_qty}.`,
+        mensagem: `A faixa ${atual.min_qty}+ não tem limite e cobre a faixa que começa em ${proxima.min_qty}.`,
       });
       continue;
     }
     if (atual.min_qty === proxima.min_qty && atual.max_qty === proxima.max_qty) {
-      problemas.push({ tipo: "erro", mensagem: `Faixa ${rotuloFaixa(atual)} esta duplicada.` });
+      problemas.push({ tipo: "erro", mensagem: `Faixa ${rotuloFaixa(atual)} está duplicada.` });
       continue;
     }
     if (proxima.min_qty <= atual.max_qty) {
       problemas.push({
         tipo: "erro",
-        mensagem: `As faixas ${rotuloFaixa(atual)} e ${rotuloFaixa(proxima)} se sobrepoem: a quantidade ${proxima.min_qty} teria dois precos.`,
+        mensagem: `As faixas ${rotuloFaixa(atual)} e ${rotuloFaixa(proxima)} se sobrepõem: a quantidade ${proxima.min_qty} teria dois preços.`,
       });
       continue;
     }
@@ -157,8 +157,8 @@ export function validarFaixas(faixas: Faixa[]): Problema[] {
         tipo: "aviso",
         mensagem:
           inicio === fim
-            ? `A quantidade ${inicio} ficou sem promocao e usara o preco normal.`
-            : `As quantidades de ${inicio} a ${fim} ficaram sem promocao e usarao o preco normal.`,
+            ? `A quantidade ${inicio} ficou sem promoção e usará o preço normal.`
+            : `As quantidades de ${inicio} a ${fim} ficaram sem promoção e usarão o preço normal.`,
       });
     }
   }
@@ -170,8 +170,8 @@ export function validarFaixas(faixas: Faixa[]): Problema[] {
       tipo: "aviso",
       mensagem:
         fim === 1
-          ? "A quantidade 1 ficou sem promocao e usara o preco normal."
-          : `As quantidades de 1 a ${fim} ficaram sem promocao e usarao o preco normal.`,
+          ? "A quantidade 1 ficou sem promoção e usará o preço normal."
+          : `As quantidades de 1 a ${fim} ficaram sem promoção e usarão o preço normal.`,
     });
   }
 
@@ -195,7 +195,7 @@ export function conflitaCom(
     if (!periodosSeCruzam(nova, outra)) continue;
     const quantidade = quantidadeEmComum(nova.tiers, outra.tiers);
     if (quantidade !== null) {
-      return `Ja existe outra promocao ativa para este produto cobrindo a quantidade ${quantidade} no mesmo periodo. Ajuste as faixas ou o periodo antes de salvar.`;
+      return `Já existe outra promoção ativa para este produto cobrindo a quantidade ${quantidade} no mesmo período. Ajuste as faixas ou o período antes de salvar.`;
     }
   }
   return null;

@@ -15,7 +15,7 @@ export default async function EditarPromocaoPage({ params }: { params: Promise<{
   if (!promocao) notFound();
   return (
     <div className="space-y-4">
-      <PageHeader title="Editar promocao" subtitle={promocao.product_name} />
+      <PageHeader title="Editar Promoção" subtitle={promocao.product_name} />
       <PromotionForm action={updatePromotion} produtos={produtos} promocao={promocao} />
     </div>
   );

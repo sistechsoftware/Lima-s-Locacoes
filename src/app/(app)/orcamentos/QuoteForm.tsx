@@ -22,7 +22,7 @@ export default function QuoteForm({
   quote,
   items: initialItems = [],
   defaultCustomerId,
-  submitLabel = "Salvar orcamento",
+  submitLabel = "Salvar Orçamento",
   preparationMinutes = 0,
 }: {
   action: Action;
@@ -103,7 +103,7 @@ export default function QuoteForm({
                 className="campo flex-1"
                 required
               >
-                <option value="">Selecione...</option>
+                <option value="">Selecione…</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -128,7 +128,7 @@ export default function QuoteForm({
                 className="campo"
               />
             </Field>
-            <Field label="Horario">
+            <Field label="Horário">
               <input name="event_time" type="time" defaultValue={quote?.event_time ?? ""} className="campo" />
             </Field>
             <Field label="Entrega prevista">
@@ -143,7 +143,7 @@ export default function QuoteForm({
               <input required name="pickup_at" type="datetime-local" value={pickupAt} onChange={(e) => setPickupAt(e.target.value)} className="campo" />
             </Field>
           </Grid>
-          <Field label="Endereco">
+          <Field label="Endereço">
             <input name="address" value={address} onChange={(e) => setAddress(e.target.value)} className="campo" />
           </Field>
           <Grid>
@@ -160,14 +160,14 @@ export default function QuoteForm({
       <section className="cartao p-4">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Itens</h2>
         <PreparationChoice value={considerPreparation} onChange={setConsiderPreparation} minutes={preparationMinutes} from={deliveryAt} to={pickupAt} />
-        {checking && <p className="text-xs text-stone-500">Verificando estoque...</p>}
+        {checking && <p className="text-xs text-stone-500">Verificando estoque…</p>}
         {stockError && <Alerta tone="ambar">{stockError}</Alerta>}
         {conflicts.length > 0 && (
           <div className="mb-3">
-            <Alerta tone="ambar" title="Atencao: estoque apertado neste intervalo">
+            <Alerta tone="ambar" title="Atenção: estoque apertado neste intervalo">
               <ConflictList conflicts={conflicts} />
               <p className="mt-1 text-xs">
-                O orcamento pode ser salvo assim mesmo. A checagem sera refeita na conversao em reserva.
+                O orçamento pode ser salvo assim mesmo. A checagem será refeita na conversão em reserva.
               </p>
             </Alerta>
           </div>
@@ -176,7 +176,7 @@ export default function QuoteForm({
       </section>
 
       <section className="cartao p-4">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Servicos e valores</h2>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Serviços e Valores</h2>
         <Grid>
           <Field label="Frete (R$)">
             <input value={freight} onChange={(e) => setFreight(e.target.value)} inputMode="decimal" className="campo" />
@@ -198,7 +198,7 @@ export default function QuoteForm({
           <Field label="Desconto (R$)">
             <input value={discount} onChange={(e) => setDiscount(e.target.value)} inputMode="decimal" className="campo" />
           </Field>
-          <Field label="Valido ate">
+          <Field label="Válido até">
             <input name="valid_until" type="date" defaultValue={quote?.valid_until ?? ""} className="campo" />
           </Field>
           <Field label="Status">
@@ -210,13 +210,13 @@ export default function QuoteForm({
               ))}
             </select>
           </Field>
-          <Field label="Observacoes">
+          <Field label="Observações">
             <input name="notes" defaultValue={quote?.notes ?? ""} className="campo" />
           </Field>
         </Grid>
 
         <div className="mt-3 flex items-center justify-between rounded-xl bg-nuvem-100 px-3 py-3 text-base font-bold">
-          <span>Total do orcamento</span>
+          <span>Total do Orçamento</span>
           <span>{money(total)}</span>
         </div>
       </section>

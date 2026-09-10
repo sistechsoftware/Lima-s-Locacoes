@@ -23,7 +23,7 @@ export default function PromotionForm({
   action,
   produtos,
   promocao,
-  submitLabel = "Salvar promocao",
+  submitLabel = "Salvar Promoção",
 }: {
   action: Action;
   produtos: Produto[];
@@ -65,10 +65,10 @@ export default function PromotionForm({
       <input type="hidden" name="tiers" value={JSON.stringify(faixas)} />
       <input type="hidden" name="active" value={ativa ? "1" : "0"} />
 
-      {erro && <Alerta tone="vermelho" title="Nao foi possivel salvar">{erro}</Alerta>}
+      {erro && <Alerta tone="vermelho" title="Não foi possível salvar">{erro}</Alerta>}
 
       <section className="cartao p-4">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Promocao</h2>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Promoção</h2>
         <Grid>
           <Field label="Produto *">
             <select
@@ -78,41 +78,41 @@ export default function PromotionForm({
               className="campo"
               required
             >
-              <option value="">Selecione...</option>
+              <option value="">Selecione…</option>
               {produtos.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.kind === "kit" ? "[KIT] " : ""}
-                  {p.name} - normal {money(p.rent_price_cents)}
+                  {p.name} · normal {money(p.rent_price_cents)}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Nome da promocao" hint="Opcional, so para voce identificar na lista.">
+          <Field label="Nome da promoção" hint="Opcional, só para você identificar na lista.">
             <input name="name" defaultValue={promocao?.name ?? ""} maxLength={120} className="campo" />
           </Field>
-          <Field label="Inicio" hint="Deixe vazio para valer desde ja.">
+          <Field label="Início" hint="Deixe vazio para valer desde já.">
             <input type="date" name="starts_on" defaultValue={promocao?.starts_on ?? ""} className="campo" />
           </Field>
-          <Field label="Fim" hint="Deixe vazio para nao expirar.">
+          <Field label="Fim" hint="Deixe vazio para não expirar.">
             <input type="date" name="ends_on" defaultValue={promocao?.ends_on ?? ""} className="campo" />
           </Field>
-          <Field label="Observacoes" className="sm:col-span-2">
+          <Field label="Observações" className="sm:col-span-2">
             <input name="notes" defaultValue={promocao?.notes ?? ""} maxLength={500} className="campo" />
           </Field>
         </Grid>
 
         <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-tinta-900">
           <input type="checkbox" checked={ativa} onChange={(e) => setAtiva(e.target.checked)} className="h-4 w-4" />
-          Promocao ativa
+          Promoção ativa
         </label>
-        {!ativa && <p className="mt-1 text-xs text-stone-500">Desativada, o sistema usa o preco normal do produto.</p>}
+        {!ativa && <p className="mt-1 text-xs text-stone-500">Desativada, o sistema usa o preço normal do produto.</p>}
       </section>
 
       <section className="cartao p-4">
-        <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-stone-500">Faixas de preco</h2>
+        <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-stone-500">Faixas de Preço</h2>
         <p className="mb-3 text-xs text-stone-500">
-          O preco da faixa vale para <b>todas</b> as unidades, nao so para as que passarem do limite. Deixe a coluna
-          &quot;Ate&quot; vazia para uma faixa sem limite.
+          O preço da faixa vale para <b>todas</b> as unidades, não só para as que passarem do limite. Deixe a coluna
+          &quot;Até&quot; vazia para uma faixa sem limite.
         </p>
 
         <div className="space-y-2">
@@ -130,7 +130,7 @@ export default function PromotionForm({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-0.5 block text-[0.68rem] font-semibold uppercase text-stone-500">Ate</span>
+                  <span className="mb-0.5 block text-[0.68rem] font-semibold uppercase text-stone-500">Até</span>
                   <input
                     type="number"
                     min={1}
@@ -142,7 +142,7 @@ export default function PromotionForm({
                 </label>
                 <label className="block">
                   <span className="mb-0.5 block text-[0.68rem] font-semibold uppercase text-stone-500">
-                    Preco por unidade
+                    Preço por unidade
                   </span>
                   <input
                     value={l.preco}
@@ -158,7 +158,7 @@ export default function PromotionForm({
                   {produto && faixas[i].unit_price_cents > 0 && (
                     <>
                       {" "}
-                      - economia de {money(Math.max(0, produto.rent_price_cents - faixas[i].unit_price_cents))} por
+                      · economia de {money(Math.max(0, produto.rent_price_cents - faixas[i].unit_price_cents))} por
                       unidade
                     </>
                   )}
@@ -215,7 +215,7 @@ export default function PromotionForm({
                   <li key={i} className="flex justify-between gap-3">
                     <span className="text-stone-600">{rotuloFaixa(f)}</span>
                     <span className="font-semibold text-tinta-900">
-                      {money(f.unit_price_cents)} cada - {exemplo} un. = {money(exemplo * f.unit_price_cents)}
+                      {money(f.unit_price_cents)} cada · {exemplo} un. = {money(exemplo * f.unit_price_cents)}
                     </span>
                   </li>
                 );

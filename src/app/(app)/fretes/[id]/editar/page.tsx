@@ -23,7 +23,7 @@ export default async function EditarFretePage({ params }: { params: Promise<{ id
           customers={customers}
           vehicles={vehicles}
           freight={freight}
-          submitLabel="Salvar alteracoes"
+          submitLabel="Salvar Alterações"
         />
       </Card>
     </div>

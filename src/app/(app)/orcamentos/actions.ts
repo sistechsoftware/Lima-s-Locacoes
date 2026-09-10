@@ -116,8 +116,8 @@ export async function updateQuote(_prev: string | null, fd: FormData): Promise<s
   if (invalidWindow) return invalidWindow;
   const items = readItems(fd);
   const q = await one<any>(`SELECT * FROM quotes WHERE id = ?`, [id]);
-  if (!q) return "Orcamento nao encontrado.";
-  if (q.status === "convertido") return "Orcamento ja convertido em reserva nao pode ser alterado.";
+  if (!q) return "Orçamento não encontrado.";
+  if (q.status === "convertido") return "Orçamento já convertido em reserva não pode ser alterado.";
   if (!items.length) return "Adicione ao menos um item.";
 
   await tx(async () => {

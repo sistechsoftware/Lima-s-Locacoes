@@ -29,8 +29,8 @@ async function carregar(id: number) {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const q = await carregar(Number(id));
-  if (!q) return { title: "Orcamento" };
-  return { title: `Orcamento-${sanitizar(q.number)}-${sanitizar(q.customer_name)}` };
+  if (!q) return { title: "Orçamento" };
+  return { title: `Orçamento-${sanitizar(q.number)}-${sanitizar(q.customer_name)}` };
 }
 
 /** Tira acentos e simbolos que atrapalham o nome do arquivo. */
@@ -62,7 +62,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
     { rotulo: "Frete (entrega e retirada)", valor: q.freight_cents },
     { rotulo: "Montagem", valor: q.assembly_cents },
     { rotulo: "Desmontagem", valor: q.disassembly_cents },
-    { rotulo: "Outros servicos", valor: q.other_cents },
+    { rotulo: "Outros serviços", valor: q.other_cents },
   ].filter((l) => l.valor > 0);
 
   const temDesconto = q.discount_cents > 0;
@@ -72,7 +72,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="nao-imprimir flex flex-wrap items-center justify-between gap-2">
         <Link href={`/orcamentos/${q.id}`} className="text-sm font-semibold text-marca-600">
-          Voltar ao orcamento
+          Voltar ao Orçamento
         </Link>
         <PrintButton />
       </div>
@@ -93,10 +93,10 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-wide text-stone-500">Orcamento</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-stone-500">Orçamento</p>
             <p className="text-xl font-black text-marca-600">{q.number}</p>
             <p className="text-xs text-stone-600">Emitido em {dateUtcBR(q.created_at)}</p>
-            {q.valid_until && <p className="text-xs text-stone-600">Valido ate {dateBR(q.valid_until)}</p>}
+            {q.valid_until && <p className="text-xs text-stone-600">Válido até {dateBR(q.valid_until)}</p>}
             <p className="text-xs text-stone-600">Status: {statusLabel(QUOTE_STATUS, q.status)}</p>
           </div>
         </header>
@@ -112,7 +112,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
               <p className="text-stone-700">WhatsApp: {phoneBR(q.customer_whatsapp)}</p>
             )}
             {q.customer_email && <p className="text-stone-700">E-mail: {q.customer_email}</p>}
-            {enderecoCliente && <p className="text-stone-700">Endereco: {enderecoCliente}</p>}
+            {enderecoCliente && <p className="text-stone-700">Endereço: {enderecoCliente}</p>}
           </div>
         </section>
 
@@ -124,7 +124,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
               {q.event_date && (
                 <p>
                   Data do evento: <b className="text-tinta-900">{dateBR(q.event_date)}</b>
-                  {q.event_time ? ` as ${q.event_time}` : ""}
+                  {q.event_time ? ` às ${q.event_time}` : ""}
                 </p>
               )}
               {q.delivery_at && <p>Entrega prevista: {dateBR(q.delivery_at)} {timeBR(q.delivery_at)}</p>}
@@ -141,7 +141,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-marca-600 text-white">
-                  <th className="px-2 py-2 text-left font-semibold">Descricao</th>
+                  <th className="px-2 py-2 text-left font-semibold">Descrição</th>
                   <th className="w-16 px-2 py-2 text-right font-semibold">Qtd</th>
                   <th className="w-28 px-2 py-2 text-right font-semibold">Valor un.</th>
                   <th className="w-28 px-2 py-2 text-right font-semibold">Subtotal</th>
@@ -179,7 +179,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
               </>
             )}
             <div className="mt-1 flex items-center justify-between rounded-lg bg-marca-600 px-3 py-2.5 text-white">
-              <span className="text-xs font-bold uppercase tracking-wide">Total do orcamento</span>
+              <span className="text-xs font-bold uppercase tracking-wide">Total do Orçamento</span>
               <span className="text-lg font-black">{money(q.total_cents)}</span>
             </div>
           </div>
@@ -188,7 +188,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
         {/* pagamento */}
         {(s.pix_key || s.bank_info) && (
           <section className="mt-5">
-            <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-marca-600">Condicoes de pagamento</h2>
+            <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-marca-600">Condições de Pagamento</h2>
             <div className="rounded-lg bg-nuvem-100 px-3 py-2.5 text-sm text-stone-700">
               {s.pix_key && (
                 <p>
@@ -203,7 +203,7 @@ export default async function OrcamentoImprimirPage({ params }: { params: Promis
         {/* observacoes */}
         {q.notes && (
           <section className="mt-4">
-            <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-marca-600">Observacoes</h2>
+            <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-marca-600">Observações</h2>
             <p className="whitespace-pre-wrap rounded-lg bg-nuvem-100 px-3 py-2.5 text-sm text-stone-700">{q.notes}</p>
           </section>
         )}

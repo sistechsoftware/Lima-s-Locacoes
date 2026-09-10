@@ -27,7 +27,7 @@ export async function saveCompanySettings(fd: FormData): Promise<void> {
     try {
       logoPath = await saveUpload(logoFile, user.id);
     } catch (e) {
-      const motivo = e instanceof UploadError ? e.message : "Nao foi possivel salvar a imagem.";
+      const motivo = e instanceof UploadError ? e.message : "Não foi possível salvar a imagem.";
       redirect(`/configuracoes?aba=empresa&erro=${encodeURIComponent(motivo)}`);
     }
   }
@@ -80,7 +80,7 @@ export async function createUser(_prev: string | null, fd: FormData): Promise<st
   const username = String(fd.get("username") ?? "").trim().toLowerCase();
   const password = String(fd.get("password") ?? "");
   const role = String(fd.get("role") ?? "operador");
-  if (!name || !username) return "Informe nome e usuario.";
+  if (!name || !username) return "Informe nome e usuário.";
   if (password.length < 6) return "A senha deve ter ao menos 6 caracteres.";
   if (await scalar<number>(`SELECT COUNT(*) FROM users WHERE username = ?`, [username]) > 0) return "Usuario ja existe.";
 
@@ -149,7 +149,7 @@ export async function removeCategory(fd: FormData) {
   const id = Number(fd.get("id"));
   const usados = await scalar<number>(`SELECT COUNT(*) FROM products WHERE category_id = ?`, [id]);
   if (usados > 0) {
-    redirect(`/configuracoes?erro=${encodeURIComponent("Categoria em uso por produtos, nao pode ser removida.")}`);
+    redirect(`/configuracoes?erro=${encodeURIComponent("Categoria em uso por produtos, não pode ser removida.")}`);
   }
   const c = await one<any>(`SELECT name FROM categories WHERE id = ?`, [id]);
   await run(`DELETE FROM categories WHERE id = ?`, [id]);
@@ -161,7 +161,7 @@ export async function removeCategory(fd: FormData) {
 export async function saveFreightSettings(fd: FormData) {
   const user = await assertAdmin();
   const tipo = fd.get("tipo");
-  if (tipo !== "comum" && tipo !== "locacao") throw new Error("Tipo de frete invalido.");
+  if (tipo !== "comum" && tipo !== "locacao") throw new Error("Tipo de frete inválido.");
   const values = {
     freight_fuel_type: String(fd.get("fuel_type") ?? "").trim() || "Combustivel",
     freight_fuel_price_cents: String(parseMoney(String(fd.get("fuel_price") ?? ""))),

@@ -20,7 +20,7 @@ const TIPOS = [
   { value: "pagamento", label: "Pagamentos" },
   { value: "conflito", label: "Conflitos" },
   { value: "contrato", label: "Contratos" },
-  { value: "caucao", label: "Caucao" },
+  { value: "caucao", label: "Caução" },
   { value: "estoque", label: "Estoque" },
 ];
 
@@ -45,7 +45,7 @@ export default async function NotificacoesPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Notificacoes"
+        title="Notificações"
         subtitle={`${todas.length} alerta(s) ativo(s)`}
         action={
           <form action={markAllRead}>
@@ -55,18 +55,18 @@ export default async function NotificacoesPage({
       />
 
       <div className="grid grid-cols-3 gap-2.5">
-        <Stat label="Criticos" value={criticos} tone={criticos ? "vermelho" : undefined} />
+        <Stat label="Críticos" value={criticos} tone={criticos ? "vermelho" : undefined} />
         <Stat label="Avisos" value={avisos} />
-        <Stat label="Nao lidos" value={todas.filter((n: any) => !n.read_at).length} />
+        <Stat label="Não lidos" value={todas.filter((n: any) => !n.read_at).length} />
       </div>
 
-      <Link href="/notificacoes" className="text-marca-600 underline">Minha central de notificacoes</Link>
+      <Link href="/notificacoes" className="text-marca-600 underline">Minha central de notificações</Link>
       <AvailabilityFilter query={query} minutes={options.preparationMinutes} hidden={{ tipo }} />
-      <section className="cartao p-3 space-y-2"><h2 className="font-semibold">Conflitos no horario ou intervalo consultado</h2>
+      <section className="cartao p-3 space-y-2"><h2 className="font-semibold">Conflitos no horário ou intervalo consultado</h2>
         {!conflicts.length && <p className="text-sm">Nenhum conflito de estoque nesta consulta.</p>}
         {conflicts.map((c) => <p key={c.reservation_id} className="text-sm"><Link href={`/reservas/${c.reservation_id}?preparo=${query.considerPreparation ? 1 : 0}`} className="text-marca-600 underline">{c.number}</Link>: {c.faltas.map(f => `${f.product}: faltam ${f.missing}`).join("; ")}</p>)}
       </section>
-      <p className="text-xs text-stone-500">Os alertas automaticos abaixo verificam os compromissos futuros com a preparacao configurada sempre ativa. O filtro acima e uma simulacao e nao altera alertas compartilhados.</p>
+      <p className="text-xs text-stone-500">Os alertas automáticos abaixo verificam os compromissos futuros com a preparação configurada sempre ativa. O filtro acima é uma simulação e não altera alertas compartilhados.</p>
       <Tabs items={TIPOS} current={tipo} base={`/notificacoes/alertas?${query.queryString}`} param="tipo" />
 
       {lista.length === 0 ? (
@@ -89,7 +89,7 @@ export default async function NotificacoesPage({
                   <p className="text-sm font-bold text-tinta-900">{n.title}</p>
                   {n.body && <p className="text-xs text-stone-600">{n.body}</p>}
                   <p className="mt-0.5 text-[0.65rem] uppercase tracking-wide text-stone-400">
-                    {n.type} - {utcParaLocal(n.created_at)}
+                    {n.type} · {utcParaLocal(n.created_at)}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">

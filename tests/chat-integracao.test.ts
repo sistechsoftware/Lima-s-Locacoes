@@ -142,11 +142,11 @@ describe("envio e permissao", () => {
     await gravarUsuario(b);
     await assert.rejects(
       () => sendMessage(a, { otherUserId: b.id, files: [arquivo("virus.exe", "application/octet-stream")] }),
-      /nao e permitido|Formato nao suportado/,
+      /não é permitido|Formato não suportado/,
     );
     await assert.rejects(
       () => sendMessage(a, { otherUserId: b.id, files: [arquivo("dados.xml", "application/xml")] }),
-      /Formato nao suportado/,
+      /Formato não suportado/,
     );
   });
 

@@ -25,7 +25,7 @@ export default async function EditarProdutoPage({ params }: { params: Promise<{ 
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Editar produto" subtitle={product.name} />
+      <PageHeader title="Editar Produto" subtitle={product.name} />
       <Card>
         <ProductForm
           action={updateProduct}
@@ -33,7 +33,7 @@ export default async function EditarProdutoPage({ params }: { params: Promise<{ 
           categories={categories}
           simpleProducts={simpleProducts}
           components={components}
-          submitLabel="Salvar alteracoes"
+          submitLabel="Salvar Alterações"
         />
       </Card>
     </div>

@@ -21,7 +21,7 @@ export async function smallJson(request: Request, max = 8192) {
     const { value, done } = await reader.read();
     if (done) break;
     size += value.length;
-    if (size > max) { await reader.cancel(); throw new Error("Requisicao muito grande."); }
+    if (size > max) { await reader.cancel(); throw new Error("Requisição muito grande."); }
     text += decoder.decode(value, { stream: true });
   }
   return JSON.parse(text + decoder.decode());

@@ -51,7 +51,7 @@ describe("validacao do valor", () => {
 
   it("recusa acima do saldo disponivel da reserva", () => {
     const erro = validarValorAdiantamento(60000, 50000);
-    assert.match(erro ?? "", /saldo disponivel/);
+    assert.match(erro ?? "", /saldo disponível/);
     assert.match(erro ?? "", /500,00/);
   });
 
@@ -78,12 +78,12 @@ describe("validacao da data", () => {
 describe("mensagens de lembrete", () => {
   it("o lembrete do dia usa exatamente a voz pedida", () => {
     const m = mensagemLembreteHoje("Joao da Silva", 20000);
-    assert.match(m.body, /^Opa! Hoje e dia de cobrar o adiantamento do cliente Joao da Silva, no valor de R\$ 200,00\.$/);
+    assert.match(m.body, /^Opa! Hoje é dia de cobrar o adiantamento do cliente Joao da Silva, no valor de R\$ 200,00\.$/);
   });
 
   it("o lembrete antecipado fala em dias, e amanha e amanha", () => {
     assert.match(mensagemLembreteAntecipado("Joao", 20000, 3).body, /daqui a 3 dias/);
-    assert.match(mensagemLembreteAntecipado("Joao", 20000, 1).body, /amanha/);
+    assert.match(mensagemLembreteAntecipado("Joao", 20000, 1).body, /amanhã/);
     assert.ok(!mensagemLembreteAntecipado("Joao", 20000, 1).body.includes("daqui a 1 dias"));
   });
 

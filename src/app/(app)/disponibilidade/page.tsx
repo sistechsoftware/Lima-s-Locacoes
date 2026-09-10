@@ -51,12 +51,12 @@ export default async function DisponibilidadePage({
   const esgotados = todos.filter((p) => p.available <= 0).length;
 
   const resumoTexto =
-    `${query.label}. Sao Paulo. Preparacao: ${options.preparationMinutes} min${query.considerPreparation ? " considerada" : " desativada"}.\n` +
+    `${query.label}. São Paulo. Preparação: ${options.preparationMinutes} min${query.considerPreparation ? " considerada" : " desativada"}.\n` +
     [
       ...(kits.length > 0
         ? [
             "KITS:",
-            ...kits.map((k) => `- ${k.name}: ate ${Math.max(0, k.available)} kit(s)`),
+            ...kits.map((k) => `- ${k.name}: até ${Math.max(0, k.available)} kit(s)`),
           ]
         : []),
       ...(avulsos.length > 0
@@ -72,16 +72,16 @@ export default async function DisponibilidadePage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Calendario de disponibilidade"
+        title="Calendário de disponibilidade"
         subtitle="Consulte antes de responder o cliente no WhatsApp"
       />
 
       <AvailabilityFilter query={query} minutes={options.preparationMinutes} />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        <Stat label="Produtos disponiveis" value={comEstoque} tone="verde" />
+        <Stat label="Produtos disponíveis" value={comEstoque} tone="verde" />
         <Stat label="Sem disponibilidade" value={esgotados} tone={esgotados > 0 ? "vermelho" : "verde"} />
-        <Stat label="Horario inicial" value={dateTimeBR(query.from)} />
+        <Stat label="Horário inicial" value={dateTimeBR(query.from)} />
       </div>
 
       {todos.length === 0 && <Alerta tone="ambar">Nenhum produto ativo cadastrado.</Alerta>}
@@ -101,13 +101,13 @@ export default async function DisponibilidadePage({
                     <p className="text-xs text-stone-500">
                       {k.components && k.components.length > 0
                         ? k.components.map((c) => `${c.quantity}x ${c.name}`).join(" + ")
-                        : "Kit sem composicao cadastrada"}
+                        : "Kit sem composição cadastrada"}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className={`text-xl font-bold leading-none ${tom(k)}`}>{Math.max(0, k.available)}</p>
                     <p className="text-[0.65rem] uppercase text-stone-400">
-                      {k.available <= 0 ? "indisponivel" : "kits montaveis"}
+                      {k.available <= 0 ? "indisponível" : "kits montáveis"}
                     </p>
                   </div>
                 </div>
@@ -115,7 +115,7 @@ export default async function DisponibilidadePage({
             ))}
           </div>
           <p className="border-t border-nuvem-200 bg-nuvem-50 px-4 py-2 text-xs text-stone-500">
-            Cada kit mostra o maximo montavel sozinho. Kits que dividem os mesmos componentes nao podem ser somados.
+            Cada kit mostra o máximo montável sozinho. Kits que dividem os mesmos componentes não podem ser somados.
           </p>
         </section>
       )}
@@ -140,8 +140,8 @@ export default async function DisponibilidadePage({
                         <div className="min-w-0">
                           <p className="truncate text-sm font-bold text-tinta-900">{p.name}</p>
                           <p className="text-xs text-stone-500">
-                            Total {p.total} - reservados {p.reserved}
-                            {p.maintenance > 0 ? ` - manutencao ${p.maintenance}` : ""}
+                            Total {p.total} · reservados {p.reserved}
+                            {p.maintenance > 0 ? ` · manutenção ${p.maintenance}` : ""}
                           </p>
                           {/* o numero grande e o pior momento do periodo. quando a
                               disponibilidade muda no meio (uma devolucao, uma saida),
@@ -150,7 +150,7 @@ export default async function DisponibilidadePage({
                             <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs">
                               {trechos.map((t) => (
                                 <span key={t.from} className={t.available > 0 ? "text-emerald-700" : "text-red-600"}>
-                                  <b>{Math.max(0, t.available)}</b> de {dateTimeBR(t.from)} ate {dateTimeBR(t.to)}
+                                  <b>{Math.max(0, t.available)}</b> de {dateTimeBR(t.from)} até {dateTimeBR(t.to)}
                                 </span>
                               ))}
                             </p>
@@ -159,7 +159,7 @@ export default async function DisponibilidadePage({
                         <div className="shrink-0 text-right">
                           <p className={`text-xl font-bold leading-none ${tom(p)}`}>{livre}</p>
                           <p className="text-[0.65rem] uppercase text-stone-400">
-                            {livre <= 0 ? "indisponivel" : "disponiveis"}
+                            {livre <= 0 ? "indisponível" : "disponíveis"}
                           </p>
                         </div>
                       </div>

@@ -29,7 +29,7 @@ export async function createCustomer(_prev: string | null, fd: FormData): Promis
   const user = await requireUser();
   const c = readCustomer(fd);
   if (!c.name) return "Informe o nome do cliente.";
-  if (c.birth_date && !valida(c.birth_date)) return "Data de nascimento invalida.";
+  if (c.birth_date && !valida(c.birth_date)) return "Data de nascimento inválida.";
 
   const id = await insert(
     `INSERT INTO customers (name, doc, phone, whatsapp, email, address, district, city, zip, birth_date, notes)
@@ -48,7 +48,7 @@ export async function updateCustomer(_prev: string | null, fd: FormData): Promis
   const id = Number(fd.get("id"));
   const c = readCustomer(fd);
   if (!c.name) return "Informe o nome do cliente.";
-  if (c.birth_date && !valida(c.birth_date)) return "Data de nascimento invalida.";
+  if (c.birth_date && !valida(c.birth_date)) return "Data de nascimento inválida.";
 
   await run(
     `UPDATE customers SET name=?, doc=?, phone=?, whatsapp=?, email=?, address=?, district=?, city=?, zip=?,
@@ -150,7 +150,7 @@ export async function removerDocumento(fd: FormData) {
   if (doc.source === "assinatura_virtual") {
     redirect(
       `/clientes/${doc.customer_id}?aviso=${encodeURIComponent(
-        "Documento de assinatura virtual nao pode ser excluido: ele e a prova do contrato assinado.",
+        "Documento de assinatura virtual não pode ser excluído: ele é a prova do contrato assinado.",
       )}`,
     );
   }

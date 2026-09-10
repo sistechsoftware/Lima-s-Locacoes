@@ -175,7 +175,7 @@ describe("rotina diaria", () => {
     assert.equal(r.proximos, 3);
     const avisos = await all<any>(`SELECT * FROM user_notifications ORDER BY id`);
     assert.equal(avisos.length, 2, "um para amanha e um para daqui a tres dias");
-    assert.match(avisos[0].body, /amanha/);
+    assert.match(avisos[0].body, /amanhã/);
     assert.match(avisos[1].body, /em 3 dias/);
   });
 

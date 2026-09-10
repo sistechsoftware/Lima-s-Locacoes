@@ -32,7 +32,7 @@ export default async function BuscaPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-4">
       <PageHeader title={`Busca: "${termo}"`} subtitle={`${totalResultados} resultado(s)`} />
-      <SearchForm action="/busca" placeholder="Cliente, telefone, LIMA-001, endereco..." defaultValue={termo} />
+      <SearchForm action="/busca" placeholder="Cliente, telefone, LIMA-001, endereço…" defaultValue={termo} />
 
       {totalResultados === 0 && <Empty>Nada encontrado para este termo.</Empty>}
 
@@ -44,8 +44,8 @@ export default async function BuscaPage({ searchParams }: { searchParams: Promis
                 key={c.id}
                 href={`/clientes/${c.id}`}
                 title={c.name}
-                subtitle={[phoneBR(c.phone), c.district].filter(Boolean).join(" - ")}
-                meta={`${c.locacoes} locacao(oes) - total ${money(c.total_cents)}`}
+                subtitle={[phoneBR(c.phone), c.district].filter(Boolean).join(" · ")}
+                meta={`${c.locacoes} locação(ões) · total ${money(c.total_cents)}`}
                 right={c.saldo_cents > 0 ? <span className="text-xs font-bold text-red-600">{money(c.saldo_cents)}</span> : null}
               />
             ))}
@@ -71,7 +71,7 @@ export default async function BuscaPage({ searchParams }: { searchParams: Promis
       )}
 
       {r.quotes.length > 0 && (
-        <Section title={`Orcamentos (${r.quotes.length})`}>
+        <Section title={`Orçamentos (${r.quotes.length})`}>
           <div className="space-y-2">
             {r.quotes.map((x: any) => (
               <ListRow
@@ -96,7 +96,7 @@ export default async function BuscaPage({ searchParams }: { searchParams: Promis
                 href={`/fretes/${x.id}`}
                 badges={<StatusBadge defs={FREIGHT_STATUS} value={x.status} />}
                 title={`${x.number} - ${x.customer_name ?? x.contact_name ?? ""}`}
-                subtitle={`${dateBR(x.date)} - ${x.origin ?? ""} ate ${x.destination ?? ""}`}
+                subtitle={`${dateBR(x.date)} · ${x.origin ?? ""} até ${x.destination ?? ""}`}
                 right={<span className="text-sm font-bold">{money(x.amount_cents)}</span>}
               />
             ))}

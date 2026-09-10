@@ -38,7 +38,7 @@ export async function ensureConversation(me: number, other: number): Promise<num
     `SELECT id, active FROM users WHERE id = ?`,
     [other],
   );
-  if (!alvo || !alvo.active) throw new ChatError("Usuario nao disponivel para conversa.");
+  if (!alvo || !alvo.active) throw new ChatError("Usuário não disponível para conversa.");
   const lo = Math.min(me, other);
   const hi = Math.max(me, other);
   const existente = await one<{ id: number }>(

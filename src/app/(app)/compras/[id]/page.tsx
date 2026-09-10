@@ -63,7 +63,7 @@ export default async function CompraPage({
     <div className="space-y-4">
       <PageHeader
         title={compra.number}
-        subtitle={`${compra.supplier_name ?? "Sem fornecedor"} - ${dateBR(compra.purchase_date)}`}
+        subtitle={`${compra.supplier_name ?? "Sem fornecedor"} · ${dateBR(compra.purchase_date)}`}
         action={
           compra.status !== "cancelada" ? (
             <LinkButton href={`/compras/${compra.id}/editar`}>Editar</LinkButton>
@@ -71,18 +71,18 @@ export default async function CompraPage({
         }
       />
 
-      {aviso && <Alerta tone="ambar" title="Atencao">{aviso}</Alerta>}
+      {aviso && <Alerta tone="ambar" title="Atenção">{aviso}</Alerta>}
       {descoberto !== 0 && parcelas.length > 0 && (
-        <Alerta tone="ambar" title="As parcelas nao cobrem o total da compra">
-          A compra soma {money(compra.total_cents)} e as parcelas somam {money(totalParcelas)}, uma diferenca de{" "}
+        <Alerta tone="ambar" title="As parcelas não cobrem o total da compra">
+          A compra soma {money(compra.total_cents)} e as parcelas somam {money(totalParcelas)}, uma diferença de{" "}
           {money(Math.abs(descoberto))} {descoberto > 0 ? "a mais na compra" : "a mais nas parcelas"}. Isso acontece
-          quando o valor muda depois de uma parcela ja paga, porque refazer o parcelamento apagaria o pagamento.
+          quando o valor muda depois de uma parcela já paga, porque refazer o parcelamento apagaria o pagamento.
           Ajuste as parcelas manualmente ou estorne o pagamento e salve de novo.
         </Alerta>
       )}
       {compra.status === "cancelada" && (
         <Alerta tone="vermelho" title="Compra cancelada">
-          O estoque foi estornado e as parcelas em aberto foram canceladas. O historico fica preservado.
+          O estoque foi estornado e as parcelas em aberto foram canceladas. O histórico fica preservado.
         </Alerta>
       )}
 
@@ -91,7 +91,7 @@ export default async function CompraPage({
           {compra.affects_stock ? (
             <Badge tone="azul">Entrou no estoque</Badge>
           ) : (
-            <Badge tone="cinza">Historica - nao mexeu no estoque</Badge>
+            <Badge tone="cinza">Histórica · não mexeu no estoque</Badge>
           )}
           <Badge tone={compra.kind === "investimento" ? "terracota" : "cinza"}>
             {compra.kind === "investimento" ? "Investimento" : "Despesa operacional"}
@@ -122,8 +122,8 @@ export default async function CompraPage({
                     </Link>
                     <span className="block text-xs text-stone-500">
                       {money(i.unit_price_cents)} cada
-                      {i.discount_cents > 0 ? ` - desconto ${money(i.discount_cents)}` : ""}
-                      {i.stock_applied_qty > 0 ? ` - ${i.stock_applied_qty} no estoque` : ""}
+                      {i.discount_cents > 0 ? ` · desconto ${money(i.discount_cents)}` : ""}
+                      {i.stock_applied_qty > 0 ? ` · ${i.stock_applied_qty} no estoque` : ""}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm font-bold">{money(i.subtotal_cents)}</span>
@@ -154,9 +154,9 @@ export default async function CompraPage({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span>
                         <span className="text-sm font-bold text-tinta-900">
-                          {p.installment}/{p.installments_total} - {money(p.amount_cents)}
+                          {p.installment}/{p.installments_total} · {money(p.amount_cents)}
                         </span>
-                        <span className="ml-2 text-xs text-stone-500">vence {dateBR(p.due_date)}</span>
+                        <span className="ml-2 text-xs text-stone-500">vence em {dateBR(p.due_date)}</span>
                       </span>
                       <Badge tone={TOM[sit]}>{sit}</Badge>
                     </div>
@@ -184,7 +184,7 @@ export default async function CompraPage({
                           ))}
                         </select>
                         <select name="account_id" defaultValue={p.account_id ?? ""} className="campo">
-                          <option value="">Conta...</option>
+                          <option value="">Conta…</option>
                           {contas.map((c: any) => (
                             <option key={c.id} value={c.id}>
                               {c.name}
@@ -218,7 +218,7 @@ export default async function CompraPage({
                     {money(Math.abs(p.amount_cents))}
                   </span>
                   <span className="block text-xs text-stone-500">
-                    {dateBR(p.date)} - {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
+                    {dateBR(p.date)} · {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
                   </span>
                 </span>
                 {user.role === "admin" && p.amount_cents > 0 && (
@@ -226,7 +226,7 @@ export default async function CompraPage({
                     <input type="hidden" name="expense_id" value={p.id} />
                     <SubmitButton
                       variant="perigo"
-                      confirm="Estornar este pagamento? O estorno fica registrado no historico."
+                      confirm="Estornar este pagamento? O estorno fica registrado no histórico."
                       className="px-2.5 py-1.5 text-xs"
                     >
                       Estornar
@@ -240,7 +240,7 @@ export default async function CompraPage({
       )}
 
       {movimentos.length > 0 && (
-        <Section title="Movimentacao de estoque">
+        <Section title="Movimentação de Estoque">
           <ul className="divide-y divide-nuvem-200">
             {movimentos.map((m: any) => (
               <li key={m.id} className="flex items-center justify-between py-2 text-sm">
@@ -259,7 +259,7 @@ export default async function CompraPage({
       )}
 
       {historico.length > 0 && (
-        <Section title="Historico">
+        <Section title="Histórico">
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
@@ -274,15 +274,15 @@ export default async function CompraPage({
       {user.role === "admin" && compra.status !== "cancelada" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
+            <p className="text-sm font-semibold text-tinta-900">Área do administrador</p>
             <p className="text-xs text-stone-500">
-              Cancelar estorna o estoque que esta compra somou e mantem todo o historico.
+              Cancelar estorna o estoque que esta compra somou e mantém todo o histórico.
             </p>
           </div>
           <form action={cancelPurchase}>
             <input type="hidden" name="id" value={compra.id} />
             <SubmitButton variant="perigo" confirm={`Cancelar a compra ${compra.number} e estornar o estoque?`}>
-              Cancelar compra
+              Cancelar Compra
             </SubmitButton>
           </form>
         </Card>

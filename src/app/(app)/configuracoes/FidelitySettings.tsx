@@ -54,17 +54,17 @@ export default function FidelitySettings({
             disabled={!admin}
             className="h-4 w-4"
           />
-          Programa de fidelidade ativo
+          Programa de Fidelidade ativo
         </label>
         <p className="mt-1 text-xs text-stone-500">
-          Desligado, nada e pontuado. As recompensas ja conquistadas continuam valendo.
+          Desligado, nada é pontuado. As recompensas já conquistadas continuam valendo.
         </p>
       </section>
 
       <section className="cartao p-4">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Regra</h3>
         <Grid>
-          <Field label="Locacoes para ganhar" hint="A meta do ciclo.">
+          <Field label="Locações para ganhar" hint="A meta do ciclo.">
             <input
               name="goal"
               type="number"
@@ -75,7 +75,7 @@ export default function FidelitySettings({
               disabled={!admin}
             />
           </Field>
-          <Field label="Kits gratis por recompensa">
+          <Field label="Kits grátis por recompensa">
             <input
               name="kits"
               type="number"
@@ -86,7 +86,7 @@ export default function FidelitySettings({
               disabled={!admin}
             />
           </Field>
-          <Field label="Validade (dias)" hint="0 = a recompensa nao expira.">
+          <Field label="Validade (dias)" hint="0 = a recompensa não expira.">
             <input
               name="validity_days"
               type="number"
@@ -97,7 +97,7 @@ export default function FidelitySettings({
               disabled={!admin}
             />
           </Field>
-          <Field label="Valor minimo da locacao (R$)" hint="0 = qualquer valor conta.">
+          <Field label="Valor mínimo da locação (R$)" hint="0 = qualquer valor conta.">
             <input
               name="min_value"
               inputMode="decimal"
@@ -118,7 +118,7 @@ export default function FidelitySettings({
               disabled={!admin}
               className="h-4 w-4"
             />
-            Acumular recompensas (10 locacoes = 2 recompensas)
+            Acumular recompensas (10 locações = 2 recompensas)
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -129,7 +129,7 @@ export default function FidelitySettings({
               disabled={!admin}
               className="h-4 w-4"
             />
-            Locacao paga com recompensa tambem pontua
+            Locação paga com recompensa também pontua
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -140,15 +140,15 @@ export default function FidelitySettings({
               disabled={!admin}
               className="h-4 w-4"
             />
-            Devolver a recompensa se a locacao que a usou for cancelada
+            Devolver a recompensa se a locação que a usou for cancelada
           </label>
         </div>
       </section>
 
       <section className="cartao p-4">
-        <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-stone-500">O que conta como locacao</h3>
+        <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-stone-500">O que conta como locação</h3>
         <p className="mb-3 text-xs text-stone-500">
-          Marque os status em que a locacao ja foi realizada. Orcamento e reserva cancelada nao devem contar.
+          Marque os status em que a locação já foi realizada. Orçamento e reserva cancelada não devem contar.
         </p>
         <div className="flex flex-wrap gap-2">
           {RESERVATION_STATUS.filter((s) => s.value !== "cancelada").map((s) => (
@@ -173,7 +173,7 @@ export default function FidelitySettings({
         </div>
         {statusMarcados.length === 0 && (
           <Alerta tone="ambar" title="Nenhum status marcado">
-            Sem status marcado nada pontua, o que na pratica desliga o programa.
+            Sem status marcado nada pontua, o que na prática desliga o programa.
           </Alerta>
         )}
       </section>
@@ -181,7 +181,7 @@ export default function FidelitySettings({
       <section className="cartao p-4">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Avisos</h3>
         <Grid>
-          <Field label="Lembretes de vencimento" hint="Dias de antecedencia, separados por virgula.">
+          <Field label="Lembretes de vencimento" hint="Dias de antecedência, separados por vírgula.">
             <input
               name="expiry_reminders"
               defaultValue={settings.fidelity_expiry_reminders ?? "7,3,1"}
@@ -189,7 +189,7 @@ export default function FidelitySettings({
               disabled={!admin}
             />
           </Field>
-          <Field label="Horario permitido" hint="Avisos fora da janela esperam o proximo horario.">
+          <Field label="Horário permitido" hint="Avisos fora da janela esperam o próximo horário.">
             <div className="flex items-center gap-2">
               <input
                 name="window_start"
@@ -198,7 +198,7 @@ export default function FidelitySettings({
                 className="campo"
                 disabled={!admin}
               />
-              <span className="text-sm text-stone-500">ate</span>
+              <span className="text-sm text-stone-500">até</span>
               <input
                 name="window_end"
                 type="time"
@@ -226,15 +226,15 @@ export default function FidelitySettings({
           ))}
         </div>
         <p className="mt-2 text-xs text-stone-500">
-          O envio ao cliente e pelo WhatsApp, com a mensagem pronta em Fidelidade. A equipe recebe o aviso na central de
-          notificacoes.
+          O envio ao cliente é pelo WhatsApp, com a mensagem pronta em Fidelidade. A equipe recebe o aviso na central de
+          notificações.
         </p>
       </section>
 
       <section className="cartao p-4">
         <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-stone-500">Mensagens</h3>
         <p className="mb-3 text-xs text-stone-500">
-          Campos disponiveis: {VARIAVEIS_FIDELIDADE.map((v) => `{${v}}`).join(", ")}. Campo sem valor sai vazio.
+          Campos disponíveis: {VARIAVEIS_FIDELIDADE.map((v) => `{${v}}`).join(", ")}. Campo sem valor sai vazio.
         </p>
         <div className="space-y-3">
           {eventos.map((e) => (
@@ -251,7 +251,7 @@ export default function FidelitySettings({
         </div>
       </section>
 
-      {admin && <SubmitButton>Salvar fidelidade</SubmitButton>}
+      {admin && <SubmitButton>Salvar Fidelidade</SubmitButton>}
     </form>
   );
 }

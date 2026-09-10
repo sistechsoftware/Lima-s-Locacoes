@@ -24,19 +24,19 @@ export default function ConflictList({ conflicts }: { conflicts: ConflictView[] 
         <li key={c.product_id}>
           {c.kind === "kit" ? (
             <>
-              <b>{c.product}</b>: estoque insuficiente para este kit. Disponivel para esta operacao:{" "}
+              <b>{c.product}</b>: estoque insuficiente para este kit. Disponível para esta operação:{" "}
               <b>{c.available} kit(s)</b>, pedido {c.requested}.
               {!!c.components?.length && (
                 <span className="mt-0.5 block opacity-80">
                   {c.components
-                    .map((x) => `${x.product}: precisa de ${x.required}, disponivel ${x.available}`)
+                    .map((x) => `${x.product}: precisa de ${x.required}, disponível ${x.available}`)
                     .join("; ")}
                 </span>
               )}
             </>
           ) : (
             <>
-              <b>{c.product}</b>: pedido {c.requested}, disponivel {c.available} neste intervalo.
+              <b>{c.product}</b>: pedido {c.requested}, disponível {c.available} neste intervalo.
             </>
           )}
           {!!c.holds?.length && (

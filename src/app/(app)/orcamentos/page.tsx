@@ -40,8 +40,8 @@ export default async function OrcamentosPage({
     <div className="space-y-4">
       <PageHeader
         title="Orçamentos"
-        subtitle={`${total} orcamento(s)`}
-        action={<LinkButton href="/orcamentos/novo" variant="primario">+ Novo orçamento</LinkButton>}
+        subtitle={`${total} orçamento(s)`}
+        action={<LinkButton href="/orcamentos/novo" variant="primario">+ Novo Orçamento</LinkButton>}
       />
 
       <SearchForm action="/orcamentos" placeholder="ORC-001, cliente..." defaultValue={q} hidden={{ aba }} />
@@ -59,7 +59,7 @@ export default async function OrcamentosPage({
       />
 
       {rows.length === 0 ? (
-        <Empty>Nenhum orcamento encontrado.</Empty>
+        <Empty>Nenhum orçamento encontrado.</Empty>
       ) : (
         <div className="space-y-2">
           {rows.map((qt) => (
@@ -69,7 +69,7 @@ export default async function OrcamentosPage({
               badges={<StatusBadge defs={QUOTE_STATUS} value={qt.status} />}
               title={`${qt.number} - ${qt.customer_name}`}
               subtitle={qt.event_date ? `Evento em ${dateBR(qt.event_date)}` : "Sem data definida"}
-              meta={qt.valid_until ? `Valido ate ${dateBR(qt.valid_until)}` : undefined}
+              meta={qt.valid_until ? `Válido até ${dateBR(qt.valid_until)}` : undefined}
               right={<p className="text-sm font-bold">{money(qt.total_cents)}</p>}
             />
           ))}

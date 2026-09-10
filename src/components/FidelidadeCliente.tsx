@@ -42,10 +42,10 @@ export function FidelidadeCliente({
   };
 
   return (
-    <Section title="Programa de fidelidade">
+    <Section title="Programa de Fidelidade">
       {!regra.ativo && (
         <Alerta tone="ambar" title="Programa desativado">
-          Novas locacoes nao pontuam. As recompensas abaixo continuam validas.
+          Novas locações não pontuam. As recompensas abaixo continuam válidas.
         </Alerta>
       )}
 
@@ -60,23 +60,23 @@ export function FidelidadeCliente({
           <div className="h-full bg-marca-600 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
         <p className="mt-2 text-xs text-stone-500">
-          {progresso.pontos} locacao(oes) elegivel(is) no total
-          {progresso.ciclosCompletos > 0 ? ` - ${progresso.ciclosCompletos} ciclo(s) fechado(s)` : ""}
+          {progresso.pontos} locação(ões) elegível(is) no total
+          {progresso.ciclosCompletos > 0 ? ` · ${progresso.ciclosCompletos} ciclo(s) fechado(s)` : ""}
         </p>
       </Card>
 
       {disponiveis.length > 0 && (
-        <Alerta tone="verde" title={`Recompensa disponivel (${disponiveis.length})`}>
+        <Alerta tone="verde" title={`Recompensa disponível (${disponiveis.length})`}>
           <ul className="space-y-1">
             {disponiveis.map((r) => {
               const dias = diasAte(r.expires_on, hoje);
               return (
                 <li key={r.id}>
-                  Ate {r.kit_quantity} kits gratis, conquistada em {dateBR(r.earned_at)}
+                  Até {r.kit_quantity} kits grátis, conquistada em {dateBR(r.earned_at)}
                   {r.expires_on && (
                     <span className={dias !== null && dias <= 3 ? "font-bold text-red-700" : ""}>
                       {" "}
-                      - vale ate {dateBR(r.expires_on)}
+                      · vale até {dateBR(r.expires_on)}
                       {dias !== null && dias >= 0 ? ` (${dias} dia${dias === 1 ? "" : "s"})` : ""}
                     </span>
                   )}
@@ -84,7 +84,7 @@ export function FidelidadeCliente({
               );
             })}
           </ul>
-          <p className="mt-1 text-xs">Para usar, abra a reserva do cliente e aplique a recompensa la.</p>
+          <p className="mt-1 text-xs">Para usar, abra a reserva do cliente e aplique a recompensa lá.</p>
         </Alerta>
       )}
 
@@ -116,20 +116,20 @@ export function FidelidadeCliente({
             {recompensas.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <span className="min-w-0">
-                  <span className="block font-semibold text-tinta-900">Ate {r.kit_quantity} kits gratis</span>
+                  <span className="block font-semibold text-tinta-900">Até {r.kit_quantity} kits grátis</span>
                   <span className="block text-xs text-stone-500">
                     conquistada em {dateBR(r.earned_at)}
                     {r.used_at && r.reservation_number && (
                       <>
                         {" "}
-                        - usada em{" "}
+                        · usada em{" "}
                         <Link href={`/reservas/${r.used_reservation_id}`} className="text-marca-600">
                           {r.reservation_number}
                         </Link>
                         {r.used_discount_cents ? ` (${money(r.used_discount_cents)})` : ""}
                       </>
                     )}
-                    {r.rule_goal !== progresso.meta && ` - regra da epoca: ${r.rule_goal} locacoes`}
+                    {r.rule_goal !== progresso.meta && ` · regra da época: ${r.rule_goal} locações`}
                   </span>
                 </span>
                 <Badge tone={TOM[r.situacao] ?? "cinza"}>{r.situacao}</Badge>
@@ -142,7 +142,7 @@ export function FidelidadeCliente({
       {historico.length > 0 && (
         <details className="mt-3">
           <summary className="cursor-pointer text-xs font-semibold text-marca-600">
-            Ver historico de pontuacao ({historico.length})
+            Ver histórico de pontuação ({historico.length})
           </summary>
           <ul className="mt-2 space-y-1 text-sm">
             {historico.map((h) => (

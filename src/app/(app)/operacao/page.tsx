@@ -48,9 +48,9 @@ export default async function OperacaoPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Entregas e retiradas"
-        subtitle={dias === 0 ? dateBR(data) : `${dateBR(data)} ate ${dateBR(ate)}`}
-        action={<LinkButton href="/operacao/nova" variant="primario">+ Nova operacao</LinkButton>}
+        title="Entregas e Retiradas"
+        subtitle={dias === 0 ? dateBR(data) : `${dateBR(data)} até ${dateBR(ate)}`}
+        action={<LinkButton href="/operacao/nova" variant="primario">+ Nova Operação</LinkButton>}
       />
 
       <Card>
@@ -83,7 +83,7 @@ export default async function OperacaoPage({
       />
 
       {ops.length === 0 ? (
-        <Empty>Nenhuma operacao neste filtro.</Empty>
+        <Empty>Nenhuma operação neste filtro.</Empty>
       ) : (
         <div className="space-y-2">
           {ops.map((o: any) => (

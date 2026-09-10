@@ -99,7 +99,7 @@ export async function syncPurchaseEntries(
     `SELECT p.*, s.name AS supplier_name FROM purchases p LEFT JOIN suppliers s ON s.id = p.supplier_id WHERE p.id = ?`,
     [purchaseId],
   );
-  if (!compra) return "Compra nao encontrada.";
+  if (!compra) return "Compra não encontrada.";
 
   const quitadas = await scalar<number>(
     `SELECT COUNT(*) FROM financial_entries e
@@ -108,7 +108,7 @@ export async function syncPurchaseEntries(
     [purchaseId],
   );
   if (quitadas > 0) {
-    return "Esta compra ja tem parcela paga. Cancele o pagamento antes de refazer o parcelamento.";
+    return "Esta compra já tem parcela paga. Cancele o pagamento antes de refazer o parcelamento.";
   }
 
   await run(`DELETE FROM financial_entries WHERE purchase_id = ?`, [purchaseId]);

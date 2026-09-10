@@ -19,7 +19,7 @@ export default function PurchaseForm({
   compra,
   items: itensIniciais = [],
   parcelasIniciais = 1,
-  submitLabel = "Salvar compra",
+  submitLabel = "Salvar Compra",
 }: {
   action: Action;
   produtos: Produto[];
@@ -105,13 +105,13 @@ export default function PurchaseForm({
               required
             />
           </Field>
-          <Field label="Tipo de gasto" hint="Separa o que virou patrimonio do que e custo de operar.">
+          <Field label="Tipo de gasto" hint="Separa o que virou patrimônio do que é custo de operar.">
             <select name="kind" defaultValue={compra?.kind ?? "investimento"} className="campo">
               <option value="investimento">Investimento (mesas, cadeiras, equipamentos)</option>
               <option value="operacional">Despesa operacional (material, consumo)</option>
             </select>
           </Field>
-          <Field label="Observacoes">
+          <Field label="Observações">
             <input name="notes" defaultValue={compra?.notes ?? ""} className="campo" />
           </Field>
         </Grid>
@@ -126,7 +126,7 @@ export default function PurchaseForm({
           <ModoEstoque
             checked={!afetaEstoque}
             onSelect={() => setAfetaEstoque(false)}
-            titulo="Compra historica"
+            titulo="Compra Histórica"
             descricao="Registra o gasto antigo sem mexer no estoque de hoje."
           />
         </div>
@@ -135,7 +135,7 @@ export default function PurchaseForm({
       <section className="cartao p-4">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Itens</h2>
         <select value="" onChange={(e) => add(Number(e.target.value))} className="campo">
-          <option value="">+ Adicionar produto...</option>
+          <option value="">+ Adicionar produto…</option>
           {grupos.map(([cat, lista]) => (
             <optgroup key={cat} label={cat}>
               {lista.map((p) => (
@@ -149,7 +149,7 @@ export default function PurchaseForm({
 
         {itens.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed border-nuvem-300 bg-nuvem-50 px-3 py-6 text-center text-sm text-stone-500">
-            Nenhum item. Use os produtos ja cadastrados no estoque.
+            Nenhum item. Use os produtos já cadastrados no estoque.
           </p>
         ) : (
           <div className="mt-3 space-y-2">
@@ -228,7 +228,7 @@ export default function PurchaseForm({
             />
           </label>
           <div className="flex items-center justify-between border-t border-nuvem-300 pt-2 text-base font-bold">
-            <span>Total da compra</span>
+            <span>Total da Compra</span>
             <span>{money(total)}</span>
           </div>
         </div>
@@ -248,7 +248,7 @@ export default function PurchaseForm({
               className="campo"
             />
           </Field>
-          <Field label="1o vencimento">
+          <Field label="1º vencimento">
             <input
               name="primeiro_vencimento"
               type="date"
@@ -259,7 +259,7 @@ export default function PurchaseForm({
           </Field>
           <Field label="Conta prevista">
             <select name="account_id" defaultValue="" className="campo">
-              <option value="">Nao definida</option>
+              <option value="">Não definida</option>
               {contas.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -272,7 +272,7 @@ export default function PurchaseForm({
         {previa.length > 0 && (
           <div className="mt-3 rounded-xl bg-nuvem-100 p-3">
             <p className="mb-1.5 text-xs font-semibold uppercase text-stone-500">
-              {previa.length === 1 ? "Pagamento a vista" : `${previa.length} parcelas`}
+              {previa.length === 1 ? "Pagamento à vista" : `${previa.length} parcelas`}
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
               {previa.slice(0, 6).map((p) => (
@@ -284,7 +284,7 @@ export default function PurchaseForm({
               {previa.length > 6 && <span>e mais {previa.length - 6}...</span>}
             </div>
             <p className="mt-2 text-xs text-stone-500">
-              O caixa so registra cada parcela quando ela for efetivamente paga.
+              O caixa só registra cada parcela quando ela for efetivamente paga.
             </p>
           </div>
         )}

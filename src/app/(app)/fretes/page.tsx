@@ -48,16 +48,16 @@ export default async function FretesPage({
       <PageHeader
         title="Fretes"
         subtitle={`${total} frete(s)`}
-        action={<LinkButton href="/fretes/novo" variant="primario">+ Novo frete</LinkButton>}
+        action={<LinkButton href="/fretes/novo" variant="primario">+ Novo Frete</LinkButton>}
       />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <Stat label="Total de fretes" value={total} />
         <Stat label="Agendados" value={agendados} />
-        <Stat label="Faturado (concluidos)" value={money(faturado)} tone="verde" />
+        <Stat label="Faturado (concluídos)" value={money(faturado)} tone="verde" />
       </div>
 
-      <SearchForm action="/fretes" placeholder="FRT-001, cliente, destino..." defaultValue={q} hidden={{ aba }} />
+      <SearchForm action="/fretes" placeholder="FRT-001, cliente, destino…" defaultValue={q} hidden={{ aba }} />
       <Tabs
         items={[{ value: "todos", label: "Todos" }, ...FREIGHT_STATUS.map((s) => ({ value: s.value, label: s.label }))]}
         current={aba}
@@ -74,7 +74,7 @@ export default async function FretesPage({
               href={`/fretes/${f.id}`}
               badges={<StatusBadge defs={FREIGHT_STATUS} value={f.status} />}
               title={`${f.number} - ${f.customer_name ?? f.contact_name ?? "Sem cliente"}`}
-              subtitle={`${dateBR(f.date)}${f.time ? ` as ${timeBR(f.time)}` : ""} - ${f.origin ?? "?"} ate ${f.destination ?? "?"}`}
+              subtitle={`${dateBR(f.date)}${f.time ? ` às ${timeBR(f.time)}` : ""} · ${f.origin ?? "?"} até ${f.destination ?? "?"}`}
               meta={f.cargo}
               right={<p className="text-sm font-bold">{money(f.amount_cents)}</p>}
             />

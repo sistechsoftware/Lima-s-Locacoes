@@ -23,7 +23,7 @@ export default async function NovaOperacaoPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Nova operacao" subtitle="Entrega, retirada, montagem ou desmontagem" />
+      <PageHeader title="Nova Operação" subtitle="Entrega, retirada, montagem ou desmontagem" />
       <Card>
         <OperationForm
           action={createOperation}

@@ -223,7 +223,7 @@ describe("sinal recebido antes do parcelamento", () => {
       { tipo: "locacao", reservationId: id },
       { parcelas: 3, primeiroVencimento: "2026-10-15" },
     );
-    assert.match(erro ?? "", /ja recebidos/i);
+    assert.match(erro ?? "", /já recebidos/i);
     assert.equal((await recebiveisDe({ tipo: "locacao", reservationId: id })).length, 0);
   });
 });

@@ -104,7 +104,7 @@ export async function agendaEvents(from: string, to: string): Promise<AgendaEven
     date: f.date,
     time: f.time ?? "",
     title: f.customer_name ?? f.contact_name ?? "Frete",
-    subtitle: `${f.number} - ${f.origin ?? ""} ate ${f.destination ?? ""}`,
+    subtitle: `${f.number} · ${f.origin ?? ""} até ${f.destination ?? ""}`,
     href: `/fretes/${f.id}`,
     status: f.status,
   }));

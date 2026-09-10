@@ -55,7 +55,7 @@ export default async function OperacaoDetalhePage({
   const maps = mapsLink(op.address, op.district, op.city);
   const wa = waLink(
     op.whatsapp || op.phone,
-    `Ola, ${(op.customer ?? "").split(" ")[0]}! Sobre a ${kind.label.toLowerCase()} de hoje as ${timeBR(op.scheduled_at)}.`,
+    `Olá, ${(op.customer ?? "").split(" ")[0]}! Sobre a ${kind.label.toLowerCase()} de hoje às ${timeBR(op.scheduled_at)}.`,
   );
   const ehRetirada = op.kind === "retirada" || op.kind === "desmontagem";
 
@@ -63,13 +63,13 @@ export default async function OperacaoDetalhePage({
     <div className="space-y-4">
       <PageHeader
         title={`${kind.icon} ${kind.label}`}
-        subtitle={`${dateBR(op.scheduled_at)} as ${timeBR(op.scheduled_at)} - ${op.customer ?? "sem cliente"}`}
+        subtitle={`${dateBR(op.scheduled_at)} às ${timeBR(op.scheduled_at)} · ${op.customer ?? "sem cliente"}`}
         action={
           op.reservation_id ? <LinkButton href={`/reservas/${op.reservation_id}`}>Ver reserva</LinkButton> : undefined
         }
       />
 
-      {erro && <Alerta tone="vermelho" title="Nao foi possivel concluir">{erro}</Alerta>}
+      {erro && <Alerta tone="vermelho" title="Não foi possível concluir">{erro}</Alerta>}
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
@@ -104,8 +104,8 @@ export default async function OperacaoDetalhePage({
           {user.role === "admin" && (
             <form action={cancelOperation}>
               <input type="hidden" name="id" value={op.id} />
-              <SubmitButton variant="perigo" confirm="Cancelar esta operacao?" className="px-3 py-2 text-xs">
-                Cancelar operacao
+              <SubmitButton variant="perigo" confirm="Cancelar esta operação?" className="px-3 py-2 text-xs">
+                Cancelar Operação
               </SubmitButton>
             </form>
           )}
@@ -144,15 +144,15 @@ export default async function OperacaoDetalhePage({
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="Dados da operacao">
+        <Section title="Dados da Operação">
           <Row label="Cliente" value={op.customer ?? "-"} />
           <Row label="Telefone" value={phoneBR(op.phone) || "-"} />
-          <Row label="Endereco" value={[op.address, op.district, op.city].filter(Boolean).join(", ") || "-"} />
+          <Row label="Endereço" value={[op.address, op.district, op.city].filter(Boolean).join(", ") || "-"} />
           <Row label="Agendada para" value={dateTimeBR(op.scheduled_at)} />
-          <Row label="Responsavel" value={op.assignee || "-"} />
-          <Row label="Veiculo" value={op.vehicle_name || "-"} />
-          <Row label="Concluida em" value={op.completed_at ? dateTimeBR(op.completed_at) : "-"} />
-          {op.notes && <Row label="Observacoes" value={op.notes} />}
+          <Row label="Responsável" value={op.assignee || "-"} />
+          <Row label="Veículo" value={op.vehicle_name || "-"} />
+          <Row label="Concluída em" value={op.completed_at ? dateTimeBR(op.completed_at) : "-"} />
+          {op.notes && <Row label="Observações" value={op.notes} />}
           {op.reservation_notes && <Row label="Obs. da reserva" value={op.reservation_notes} />}
 
           <form action={updateOperation} className="mt-3 grid grid-cols-2 gap-2">
@@ -167,15 +167,15 @@ export default async function OperacaoDetalhePage({
               />
             </label>
             <label className="block">
-              <span className="rotulo">Responsavel</span>
+              <span className="rotulo">Responsável</span>
               <input name="assignee" defaultValue={op.assignee ?? ""} className="campo" />
-              <span className="rotulo mt-2">Usuario responsavel pelos avisos</span>
-              <select name="assignee_id" defaultValue={op.assignee_id??""} className="campo"><option value="">Equipe pelas funcoes</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select>
+              <span className="rotulo mt-2">Usuário responsável pelos avisos</span>
+              <select name="assignee_id" defaultValue={op.assignee_id??""} className="campo"><option value="">Equipe pelas funções</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select>
             </label>
             <label className="block">
-              <span className="rotulo">Veiculo</span>
+              <span className="rotulo">Veículo</span>
               <select name="vehicle_id" defaultValue={op.vehicle_id ?? ""} className="campo">
-                <option value="">Sem veiculo</option>
+                <option value="">Sem veículo</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name}
@@ -184,12 +184,12 @@ export default async function OperacaoDetalhePage({
               </select>
             </label>
             <label className="block">
-              <span className="rotulo">Observacoes</span>
+              <span className="rotulo">Observações</span>
               <input name="notes" defaultValue={op.notes ?? ""} className="campo" />
             </label>
             <div className="col-span-2">
               <SubmitButton variant="secundario" className="w-full">
-                Salvar alteracoes
+                Salvar Alterações
               </SubmitButton>
             </div>
           </form>
@@ -197,7 +197,7 @@ export default async function OperacaoDetalhePage({
 
         <Section title={`Itens (${itens.length})`}>
           {itens.length === 0 ? (
-            <Empty>Operacao sem itens vinculados.</Empty>
+            <Empty>Operação sem itens vinculados.</Empty>
           ) : (
             <ul className="divide-y divide-nuvem-200">
               {itens.map((i) => (
@@ -233,7 +233,7 @@ export default async function OperacaoDetalhePage({
             ))}
           </div>
           <label className="block">
-            <span className="rotulo">Observacoes do checklist</span>
+            <span className="rotulo">Observações do checklist</span>
             <textarea name="notes" rows={3} defaultValue={checklist?.notes ?? ""} className="campo" />
           </label>
           <label className="block">
@@ -265,7 +265,7 @@ export default async function OperacaoDetalhePage({
       {ehRetirada && op.reservation_id && (
         <Section title="Registrar dano">
           <Alerta tone="ambar">
-            Danos com valor cobrado sao descontados automaticamente da caucao da reserva.
+            Danos com valor cobrado são descontados automaticamente da caução da reserva.
           </Alerta>
           <form action={reportDamage} className="mt-3 grid grid-cols-2 gap-2">
             <input type="hidden" name="operation_id" value={op.id} />
@@ -273,7 +273,7 @@ export default async function OperacaoDetalhePage({
             <label className="col-span-2 block">
               <span className="rotulo">Equipamento</span>
               <select name="product_id" className="campo">
-                <option value="">Selecione...</option>
+                <option value="">Selecione…</option>
                 {itens.map((i) => (
                   <option key={i.product_id} value={i.product_id}>
                     {i.product_name}
@@ -287,18 +287,18 @@ export default async function OperacaoDetalhePage({
             </label>
             <label className="block">
               <span className="rotulo">Tipo de dano</span>
-              <input name="damage_type" className="campo" placeholder="Quebra, mancha, falta..." />
+              <input name="damage_type" className="campo" placeholder="Quebra, mancha, falta…" />
             </label>
             <label className="block">
               <span className="rotulo">Valor estimado (R$)</span>
               <input name="estimated" inputMode="decimal" className="campo" />
             </label>
             <label className="block">
-              <span className="rotulo">Descontar da caucao (R$)</span>
+              <span className="rotulo">Descontar da caução (R$)</span>
               <input name="charged" inputMode="decimal" className="campo" />
             </label>
             <label className="col-span-2 block">
-              <span className="rotulo">Descricao</span>
+              <span className="rotulo">Descrição</span>
               <textarea name="description" rows={2} className="campo" />
             </label>
             <label className="col-span-2 block">
@@ -316,7 +316,7 @@ export default async function OperacaoDetalhePage({
             <ul className="mt-3 space-y-1.5">
               {danos.map((d) => (
                 <li key={d.id} className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
-                  {d.qty}x {d.product_name} - {d.damage_type || "dano"} - estimado {money(d.estimated_cents)}
+                  {d.qty}x {d.product_name} · {d.damage_type || "dano"} · estimado {money(d.estimated_cents)}
                   {d.charged_cents > 0 ? `, descontado ${money(d.charged_cents)}` : ""}
                 </li>
               ))}
@@ -326,7 +326,7 @@ export default async function OperacaoDetalhePage({
       )}
 
       {historico.length > 0 && (
-        <Section title="Historico">
+        <Section title="Histórico">
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
@@ -340,7 +340,7 @@ export default async function OperacaoDetalhePage({
 
       <p className="text-center">
         <Link href="/operacao" className="text-sm font-semibold text-marca-600">
-          Voltar para operacao
+          Voltar para Operação
         </Link>
       </p>
     </div>

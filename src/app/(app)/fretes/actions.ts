@@ -65,7 +65,7 @@ export async function updateFreight(_prev: string | null, fd: FormData): Promise
   const id = Number(fd.get("id"));
   const f = read(fd);
   const current = await one<any>(`SELECT number FROM freights WHERE id = ?`, [id]);
-  if (!current) return "Frete nao encontrado.";
+  if (!current) return "Frete não encontrado.";
 
   await run(
     `UPDATE freights SET customer_id=?, contact_name=?, phone=?, date=?, time=?, origin=?, destination=?, cargo=?,

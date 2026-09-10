@@ -15,7 +15,7 @@ export default async function NovoProdutoPage() {
   );
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Novo produto" subtitle="Produto simples ou kit composto" />
+      <PageHeader title="Novo Produto" subtitle="Produto simples ou kit composto" />
       <Card>
         <ProductForm action={createProduct} categories={categories} simpleProducts={simpleProducts} />
       </Card>

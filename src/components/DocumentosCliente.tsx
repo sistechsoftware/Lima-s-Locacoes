@@ -22,7 +22,7 @@ export function DocumentosCliente({
   admin: boolean;
 }) {
   return (
-    <Section title={`Contratos e documentos (${documentos.length})`}>
+    <Section title={`Contratos e Documentos (${documentos.length})`}>
       {documentos.length === 0 ? (
         <Empty>Nenhum documento ainda. Assine um contrato pelo link ou anexe um arquivo abaixo.</Empty>
       ) : (
@@ -42,10 +42,10 @@ export function DocumentosCliente({
                   </p>
                   <p className="text-xs text-stone-500">
                     {virtual && d.signed_at
-                      ? `${d.signer_name} - ${dateTimeBR(d.signed_at)}`
+                      ? `${d.signer_name} · ${dateTimeBR(d.signed_at)}`
                       : dateBR(d.created_at)}
-                    {d.contract_number ? ` - contrato ${d.contract_number}` : ""}
-                    {d.size ? ` - ${(d.size / 1024).toFixed(0)} KB` : ""}
+                    {d.contract_number ? ` · contrato ${d.contract_number}` : ""}
+                    {d.size ? ` · ${(d.size / 1024).toFixed(0)} KB` : ""}
                   </p>
                   {d.notes && <p className="text-xs text-stone-500">{d.notes}</p>}
                 </div>
@@ -91,7 +91,7 @@ export function DocumentosCliente({
       <form action={adicionarDocumento} className="mt-3 grid gap-2 rounded-xl bg-nuvem-100 p-3 sm:grid-cols-2">
         <input type="hidden" name="customer_id" value={customerId} />
         <label className="block sm:col-span-2">
-          <span className="rotulo">Adicionar documento</span>
+          <span className="rotulo">Adicionar Documento</span>
           <input
             type="file"
             name="file"
@@ -100,12 +100,12 @@ export function DocumentosCliente({
             className="w-full text-sm"
           />
         </label>
-        <input name="title" placeholder="Titulo (opcional)" maxLength={160} className="campo" />
-        <input name="notes" placeholder="Observacao (opcional)" maxLength={300} className="campo" />
+        <input name="title" placeholder="Título (opcional)" maxLength={160} className="campo" />
+        <input name="notes" placeholder="Observação (opcional)" maxLength={300} className="campo" />
         <div className="sm:col-span-2">
-          <SubmitButton>Enviar documento</SubmitButton>
+          <SubmitButton>Enviar Documento</SubmitButton>
           <p className="mt-1 text-xs text-stone-500">
-            PDF, JPG ou PNG, ate 5 MB. Use para contratos assinados no papel e documentos antigos.
+            PDF, JPG ou PNG, até 5 MB. Use para contratos assinados no papel e documentos antigos.
           </p>
         </div>
       </form>

@@ -87,8 +87,8 @@ export async function updatePurchase(_prev: string | null, fd: FormData): Promis
   const h = readHeader(fd);
   const items = readItems(fd);
   const atual = await one<any>(`SELECT * FROM purchases WHERE id = ?`, [id]);
-  if (!atual) return "Compra nao encontrada.";
-  if (atual.status === "cancelada") return "Compra cancelada nao pode ser editada.";
+  if (!atual) return "Compra não encontrada.";
+  if (atual.status === "cancelada") return "Compra cancelada não pode ser editada.";
   if (!items.length) return "A compra precisa ter ao menos um item.";
 
   // preserva o quanto ja entrou no estoque de cada produto, para que a
@@ -193,7 +193,7 @@ export async function payEntry(fd: FormData) {
   if (!entry) return;
 
   const destino = entry.purchase_id ? `/compras/${entry.purchase_id}` : "/financeiro?aba=pagar";
-  if (valor <= 0) redirect(`${destino}?aviso=${encodeURIComponent("Informe um valor valido.")}`);
+  if (valor <= 0) redirect(`${destino}?aviso=${encodeURIComponent("Informe um valor válido.")}`);
 
   await insert(
     `INSERT INTO expenses (date, category, description, amount_cents, method, status, entry_id, account_id,

@@ -8,12 +8,12 @@ import { one, run } from "@/lib/db";
 
 export async function POST(request: Request) {
   const user = await apiUser(request, true);
-  if (!user) return Response.json({ error: "Sessao expirada ou origem invalida." }, { status: 401 });
+  if (!user) return Response.json({ error: "Sessão expirada ou origem inválida." }, { status: 401 });
   try {
     if (!await rateLimit(`maps:${user.id}`, 30)) throw new RouteError("Muitas consultas. Aguarde um minuto.", 429);
     const input = await smallJson(request);
     const env = getCloudflareContext().env;
-    if (input.tipo !== "comum" && input.tipo !== "locacao") throw new RouteError("Tipo de frete invalido.");
+    if (input.tipo !== "comum" && input.tipo !== "locacao") throw new RouteError("Tipo de frete inválido.");
     const config = freightConfig(await getSettings(), input.tipo);
     const origin = String(input.origin ?? ""), destination = String(input.destination ?? "");
     const addresses = routeAddresses(input.tipo, config.baseAddress, origin, destination);
@@ -24,11 +24,11 @@ export async function POST(request: Request) {
     if (cached) return Response.json(JSON.parse(cached.payload), { headers: { "Cache-Control": "no-store" } });
     // D1-backed short lease coalesces concurrent identical calculations across isolates.
     if (!await rateLimit(`route:${cacheKey}`, 1, 15)) throw new RouteError("Esta rota ja esta sendo calculada. Tente novamente em alguns segundos.", 429);
-    if (!await rateLimit("maps:daily", 300, 86400)) throw new RouteError("Limite diario de calculos atingido. Use o valor manual ou tente amanha.", 429);
+    if (!await rateLimit("maps:daily", 300, 86400)) throw new RouteError("Limite diário de cálculos atingido. Use o valor manual ou tente amanhã.", 429);
     const route = await calculateRoadRoute(input.tipo, config, origin, destination, openMapServices(env.NOMINATIM_URL, env.OSRM_URL));
     await run("INSERT INTO route_cache(cache_key,payload,expires_at) VALUES (?,?,?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,expires_at=excluded.expires_at", [cacheKey, JSON.stringify(route), now + 86400]);
     return Response.json(route, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return Response.json({ error: error instanceof RouteError ? error.message : "Nao foi possivel consultar a rota. Confira os dados e tente novamente." }, { status: error instanceof RouteError ? error.status : 400 });
+    return Response.json({ error: error instanceof RouteError ? error.message : "Não foi possível consultar a rota. Confira os dados e tente novamente." }, { status: error instanceof RouteError ? error.status : 400 });
   }
 }

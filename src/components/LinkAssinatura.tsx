@@ -27,7 +27,7 @@ export default function LinkAssinatura({ url, whatsapp }: { url: string; whatsap
     <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3">
       <p className="text-sm font-bold text-emerald-900">Link gerado. Copie agora.</p>
       <p className="mt-0.5 text-xs text-emerald-800">
-        Por seguranca o endereco completo nao volta a aparecer nesta tela. Se perder, gere outro.
+        Por segurança, o endereço completo não volta a aparecer nesta tela. Se perder, gere outro.
       </p>
       <input
         readOnly
@@ -41,7 +41,7 @@ export default function LinkAssinatura({ url, whatsapp }: { url: string; whatsap
           onClick={copiar}
           className="rounded-xl bg-marca-600 px-3 py-2 text-sm font-semibold text-white"
         >
-          {copiado ? "Copiado!" : "Copiar link"}
+          {copiado ? "Copiado!" : "Copiar Link"}
         </button>
         {whatsapp && (
           <a

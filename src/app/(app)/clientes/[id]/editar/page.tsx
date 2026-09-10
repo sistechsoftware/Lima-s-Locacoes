@@ -12,9 +12,9 @@ export default async function EditarClientePage({ params }: { params: Promise<{ 
   if (!customer) notFound();
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Editar cliente" subtitle={customer.name} />
+      <PageHeader title="Editar Cliente" subtitle={customer.name} />
       <Card>
-        <CustomerForm action={updateCustomer} customer={customer} submitLabel="Salvar alteracoes" />
+        <CustomerForm action={updateCustomer} customer={customer} submitLabel="Salvar Alterações" />
       </Card>
     </div>
   );

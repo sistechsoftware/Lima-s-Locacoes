@@ -344,7 +344,7 @@ export async function availabilityFor(
        FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
     [productId],
   );
-  if (!p) throw new Error("Produto nao encontrado: " + productId);
+  if (!p) throw new Error("Produto não encontrado: " + productId);
 
   if (p.kind === "kit") {
     const specs = await loadSpecs();

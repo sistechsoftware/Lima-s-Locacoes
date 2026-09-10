@@ -278,17 +278,17 @@ export async function usarRecompensa(
 ): Promise<string | null> {
   const d0 = today();
   const recompensa = await one<any>(`SELECT * FROM fidelity_rewards WHERE id = ?`, [rewardId]);
-  if (!recompensa) return "Recompensa nao encontrada.";
-  if (!utilizavel(recompensa, d0)) return "Esta recompensa nao esta mais disponivel.";
+  if (!recompensa) return "Recompensa não encontrada.";
+  if (!utilizavel(recompensa, d0)) return "Esta recompensa não está mais disponível.";
 
   const reserva = await one<any>(`SELECT id, customer_id, discount_cents FROM reservations WHERE id = ?`, [
     reservationId,
   ]);
-  if (!reserva) return "Reserva nao encontrada.";
-  if (reserva.customer_id !== recompensa.customer_id) return "A recompensa e de outro cliente.";
+  if (!reserva) return "Reserva não encontrada.";
+  if (reserva.customer_id !== recompensa.customer_id) return "A recompensa é de outro cliente.";
 
   const b = await simularUso(rewardId, reservationId);
-  if (!b || b.kitsGratis === 0) return "Esta reserva nao tem kits para a recompensa cobrir.";
+  if (!b || b.kitsGratis === 0) return "Esta reserva não tem kits para a recompensa cobrir.";
 
   // trava otimista: so aplica se a recompensa ainda estiver disponivel, entao
   // dois cliques simultaneos nao conseguem consumi-la duas vezes
@@ -471,7 +471,7 @@ export async function aoConcluirLocacao(reservationId: number, userId?: number) 
   for (const rewardId of recompensasNovas) {
     await avisarEquipe(
       "conquista",
-      `${primeiroNome} conquistou uma recompensa de ate ${regra.kits} kits gratis`,
+      `${primeiroNome} conquistou uma recompensa de até ${regra.kits} kits grátis`,
       reserva.customer_id,
       rewardId,
     );
@@ -483,7 +483,7 @@ export async function aoConcluirLocacao(reservationId: number, userId?: number) 
     if (p.faltam === 1) {
       await avisarEquipe(
         "quase_la",
-        `${primeiroNome} esta a 1 locacao de ganhar ate ${regra.kits} kits gratis`,
+        `${primeiroNome} está a 1 locação de ganhar até ${regra.kits} kits grátis`,
         reserva.customer_id,
         p.ciclosCompletos + 1,
       );

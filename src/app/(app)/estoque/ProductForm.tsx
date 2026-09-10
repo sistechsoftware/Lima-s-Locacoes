@@ -24,7 +24,7 @@ export default function ProductForm({
   categories,
   simpleProducts,
   components: initialComponents = [],
-  submitLabel = "Salvar produto",
+  submitLabel = "Salvar Produto",
 }: {
   action: Action;
   product?: any;
@@ -70,19 +70,19 @@ export default function ProductForm({
             checked={kind === "simples"}
             onSelect={() => setKind("simples")}
             titulo="Produto simples"
-            descricao="Possui estoque fisico proprio (mesa, cadeira, forro)."
+            descricao="Possui estoque físico próprio (mesa, cadeira, forro)."
           />
           <TipoOpcao
             checked={kind === "kit"}
             onSelect={() => setKind("kit")}
             titulo="Kit / Produto composto"
-            descricao="Sem estoque proprio: consome os componentes ao ser alugado."
+            descricao="Sem estoque próprio: consome os componentes ao ser alugado."
           />
         </div>
       </Field>
 
       <Grid>
-        <Field label="Codigo *" hint="Prefixo das unidades (MESA-001, CAD-001).">
+        <Field label="Código *" hint="Prefixo das unidades (MESA-001, CAD-001).">
           <input name="code" defaultValue={v.code ?? ""} className="campo uppercase" required />
         </Field>
         <Field label="Nome *">
@@ -104,17 +104,17 @@ export default function ProductForm({
             <input name="total_qty" type="number" min={0} defaultValue={v.total_qty ?? 0} className="campo" required />
           </Field>
         ) : (
-          <Field label="Quantidade total" hint="Kit nao tem estoque proprio: vem dos componentes.">
-            <input value={capacidade ? `${capacidade} kit(s): capacidade teorica, sem reservas/manutencao` : "definido pelos componentes"} className="campo" disabled />
+          <Field label="Quantidade total" hint="O kit não tem estoque próprio: vem dos componentes.">
+            <input value={capacidade ? `${capacidade} kit(s): capacidade teórica, sem reservas/manutenção` : "definido pelos componentes"} className="campo" disabled />
           </Field>
         )}
 
-        <Field label="Estoque minimo" hint="Gera alerta quando o disponivel fica abaixo.">
+        <Field label="Estoque mínimo" hint="Gera alerta quando o disponível fica abaixo.">
           <input name="min_qty" type="number" min={0} defaultValue={v.min_qty ?? 0} className="campo" />
         </Field>
         <Field
-          label="Valor de locacao (R$)"
-          hint={kind === "kit" ? "Preco proprio do kit, independente dos componentes." : undefined}
+          label="Valor de locação (R$)"
+          hint={kind === "kit" ? "Preço próprio do kit, independente dos componentes." : undefined}
         >
           <input
             name="rent_price"
@@ -123,7 +123,7 @@ export default function ProductForm({
             className="campo"
           />
         </Field>
-        <Field label="Valor de reposicao (R$)">
+        <Field label="Valor de reposição (R$)">
           <input
             name="replace_price"
             defaultValue={((v.replace_cents ?? 0) / 100).toFixed(2)}
@@ -138,7 +138,7 @@ export default function ProductForm({
 
       {kind === "kit" && (
         <section className="rounded-xl border border-nuvem-300 bg-nuvem-50 p-3">
-          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-600">Composicao do kit</h3>
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-600">Composição do kit</h3>
 
           {components.length === 0 ? (
             <p className="rounded-xl border border-dashed border-nuvem-300 bg-white px-3 py-5 text-center text-sm text-stone-500">
@@ -155,7 +155,7 @@ export default function ProductForm({
                         {p?.name ?? `Produto ${c.product_id}`}
                       </span>
                       <span className="block text-xs text-stone-500">
-                        {p?.code} - estoque {p?.total_qty ?? 0} un.
+                        {p?.code} · estoque {p?.total_qty ?? 0} un.
                       </span>
                     </span>
                     <label className="shrink-0">
@@ -190,29 +190,29 @@ export default function ProductForm({
             disabled={disponiveis.length === 0}
           >
             <option value="">
-              {disponiveis.length ? "+ Adicionar componente..." : "Todos os produtos ja foram adicionados"}
+              {disponiveis.length ? "+ Adicionar componente…" : "Todos os produtos já foram adicionados"}
             </option>
             {disponiveis.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.total_qty} un. - {money(p.rent_price_cents)})
+                {p.name} ({p.total_qty} un. · {money(p.rent_price_cents)})
               </option>
             ))}
           </select>
 
           {components.length > 0 && (
             <p className="mt-2 text-xs text-stone-600">
-              Com o estoque atual da-se para montar <b>{capacidade}</b> kit(s). Alugar 1 kit consome{" "}
+              Com o estoque atual, dá-se para montar <b>{capacidade}</b> kit(s). Alugar 1 kit consome{" "}
               {components.map((c) => `${c.quantity} ${byId.get(c.product_id)?.name ?? ""}`).join(" + ")}.
             </p>
           )}
 
           <p className="mt-2 text-xs text-stone-500">
-            Somente produtos simples podem ser componentes: kits dentro de kits nao sao permitidos.
+            Somente produtos simples podem ser componentes: kits dentro de kits não são permitidos.
           </p>
         </section>
       )}
 
-      <Field label="Descricao">
+      <Field label="Descrição">
         <textarea name="description" defaultValue={v.description ?? ""} rows={3} className="campo" />
       </Field>
 

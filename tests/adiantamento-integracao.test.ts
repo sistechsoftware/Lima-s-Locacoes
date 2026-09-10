@@ -64,7 +64,7 @@ describe("cenario A: pago agora", () => {
     const erro = await criarAdiantamento({
       reservationId: r, amountCents: 60000, imediato: true, dataPrevista: "2026-09-07", method: "pix", userId: 1,
     });
-    assert.match(erro ?? "", /saldo disponivel/);
+    assert.match(erro ?? "", /saldo disponível/);
     assert.equal((await reservationMoney(r)).paid, 0);
   });
 });
@@ -117,7 +117,7 @@ describe("cenario B: agendado", () => {
     const erro = await criarAdiantamento({
       reservationId: r, amountCents: 10000, imediato: false, dataPrevista: "2026-11-01", method: "pix", userId: 1,
     });
-    assert.match(erro ?? "", /ja existe um adiantamento agendado/i);
+    assert.match(erro ?? "", /já existe um adiantamento agendado/i);
     assert.equal((await adiantamentosDaReserva(r)).length, 1);
   });
 
@@ -167,7 +167,7 @@ describe("confirmacao", () => {
     const entry = await adiantamentoAberto(r);
     await confirmarAdiantamento(entry.id, { paidAt: "2026-10-06", userId: 1 });
     const segunda = await confirmarAdiantamento(entry.id, { paidAt: "2026-10-06", userId: 1 });
-    assert.match(segunda ?? "", /ja foi confirmado/i);
+    assert.match(segunda ?? "", /já foi confirmado/i);
   });
 
   it("confirmar um adiantamento cancelado e recusado", async () => {
@@ -226,7 +226,7 @@ describe("edicao do agendado", () => {
     const erro = await atualizarAdiantamentoAgendado(entry.id, {
       amountCents: 1000, dataPrevista: "2026-10-06", method: "pix", userId: 1,
     });
-    assert.match(erro ?? "", /ja foi recebido/i);
+    assert.match(erro ?? "", /já foi recebido/i);
     // o historico financeiro nao pode ter sido tocado
     const salvo = await one<any>(`SELECT amount_cents FROM financial_entries WHERE id=?`, [entry.id]);
     assert.equal(salvo.amount_cents, 20000);
@@ -341,7 +341,7 @@ describe("reservas antigas e pagamento parcial ja existente", () => {
     const erro = await criarAdiantamento({
       reservationId: r, amountCents: 40000, imediato: true, dataPrevista: "2026-09-07", method: "pix", userId: 1,
     });
-    assert.match(erro ?? "", /saldo disponivel/);
+    assert.match(erro ?? "", /saldo disponível/);
   });
 });
 

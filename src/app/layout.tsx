@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Lima's Locações",
-  description: "Gestao de Locações e Eventos",
+  description: "Gestão de Locações e Eventos",
   applicationName: "Lima's Locações",
   manifest: "/manifest.webmanifest",
   icons: {

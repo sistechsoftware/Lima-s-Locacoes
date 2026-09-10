@@ -87,7 +87,7 @@ export default function Calculator({
             <TipoOpcao
               checked={tipo === "locacao"}
               onSelect={() => selectType("locacao")}
-              titulo="Frete de locacao"
+              titulo="Frete de Locação"
               descricao="Entrega e, depois, retirada."
               viagens={VIAGENS.locacao}
             />
@@ -95,7 +95,7 @@ export default function Calculator({
         </Field>
 
         <div className="mt-3">
-          <Field label="Distancia de ida (km) *" hint="So a ida. As viagens de volta entram no calculo.">
+          <Field label="Distância de ida (km) *" hint="Somente a ida. As viagens de volta entram no cálculo.">
             <input
               value={distancia}
               onChange={(e) => setDistancia(e.target.value)}
@@ -116,7 +116,7 @@ export default function Calculator({
         <div className="mt-3 rounded-xl border border-nuvem-300 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-tinta-700">
-              Combustivel ({config.fuelType}):{" "}
+              Combustível ({config.fuelType}):{" "}
               <b className="text-tinta-900">{money(parseMoney(precoLitro))}/L</b>
               <span className="ml-1 text-xs text-stone-500">- {config.consumption} km/L</span>
             </span>
@@ -136,17 +136,17 @@ export default function Calculator({
                 onChange={(e) => setPrecoLitro(e.target.value)}
                 inputMode="decimal"
                 className="campo"
-                aria-label="Preco do litro"
+                aria-label="Preço do litro"
               />
               <p className="text-xs text-stone-500">
-                Vale so para este calculo. Para mudar de vez, use o botao abaixo.
+                Vale somente para este cálculo. Para alterar permanentemente, use o botão abaixo.
               </p>
               {precoAlterado && (
                 <form action={salvarPreco}>
                   <input type="hidden" name="tipo" value={tipo} />
                   <input type="hidden" name="preco" value={precoLitro} />
                   <button className="rounded-xl border border-marca-600 bg-white px-3 py-2 text-xs font-semibold text-marca-600">
-                    Salvar {money(parseMoney(precoLitro))}/L como padrao
+                    Salvar {money(parseMoney(precoLitro))}/L como padrão
                   </button>
                 </form>
               )}
@@ -159,15 +159,15 @@ export default function Calculator({
           onClick={() => setMostrarAvancado((v) => !v)}
           className="mt-3 text-xs font-semibold text-marca-600"
         >
-          {mostrarAvancado ? "Ocultar" : "Pedagio e mao de obra"}
+          {mostrarAvancado ? "Ocultar" : "Pedágio e mão de obra"}
         </button>
 
         {mostrarAvancado && (
           <Grid>
-            <Field label="Pedagio (R$)">
+            <Field label="Pedágio (R$)">
               <input value={pedagio} onChange={(e) => setPedagio(e.target.value)} inputMode="decimal" className="campo" />
             </Field>
-            <Field label="Mao de obra (R$)">
+            <Field label="Mão de obra (R$)">
               <input
                 value={maoDeObra}
                 onChange={(e) => setMaoDeObra(e.target.value)}
@@ -196,40 +196,40 @@ export default function Calculator({
       </Card>
 
       {!temResultado ? (
-        <Alerta tone="azul">Informe a distancia de ida para ver o valor sugerido.</Alerta>
+        <Alerta tone="azul">Informe a distância de ida para ver o valor sugerido.</Alerta>
       ) : (
         <>
           <div className="rounded-2xl bg-destaque-500 p-5 text-center text-tinta-900 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Valor sugerido do frete</p>
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Valor Sugerido do Frete</p>
             <p className="mt-1 text-4xl font-black">{money(resultado.valorSugeridoCents)}</p>
             {resultado.aplicouMinimo && (
               <p className="mt-1 text-xs font-semibold">
-                Valor minimo de {money(resultado.valorMinimoCents)} aplicado.
+                Valor mínimo de {money(resultado.valorMinimoCents)} aplicado.
               </p>
             )}
           </div>
 
           <section className="cartao overflow-hidden">
             <header className="border-b border-nuvem-200 bg-nuvem-50 px-4 py-3">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-tinta-700">Resumo do frete</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-tinta-700">Resumo do Frete</h2>
             </header>
             <div className="p-4">
-              <Row label="Tipo" value={tipo === "locacao" ? "Frete de locacao" : "Frete comum"} />
-              <Row label="Distancia de ida" value={`${formatarKm(km)} km`} />
+              <Row label="Tipo" value={tipo === "locacao" ? "Frete de Locação" : "Frete Comum"} />
+              <Row label="Distância de ida" value={`${formatarKm(km)} km`} />
               <Row label="Quantidade de viagens" value={resultado.viagens} />
-              <Row label="Distancia total" value={`${formatarKm(resultado.distanciaTotalKm)} km`} />
+              <Row label="Distância total" value={`${formatarKm(resultado.distanciaTotalKm)} km`} />
               <Row label="Consumo" value={`${config.consumption} km/L`} />
-              <Row label="Combustivel utilizado" value={`${resultado.litros.toFixed(2)} L`} />
-              <Row label="Custo de combustivel" value={money(resultado.custoCombustivelCents)} />
+              <Row label="Combustível utilizado" value={`${resultado.litros.toFixed(2)} L`} />
+              <Row label="Custo de combustível" value={money(resultado.custoCombustivelCents)} />
               <Row label="Custo operacional" value={money(resultado.custoOperacionalCents)} />
-              {resultado.pedagioCents > 0 && <Row label="Pedagios" value={money(resultado.pedagioCents)} />}
-              {resultado.maoDeObraCents > 0 && <Row label="Mao de obra" value={money(resultado.maoDeObraCents)} />}
+              {resultado.pedagioCents > 0 && <Row label="Pedágios" value={money(resultado.pedagioCents)} />}
+              {resultado.maoDeObraCents > 0 && <Row label="Mão de obra" value={money(resultado.maoDeObraCents)} />}
               <Row
-                label="Custo total da operacao"
+                label="Custo total da operação"
                 value={<b className="text-tinta-900">{money(resultado.custoTotalCents)}</b>}
               />
               <Row label="Margem de lucro" value={`${resultado.margemPercent}%`} />
-              <Row label="Preco calculado" value={money(resultado.precoCalculadoCents)} />
+              <Row label="Preço calculado" value={money(resultado.precoCalculadoCents)} />
               <Row
                 label="Valor sugerido"
                 value={<b className="text-marca-600">{money(resultado.valorSugeridoCents)}</b>}
@@ -248,17 +248,17 @@ export default function Calculator({
                 href={`/fretes/novo?valor=${(resultado.valorSugeridoCents / 100).toFixed(2)}`}
                 className="inline-flex items-center gap-2 rounded-xl bg-marca-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-marca-500"
               >
-                <Icon name="fretes" className="h-4 w-4" /> Novo frete com este valor
+                <Icon name="fretes" className="h-4 w-4" />                  Novo Frete com este Valor
               </Link>
               <Link
                 href={`/reservas/nova?frete=${(resultado.valorSugeridoCents / 100).toFixed(2)}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-marca-600 bg-white px-4 py-2.5 text-sm font-semibold text-marca-600"
               >
-                <Icon name="reservas" className="h-4 w-4" /> Usar numa reserva
+                <Icon name="reservas" className="h-4 w-4" />                  Usar numa Reserva
               </Link>
             </div>
             <p className="mt-2 text-xs text-stone-500">
-              Combustivel, custo operacional e margem sao informacoes internas e nao aparecem para o cliente.
+              Combustível, custo operacional e margem são informações internas e não aparecem para o cliente.
             </p>
           </Card>
         </>

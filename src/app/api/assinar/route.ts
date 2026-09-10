@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     }
     corpo = JSON.parse(texto);
   } catch {
-    return Response.json({ erro: "Requisicao invalida." }, { status: 400 });
+    return Response.json({ erro: "Requisição inválida." }, { status: 400 });
   }
 
   const resultado = await assinar(

@@ -7,9 +7,9 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Lima's Fretes e Locacoes",
+    name: "Lima's Fretes e Locações",
     short_name: "Lima's",
-    description: "Gestao de locacoes, fretes e eventos",
+    description: "Gestão de locações, fretes e eventos",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

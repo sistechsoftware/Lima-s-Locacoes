@@ -44,8 +44,8 @@ export default async function HistoricoPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Historico de operacoes" subtitle={`${total} registro(s) de auditoria`} />
-      <SearchForm action="/historico" placeholder="Usuario, acao, reserva..." defaultValue={q} />
+      <PageHeader title="Histórico de Operações" subtitle={`${total} registro(s) de auditoria`} />
+      <SearchForm action="/historico" placeholder="Usuário, ação, reserva…" defaultValue={q} />
 
       {rows.length === 0 ? (
         <Empty>Nenhum registro encontrado.</Empty>
@@ -57,7 +57,7 @@ export default async function HistoricoPage({
               <>
                 <span className="block text-sm text-tinta-900">{h.summary}</span>
                 <span className="block text-xs text-stone-400">
-                  {utcParaLocal(h.created_at)} - {h.user_name} - {h.action} em {h.entity}
+                  {utcParaLocal(h.created_at)} · {h.user_name} · {h.action} em {h.entity}
                 </span>
               </>
             );
@@ -83,7 +83,7 @@ export default async function HistoricoPage({
         build={(p) => `/historico?page=${p}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
       />
       <p className="text-center text-xs text-stone-400">
-        Os registros de auditoria nao podem ser apagados pelo sistema.
+        Os registros de auditoria não podem ser apagados pelo sistema.
       </p>
     </div>
   );

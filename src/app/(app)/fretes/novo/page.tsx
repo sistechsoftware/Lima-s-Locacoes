@@ -18,7 +18,7 @@ export default async function NovoFretePage({
   const vehicles = await all<any>(`SELECT id, name FROM vehicles WHERE active = 1 ORDER BY name`);
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Novo frete" subtitle="Servico de transporte avulso" />
+      <PageHeader title="Novo Frete" subtitle="Serviço de transporte avulso" />
       <Card>
         <FreightForm action={createFreight} customers={customers} vehicles={vehicles} valorInicial={valor} />
       </Card>

@@ -68,7 +68,7 @@ export async function receberParcela(fd: FormData) {
     : entry.freight_id
       ? `/fretes/${entry.freight_id}`
       : "/financeiro?aba=receber";
-  if (valor <= 0) redirect(`${destino}?erro=${encodeURIComponent("Informe um valor valido.")}`);
+  if (valor <= 0) redirect(`${destino}?erro=${encodeURIComponent("Informe um valor válido.")}`);
 
   await insert(
     `INSERT INTO payments (reservation_id, freight_id, amount_cents, method, paid_at, notes, entry_id, account_id, created_by)

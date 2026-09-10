@@ -28,17 +28,17 @@ export default async function PromocoesPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Promocoes por quantidade"
-        subtitle={`${promocoes.length} promocao(oes)`}
-        action={<LinkButton href="/promocoes/nova" variant="primario">+ Nova promocao</LinkButton>}
+        title="Promoções por Quantidade"
+        subtitle={`${promocoes.length} promoção(ões)`}
+        action={<LinkButton href="/promocoes/nova" variant="primario">+ Nova Promoção</LinkButton>}
       />
 
-      <SearchForm action="/promocoes" placeholder="Produto ou nome da promocao..." defaultValue={q} />
+      <SearchForm action="/promocoes" placeholder="Produto ou nome da promoção…" defaultValue={q} />
       <Tabs items={SITUACOES} current={situacao} base="/promocoes" param="situacao" />
 
       {promocoes.length === 0 ? (
         <Empty>
-          Nenhuma promocao cadastrada. Enquanto nao houver, todo produto usa o preco normal do cadastro.
+          Nenhuma promoção cadastrada. Enquanto não houver, todo produto usa o preço normal do cadastro.
         </Empty>
       ) : (
         <div className="space-y-2">
@@ -46,8 +46,8 @@ export default async function PromocoesPage({
             const valendo = vigente(p, d0);
             const periodo =
               p.starts_on || p.ends_on
-                ? `${p.starts_on ? dateBR(p.starts_on) : "sempre"} ate ${p.ends_on ? dateBR(p.ends_on) : "sem fim"}`
-                : "sem periodo definido";
+                ? `${p.starts_on ? dateBR(p.starts_on) : "sempre"} até ${p.ends_on ? dateBR(p.ends_on) : "sem fim"}`
+                : "sem período definido";
             return (
               <ListRow
                 key={p.id}
@@ -55,11 +55,11 @@ export default async function PromocoesPage({
                 badges={
                   <>
                     {p.active ? <Badge tone="verde">Ativa</Badge> : <Badge tone="cinza">Inativa</Badge>}
-                    {p.active && !valendo && <Badge tone="ambar">Fora do periodo</Badge>}
+                    {p.active && !valendo && <Badge tone="ambar">Fora do período</Badge>}
                   </>
                 }
                 title={p.name || p.product_name}
-                subtitle={`${p.product_name} - normal ${money(p.rent_price_cents)} - ${periodo}`}
+                subtitle={`${p.product_name} · normal ${money(p.rent_price_cents)} · ${periodo}`}
                 body={
                   <ul className="space-y-0.5 text-xs">
                     {p.tiers.map((f, i) => (

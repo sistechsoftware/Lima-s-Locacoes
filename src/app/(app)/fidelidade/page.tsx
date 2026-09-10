@@ -48,39 +48,39 @@ export default async function FidelidadePage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Programa de fidelidade"
-        subtitle={`A cada ${regra.meta} locacoes, ate ${regra.kits} kits gratis`}
+        title="Programa de Fidelidade"
+        subtitle={`A cada ${regra.meta} locações, até ${regra.kits} kits grátis`}
         action={<LinkButton href="/configuracoes?aba=fidelidade">Configurar</LinkButton>}
       />
 
       {!regra.ativo && (
         <Alerta tone="ambar" title="Programa desativado">
-          Novas locacoes nao pontuam. As recompensas ja conquistadas continuam validas.
+          Novas locações não pontuam. As recompensas já conquistadas continuam válidas.
         </Alerta>
       )}
 
       {sp.importado !== undefined && (
-        <Alerta tone="verde" title="Historico importado">
+        <Alerta tone="verde" title="Histórico Importado">
           {Number(sp.importado) === 0
-            ? "Nenhuma locacao nova para importar: o historico ja estava todo no programa."
-            : `${sp.importado} locacao(oes) do historico entraram no programa, gerando ${sp.recompensas ?? 0} recompensa(s). Nenhum cliente foi avisado automaticamente: use as mensagens prontas para falar com quem voce quiser.`}
+            ? "Nenhuma locação nova para importar: o histórico já estava todo no programa."
+            : `${sp.importado} locação(ões) do histórico entraram no programa, gerando ${sp.recompensas ?? 0} recompensa(s). Nenhum cliente foi avisado automaticamente: use as mensagens prontas para falar com quem você quiser.`}
         </Alerta>
       )}
 
       {aImportar.locacoes > 0 && (
         <Card>
           <p className="text-sm font-bold text-tinta-900">
-            {aImportar.locacoes} locacao(oes) ja concluidas estao fora do programa
+            {aImportar.locacoes} locação(ões) já concluídas estão fora do programa
           </p>
           <p className="mt-0.5 text-xs text-stone-500">
-            Sao {aImportar.clientes} cliente(s) que ja alugaram antes de o programa existir. Importar conta essas
-            locacoes e gera {aImportar.recompensas} recompensa(s) na hora. Ninguem e avisado automaticamente.
+            São {aImportar.clientes} cliente(s) que já alugaram antes de o programa existir. Importar conta essas
+            locações e gera {aImportar.recompensas} recompensa(s) na hora. Ninguém é avisado automaticamente.
           </p>
 
           {aImportar.porCliente.length > 0 && (
             <details className="mt-2">
               <summary className="cursor-pointer text-xs font-semibold text-marca-600">
-                Ver quem sera afetado
+                Ver quem será afetado
               </summary>
               <ul className="mt-1.5 max-h-56 space-y-0.5 overflow-y-auto text-sm">
                 {aImportar.porCliente.map((c) => (
@@ -89,8 +89,8 @@ export default async function FidelidadePage({
                       {c.name}
                     </Link>
                     <span className="shrink-0 text-xs text-stone-500">
-                      +{c.locacoes} locacao(oes)
-                      {c.recompensas > 0 ? ` - ${c.recompensas} recompensa(s)` : ""}
+                      +{c.locacoes} locação(ões)
+                      {c.recompensas > 0 ? ` · ${c.recompensas} recompensa(s)` : ""}
                     </span>
                   </li>
                 ))}
@@ -101,28 +101,28 @@ export default async function FidelidadePage({
           {user.role === "admin" ? (
             <form action={importarHistoricoFidelidade} className="mt-3">
               <SubmitButton
-                confirm={`Importar ${aImportar.locacoes} locacao(oes) e gerar ${aImportar.recompensas} recompensa(s)? Isso concede beneficio de verdade aos clientes.`}
+                confirm={`Importar ${aImportar.locacoes} locação(ões) e gerar ${aImportar.recompensas} recompensa(s)? Isso concede benefício de verdade aos clientes.`}
               >
-                Importar historico
+                Importar Histórico
               </SubmitButton>
             </form>
           ) : (
-            <p className="mt-2 text-xs text-stone-500">Somente o administrador pode importar o historico.</p>
+            <p className="mt-2 text-xs text-stone-500">Somente o administrador pode importar o histórico.</p>
           )}
         </Card>
       )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Stat label="Clientes no programa" value={clientes.length} />
-        <Stat label="A 1 locacao da meta" value={quaseLa.length} tone={quaseLa.length > 0 ? "ambar" : undefined} />
-        <Stat label="Recompensas disponiveis" value={disponiveis.length} tone="verde" />
+        <Stat label="A 1 locação da meta" value={quaseLa.length} tone={quaseLa.length > 0 ? "ambar" : undefined} />
+        <Stat label="Recompensas disponíveis" value={disponiveis.length} tone="verde" />
         <Stat label="Recompensas usadas" value={usadas.length} />
       </div>
 
       {pendentes.length > 0 && (
         <Section title={`Mensagens para enviar (${pendentes.length})`}>
           <p className="mb-2 text-xs text-stone-500">
-            O envio e pelo WhatsApp, no mesmo caminho que voces ja usam. Marcar como enviada tira daqui.
+            O envio é pelo WhatsApp, no mesmo caminho que vocês já usam. Marcar como enviada tira daqui.
           </p>
           <ul className="space-y-2">
             {pendentes.map((m: any) => (
@@ -167,7 +167,7 @@ export default async function FidelidadePage({
       )}
 
       {disponiveis.length > 0 && (
-        <Section title={`Recompensas disponiveis (${disponiveis.length})`}>
+        <Section title={`Recompensas disponíveis (${disponiveis.length})`}>
           <ul className="divide-y divide-nuvem-200">
             {disponiveis.map((r: any) => {
               const dias = diasAte(r.expires_on, d0);
@@ -178,12 +178,12 @@ export default async function FidelidadePage({
                       {r.customer_name}
                     </Link>
                     <span className="block text-xs text-stone-500">
-                      ate {r.kit_quantity} kits - conquistada em {dateBR(r.earned_at)}
+                      até {r.kit_quantity} kits · conquistada em {dateBR(r.earned_at)}
                     </span>
                   </span>
                   {r.expires_on ? (
                     <Badge tone={dias !== null && dias <= 3 ? "vermelho" : "ambar"}>
-                      vence {dateBR(r.expires_on)}
+                      vence em {dateBR(r.expires_on)}
                     </Badge>
                   ) : (
                     <Badge tone="verde">sem validade</Badge>
@@ -197,7 +197,7 @@ export default async function FidelidadePage({
 
       <Section title={`Clientes no programa (${clientes.length})`}>
         {clientes.length === 0 ? (
-          <Empty>Nenhum cliente pontuou ainda. A pontuacao entra quando a locacao e concluida.</Empty>
+          <Empty>Nenhum cliente pontuou ainda. A pontuação entra quando a locação é concluída.</Empty>
         ) : (
           <ul className="divide-y divide-nuvem-200">
             {clientes.map((c: any) => {

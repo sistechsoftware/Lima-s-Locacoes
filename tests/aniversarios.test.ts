@@ -162,7 +162,7 @@ describe("avisos", () => {
   });
 
   it("aviso de proximo fala em dias, e amanha e amanha", () => {
-    assert.match(textoAviso("proximo", ["Joao"], 1).body, /amanha/);
+    assert.match(textoAviso("proximo", ["Joao"], 1).body, /amanhã/);
     assert.match(textoAviso("proximo", ["Joao"], 3).body, /em 3 dias/);
   });
 

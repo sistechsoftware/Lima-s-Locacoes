@@ -12,7 +12,7 @@ export default async function NovoClientePage({
   const { next } = await searchParams;
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Novo cliente" subtitle="Cadastro basico para reservas e orcamentos" />
+      <PageHeader title="Novo Cliente" subtitle="Cadastro básico para reservas e orçamentos" />
       <Card>
         <CustomerForm action={createCustomer} next={next} />
       </Card>

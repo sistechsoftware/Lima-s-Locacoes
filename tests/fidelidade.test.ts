@@ -258,11 +258,11 @@ describe("lembretes de vencimento", () => {
 
 describe("frase do progresso", () => {
   it("fala no singular quando falta uma", () => {
-    assert.match(resumoProgresso(progresso(4, regra()), 5), /falta 1 locacao/);
+    assert.match(resumoProgresso(progresso(4, regra()), 5), /falta 1 locação/);
   });
 
   it("fala no plural quando falta mais de uma", () => {
-    assert.match(resumoProgresso(progresso(2, regra()), 5), /faltam 3 locacoes/);
+    assert.match(resumoProgresso(progresso(2, regra()), 5), /faltam 3 locações/);
   });
 
   it("anuncia a meta atingida", () => {

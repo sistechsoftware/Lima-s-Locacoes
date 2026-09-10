@@ -13,7 +13,7 @@ export default function FreightForm({
   vehicles,
   freight,
   valorInicial,
-  submitLabel = "Salvar frete",
+  submitLabel = "Salvar Frete",
 }: {
   action: Action;
   customers: { id: number; name: string; phone: string }[];
@@ -51,12 +51,12 @@ export default function FreightForm({
         <Field label="Data *">
           <input name="date" type="date" defaultValue={v.date ?? ""} className="campo" required />
         </Field>
-        <Field label="Horario">
+        <Field label="Horário">
           <input name="time" type="time" defaultValue={v.time ?? ""} className="campo" />
         </Field>
-        <Field label="Veiculo">
+        <Field label="Veículo">
           <select name="vehicle_id" defaultValue={v.vehicle_id ?? ""} className="campo">
-            <option value="">Sem veiculo</option>
+            <option value="">Sem veículo</option>
             {vehicles.map((veic) => (
               <option key={veic.id} value={veic.id}>
                 {veic.name}
@@ -73,7 +73,7 @@ export default function FreightForm({
         <input name="destination" value={destination} onChange={e => setDestination(e.target.value)} className="campo" />
       </Field>
       <RouteEstimate tipo="comum" origin={origin} destination={destination} onApply={setAmount} />
-      <Field label="Descricao da carga">
+      <Field label="Descrição da carga">
         <textarea name="cargo" defaultValue={v.cargo ?? ""} rows={2} className="campo" />
       </Field>
 
@@ -107,7 +107,7 @@ export default function FreightForm({
         </Field>
       </Grid>
 
-      <Field label="Observacoes">
+      <Field label="Observações">
         <textarea name="notes" defaultValue={v.notes ?? ""} rows={2} className="campo" />
       </Field>
 

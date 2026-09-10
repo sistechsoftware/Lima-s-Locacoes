@@ -7,8 +7,8 @@ export type StatusDef = { value: string; label: string; tone: Tone };
 /* ------------------------------ reservas ---------------------------- */
 
 export const RESERVATION_STATUS: StatusDef[] = [
-  { value: "orcamento", label: "Orcamento", tone: "cinza" },
-  { value: "pre_reserva", label: "Pre-reserva", tone: "ambar" },
+  { value: "orcamento", label: "Orçamento", tone: "cinza" },
+  { value: "pre_reserva", label: "Pré-reserva", tone: "ambar" },
   { value: "confirmada", label: "Confirmada", tone: "verde" },
   { value: "entregue", label: "Entregue", tone: "azul" },
   { value: "em_uso", label: "Em uso", tone: "roxo" },
@@ -66,7 +66,7 @@ export const OPERATION_STATUS: StatusDef[] = [
   { value: "confirmada", label: "Confirmada", tone: "azul" },
   { value: "em_rota", label: "Em rota", tone: "ambar" },
   { value: "no_local", label: "No local", tone: "roxo" },
-  { value: "concluida", label: "Concluida", tone: "verde" },
+  { value: "concluida", label: "Concluída", tone: "verde" },
   { value: "reagendada", label: "Reagendada", tone: "ambar" },
   { value: "cancelada", label: "Cancelada", tone: "vermelho" },
 ];
@@ -76,10 +76,10 @@ export const OPEN_OPERATION_STATUS = ["pendente", "confirmada", "em_rota", "no_l
 /* ------------------------------ fretes ------------------------------ */
 
 export const FREIGHT_STATUS: StatusDef[] = [
-  { value: "orcamento", label: "Orcamento", tone: "cinza" },
+  { value: "orcamento", label: "Orçamento", tone: "cinza" },
   { value: "agendado", label: "Agendado", tone: "azul" },
   { value: "em_rota", label: "Em rota", tone: "ambar" },
-  { value: "concluido", label: "Concluido", tone: "verde" },
+  { value: "concluido", label: "Concluído", tone: "verde" },
   { value: "cancelado", label: "Cancelado", tone: "vermelho" },
 ];
 
@@ -96,7 +96,7 @@ export const CONTRACT_STATUS: StatusDef[] = [
 /* ------------------------------ caucao ------------------------------ */
 
 export const DEPOSIT_STATUS: StatusDef[] = [
-  { value: "nao_recebida", label: "Nao recebida", tone: "vermelho" },
+  { value: "nao_recebida", label: "Não recebida", tone: "vermelho" },
   { value: "recebida", label: "Recebida", tone: "verde" },
   { value: "devolvida", label: "Devolvida", tone: "azul" },
   { value: "retida_parcial", label: "Retida parcialmente", tone: "ambar" },
@@ -106,10 +106,10 @@ export const DEPOSIT_STATUS: StatusDef[] = [
 /* ------------------------------ equipamentos ------------------------ */
 
 export const UNIT_STATUS: StatusDef[] = [
-  { value: "disponivel", label: "Disponivel", tone: "verde" },
+  { value: "disponivel", label: "Disponível", tone: "verde" },
   { value: "reservado", label: "Reservado", tone: "ambar" },
   { value: "alugado", label: "Alugado", tone: "azul" },
-  { value: "manutencao", label: "Em manutencao", tone: "roxo" },
+  { value: "manutencao", label: "Em manutenção", tone: "roxo" },
   { value: "danificado", label: "Danificado", tone: "vermelho" },
   { value: "baixado", label: "Baixado", tone: "cinza" },
 ];
@@ -121,8 +121,8 @@ export const PAYMENT_METHODS = ["pix", "dinheiro", "cartao", "transferencia", "o
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   pix: "Pix",
   dinheiro: "Dinheiro",
-  cartao: "Cartao",
-  transferencia: "Transferencia",
+  cartao: "Cartão",
+  transferencia: "Transferência",
   outros: "Outros",
 };
 

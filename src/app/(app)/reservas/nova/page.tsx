@@ -23,7 +23,7 @@ export default async function NovaReservaPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader title="Nova reserva" subtitle="O sistema verifica o estoque automaticamente" />
+      <PageHeader title="Nova Reserva" subtitle="O sistema verifica o estoque automaticamente" />
       <ReservationForm
         preparationMinutes={await preparationMinutes()}
         action={createReservation}

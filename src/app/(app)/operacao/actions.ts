@@ -16,10 +16,10 @@ export async function createOperation(_prev: string | null, fd: FormData): Promi
   const kind = String(fd.get("kind") ?? "entrega");
   const reservationId = Number(fd.get("reservation_id")) || null;
   const scheduled = stamp(String(fd.get("scheduled_at") ?? ""), "08:00");
-  if (!scheduled) return "Informe a data e o horario.";
+  if (!scheduled) return "Informe a data e o horário.";
   if (!reservationId) return "Selecione a reserva.";
   const assigneeId = Number(fd.get("assignee_id")) || null;
-  if (assigneeId && !await one("SELECT id FROM users WHERE id=? AND active=1",[assigneeId])) return "Responsavel invalido ou inativo.";
+  if (assigneeId && !await one("SELECT id FROM users WHERE id=? AND active=1",[assigneeId])) return "Responsável inválido ou inativo.";
 
   const id = await insert(
     `INSERT INTO operations (kind, reservation_id, scheduled_at, status, assignee, vehicle_id, notes, assignee_id)
@@ -50,7 +50,7 @@ export async function updateOperation(fd: FormData) {
 
   const scheduled = stamp(String(fd.get("scheduled_at") ?? op.scheduled_at), "08:00");
   const assigneeId = Number(fd.get("assignee_id")) || null;
-  if (assigneeId && !await one("SELECT id FROM users WHERE id=? AND active=1",[assigneeId])) throw new Error("Responsavel invalido ou inativo.");
+  if (assigneeId && !await one("SELECT id FROM users WHERE id=? AND active=1",[assigneeId])) throw new Error("Responsável inválido ou inativo.");
   await run(
     `UPDATE operations SET scheduled_at = ?, assignee = ?, vehicle_id = ?, notes = ?, assignee_id = ?, updated_at = datetime('now','localtime')
       WHERE id = ?`,
@@ -135,7 +135,7 @@ export async function saveChecklist(fd: FormData) {
     try {
       await attach("operacao", id, files, user.id, "Checklist");
     } catch (e) {
-      const motivo = e instanceof UploadError ? e.message : "Nao foi possivel salvar as fotos.";
+      const motivo = e instanceof UploadError ? e.message : "Não foi possível salvar as fotos.";
       redirect(`/operacao/${id}?erro=${encodeURIComponent(motivo)}`);
     }
   }
@@ -170,7 +170,7 @@ export async function reportDamage(fd: FormData) {
     try {
       photo = await attachOne(file, user.id, reservationId);
     } catch (e) {
-      const motivo = e instanceof UploadError ? e.message : "Nao foi possivel salvar a foto do dano.";
+      const motivo = e instanceof UploadError ? e.message : "Não foi possível salvar a foto do dano.";
       redirect(`/operacao/${operationId}?erro=${encodeURIComponent(motivo)}`);
     }
   }

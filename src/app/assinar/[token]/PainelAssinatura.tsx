@@ -91,10 +91,10 @@ export default function PainelAssinatura({ token, nomeSugerido }: { token: strin
         }),
       });
       const dados = (await resposta.json()) as { ok?: boolean; erro?: string };
-      if (!resposta.ok || !dados.ok) throw new Error(dados.erro || "Nao foi possivel assinar.");
+      if (!resposta.ok || !dados.ok) throw new Error(dados.erro || "Não foi possível assinar.");
       setPronto(true);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha de conexao. Tente novamente.");
+      setErro(e instanceof Error ? e.message : "Falha de conexão. Tente novamente.");
     } finally {
       setEnviando(false);
     }
@@ -109,7 +109,7 @@ export default function PainelAssinatura({ token, nomeSugerido }: { token: strin
           {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
         </p>
         <p className="mt-3 text-sm text-stone-600">
-          Uma copia ficou registrada com a empresa. Voce pode fechar esta pagina.
+          Uma cópia ficou registrada com a empresa. Você pode fechar esta página.
         </p>
       </section>
     );
@@ -163,7 +163,7 @@ export default function PainelAssinatura({ token, nomeSugerido }: { token: strin
         disabled={!aceite || !temTraco || nome.trim().length < 3 || enviando}
         className="w-full rounded-xl bg-marca-600 px-4 py-4 text-base font-bold text-white disabled:opacity-50"
       >
-        {enviando ? "Assinando..." : "Assinar contrato"}
+        {enviando ? "Assinando…" : "Assinar Contrato"}
       </button>
       {!aceite && <p className="text-center text-xs text-stone-500">Marque o aceite para liberar a assinatura.</p>}
     </section>

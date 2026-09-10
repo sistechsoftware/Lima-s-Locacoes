@@ -75,12 +75,12 @@ export default function PushDiagnostico() {
       const dados = (await resposta.json()) as { ok?: boolean; status?: number; error?: string; detalhe?: string };
       setTeste(
         dados.ok
-          ? `Aceito pelo servico de push (HTTP ${dados.status}). Se o aviso nao aparecer, o bloqueio esta no proprio aparelho: modo foco, silencioso ou notificacoes do app desligadas no sistema.`
+          ? `Aceito pelo serviço de push (HTTP ${dados.status}). Se o aviso não aparecer, o bloqueio está no próprio aparelho: modo foco, silencioso ou notificações do app desligadas no sistema.`
           : `Falhou: ${dados.error ?? "erro desconhecido"}${dados.detalhe ? ` - ${dados.detalhe}` : ""}`,
       );
       await carregar();
     } catch (e) {
-      setTeste(e instanceof Error ? e.message : "Falha de conexao.");
+      setTeste(e instanceof Error ? e.message : "Falha de conexão.");
     } finally {
       setOcupado(false);
     }
@@ -88,30 +88,30 @@ export default function PushDiagnostico() {
 
   return (
     <section className="cartao space-y-3 p-4">
-      <h2 className="font-bold">Diagnostico do Push</h2>
+      <h2 className="font-bold">Diagnóstico do Push</h2>
 
       <div className="grid gap-1.5 sm:grid-cols-2">
-        <Item ok={local.https} rotulo="Conexao segura (HTTPS)" />
-        <Item ok={local.instalado} rotulo="Aberto como aplicativo instalado" dica="No iPhone o push so funciona pelo icone da tela de inicio." />
+        <Item ok={local.https} rotulo="Conexão segura (HTTPS)" />
+        <Item ok={local.instalado} rotulo="Aberto como aplicativo instalado" dica="No iPhone o push só funciona pelo ícone da tela de início." />
         <Item ok={local.swAtivo} rotulo="Service worker ativo" />
-        <Item ok={local.pushApi} rotulo="Push disponivel neste navegador" />
+        <Item ok={local.pushApi} rotulo="Push disponível neste navegador" />
         <Item
           ok={local.permissao === "granted"}
-          rotulo={`Permissao: ${local.permissao}`}
-          dica={local.permissao === "denied" ? "Libere nas configuracoes do site." : undefined}
+          rotulo={`Permissão: ${local.permissao}`}
+          dica={local.permissao === "denied" ? "Libere nas configurações do site." : undefined}
         />
-        <Item ok={local.inscricaoLocal} rotulo="Inscricao existe neste aparelho" />
-        <Item ok={!!ativo} rotulo="Inscricao gravada no servidor" dica={!ativo ? "Ative o aparelho na secao acima." : undefined} />
+        <Item ok={local.inscricaoLocal} rotulo="Inscrição existe neste aparelho" />
+        <Item ok={!!ativo} rotulo="Inscrição gravada no servidor" dica={!ativo ? "Ative o aparelho na seção acima." : undefined} />
         <Item ok={!!servidor?.vapidConfigurado} rotulo="Chaves VAPID no servidor" />
         <Item ok={!!servidor?.pushLigado} rotulo="Push habilitado no sistema" />
       </div>
 
       {servidor && (
         <dl className="space-y-0.5 rounded-xl bg-nuvem-100 p-3 text-xs text-stone-600">
-          <Linha rotulo="Ultimo ciclo do agendador" valor={quando(servidor.ultimoCicloAgendador)} />
-          <Linha rotulo="Ultimo envio aceito" valor={quando(servidor.ultimoEnvioComSucesso)} />
+          <Linha rotulo="Último ciclo do agendador" valor={quando(servidor.ultimoCicloAgendador)} />
+          <Linha rotulo="Último envio aceito" valor={quando(servidor.ultimoEnvioComSucesso)} />
           <Linha rotulo="Na fila agora" valor={String(servidor.naFila)} />
-          {servidor.ultimaFalha && <Linha rotulo="Ultima falha" valor={servidor.ultimaFalha} />}
+          {servidor.ultimaFalha && <Linha rotulo="Última falha" valor={servidor.ultimaFalha} />}
         </dl>
       )}
 
@@ -121,7 +121,7 @@ export default function PushDiagnostico() {
         disabled={ocupado || !ativo}
         className="rounded-xl bg-marca-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
       >
-        Enviar notificacao de teste para este dispositivo
+        Enviar notificação de teste para este dispositivo
       </button>
       {!ativo && <p className="text-xs text-stone-500">Ative um dispositivo acima para poder testar.</p>}
       {teste && (

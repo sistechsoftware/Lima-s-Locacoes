@@ -26,7 +26,7 @@ export default async function AssinarPage({ params }: { params: Promise<{ token:
     <main className="mx-auto min-h-dvh max-w-2xl bg-nuvem-50 px-4 py-6 sm:py-10">
       <header className="mb-4 text-center">
         <h1 className="text-lg font-bold text-tinta-900">{s.company_name}</h1>
-        <p className="text-sm text-stone-600">Contrato de locacao {registro.contract_number}</p>
+        <p className="text-sm text-stone-600">Contrato de Locação {registro.contract_number}</p>
       </header>
 
       <section className="cartao mb-4 p-4">
@@ -86,7 +86,7 @@ export default async function AssinarPage({ params }: { params: Promise<{ token:
 
       <footer className="mt-6 text-center text-xs text-stone-500">
         {s.company_name}
-        {s.company_phone ? ` - ${s.company_phone}` : ""}
+        {s.company_phone ? ` · ${s.company_phone}` : ""}
       </footer>
     </main>
   );

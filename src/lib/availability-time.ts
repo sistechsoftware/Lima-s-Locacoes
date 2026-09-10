@@ -55,5 +55,5 @@ export function availabilityQuery(sp: AvailabilityParams = {}, now = nowLocal())
   timeWindow(from, to, true);
   const considerPreparation = sp.consulta === "1" ? sp.preparo === "1" : sp.preparo !== "0";
   const qs = new URLSearchParams({ inicio: from, fim: to === from ? "" : to, preparo: considerPreparation ? "1" : "0", consulta: "1" });
-  return { from, to, considerPreparation, label: from === to ? `Disponibilidade em ${dateTimeBR(from)}` : `Disponibilidade garantida de ${dateTimeBR(from)} ate ${dateTimeBR(to)}`, queryString: qs.toString() };
+  return { from, to, considerPreparation, label: from === to ? `Disponibilidade em ${dateTimeBR(from)}` : `Disponibilidade garantida de ${dateTimeBR(from)} até ${dateTimeBR(to)}`, queryString: qs.toString() };
 }

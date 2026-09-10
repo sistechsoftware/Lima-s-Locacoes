@@ -42,14 +42,14 @@ export function situacaoAdiantamento(
 export function validarValorAdiantamento(amountCents: number, saldoDisponivelCents: number): string | null {
   if (!Number.isFinite(amountCents) || amountCents <= 0) return "Informe um valor de adiantamento maior que zero.";
   if (amountCents > saldoDisponivelCents) {
-    return `O adiantamento nao pode passar do saldo disponivel da reserva (${(saldoDisponivelCents / 100).toFixed(2).replace(".", ",")}).`;
+    return `O adiantamento não pode passar do saldo disponível da reserva (${(saldoDisponivelCents / 100).toFixed(2).replace(".", ",")}).`;
   }
   return null;
 }
 
 /** Data prevista nao pode ser vazia nem visivelmente invalida. */
 export function validarDataPrevista(dataISO: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataISO)) return "Informe uma data prevista valida.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataISO)) return "Informe uma data prevista válida.";
   return null;
 }
 
@@ -63,19 +63,19 @@ const reais = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 export function mensagemLembreteHoje(clienteNome: string, valorCents: number): { title: string; body: string } {
   return {
     title: "Adiantamento para cobrar hoje",
-    body: `Opa! Hoje e dia de cobrar o adiantamento do cliente ${clienteNome}, no valor de R$ ${reais(valorCents)}.`,
+    body: `Opa! Hoje é dia de cobrar o adiantamento do cliente ${clienteNome}, no valor de R$ ${reais(valorCents)}.`,
   };
 }
 
-/** "O adiantamento de Joao, no valor de R$ 200,00, esta previsto para daqui a 3 dias." */
+/** "O adiantamento de João, no valor de R$ 200,00, está previsto para daqui a 3 dias." */
 export function mensagemLembreteAntecipado(
   clienteNome: string,
   valorCents: number,
   dias: number,
 ): { title: string; body: string } {
-  const quando = dias === 1 ? "amanha" : `daqui a ${dias} dias`;
+  const quando = dias === 1 ? "amanhã" : `daqui a ${dias} dias`;
   return {
     title: "Adiantamento agendado se aproxima",
-    body: `O adiantamento de ${clienteNome}, no valor de R$ ${reais(valorCents)}, esta previsto para ${quando}.`,
+    body: `O adiantamento de ${clienteNome}, no valor de R$ ${reais(valorCents)}, está previsto para ${quando}.`,
   };
 }

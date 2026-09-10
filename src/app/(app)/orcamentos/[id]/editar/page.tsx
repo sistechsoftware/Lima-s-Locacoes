@@ -33,7 +33,7 @@ export default async function EditarOrcamentoPage({ params }: { params: Promise<
         customers={customers}
         quote={quote}
         items={items}
-        submitLabel="Salvar alteracoes"
+        submitLabel="Salvar Alterações"
       />
     </div>
   );

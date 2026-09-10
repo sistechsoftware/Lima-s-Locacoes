@@ -12,10 +12,10 @@ export default function UserForm() {
         <Field label="Nome *">
           <input name="name" className="campo" required />
         </Field>
-        <Field label="Usuario de login *" hint="Sem espacos, minusculo.">
+        <Field label="Usuário de login *" hint="Sem espaços, em minúsculo.">
           <input name="username" className="campo" required />
         </Field>
-        <Field label="Senha *" hint="Minimo 6 caracteres.">
+        <Field label="Senha *" hint="Mínimo 6 caracteres.">
           <input name="password" type="password" className="campo" required minLength={6} />
         </Field>
         <Field label="Perfil">
@@ -32,7 +32,7 @@ export default function UserForm() {
         </Field>
       </Grid>
       {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-      <SubmitButton className="w-full sm:w-auto">Criar usuario</SubmitButton>
+      <SubmitButton className="w-full sm:w-auto">Criar Usuário</SubmitButton>
     </form>
   );
 }

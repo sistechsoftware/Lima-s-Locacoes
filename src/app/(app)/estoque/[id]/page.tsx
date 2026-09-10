@@ -65,11 +65,11 @@ export default async function ProdutoPage({
     <div className="space-y-4">
       <PageHeader
         title={p.name}
-        subtitle={`${p.code} - ${p.category ?? "sem categoria"}`}
+        subtitle={`${p.code} · ${p.category ?? "sem categoria"}`}
         action={
           <>
             <LinkButton href={`/estoque/${p.id}/editar`}>Editar</LinkButton>
-            <LinkButton href={`/disponibilidade?${query.queryString}`} variant="secundario">Consultar disponibilidade</LinkButton>
+            <LinkButton href={`/disponibilidade?${query.queryString}`} variant="secundario">Consultar Disponibilidade</LinkButton>
           </>
         }
       />
@@ -77,37 +77,36 @@ export default async function ProdutoPage({
       <AvailabilityFilter query={query} minutes={options.preparationMinutes} />
       {aviso === "componente" && (
         <Alerta tone="ambar" title="Produto inativado">
-          Este produto faz parte da composicao de um ou mais kits, por isso foi inativado em vez de excluido.
+          Este produto faz parte da composição de um ou mais kits, por isso foi inativado em vez de excluído.
         </Alerta>
       )}
       {aviso === "inativado" && (
         <Alerta tone="ambar" title="Produto inativado">
-          O produto ja foi usado em reservas, por isso foi inativado em vez de excluido.
+          O produto já foi usado em reservas, por isso foi inativado em vez de excluído.
         </Alerta>
       )}
-      {!p.active && <Alerta tone="ambar">Produto inativo: nao aparece em novas reservas.</Alerta>}
+      {!p.active && <Alerta tone="ambar">Produto inativo: não aparece em novas reservas.</Alerta>}
       {hoje.low && <Alerta tone="vermelho">Disponibilidade abaixo do minimo configurado ({p.min_qty}).</Alerta>}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat label={ehKit ? "Estoque proprio" : "Total"} value={ehKit ? "-" : p.total_qty} />
+        <Stat label={ehKit ? "Estoque próprio" : "Total"} value={ehKit ? "-" : p.total_qty} />
         <Stat label="Reservado na consulta" value={ehKit ? "-" : hoje.reserved} />
         <Stat
-          label={ehKit ? "Kits montaveis na consulta" : "Disponivel na consulta"}
+          label={ehKit ? "Kits Montáveis na Consulta" : "Disponível na consulta"}
           value={Math.max(0, hoje.available)}
           tone={hoje.available <= 0 ? "vermelho" : "verde"}
         />
-        <Stat label="Em manutencao" value={ehKit ? "-" : p.maintenance_qty} />
+        <Stat label="Em manutenção" value={ehKit ? "-" : p.maintenance_qty} />
       </div>
 
       {ehKit && (
-        <Section title="Composicao do kit">
-          <p className="mb-2 text-sm text-stone-600">
-            Este kit nao possui estoque proprio. Alugar 1 unidade consome os itens abaixo, e a disponibilidade e
+        <Section title="Composição do kit">
+          <p className="mb-2 text-smtext-stone-600">Este kit não possui estoque próprio. Alugar 1 unidade consome os itens abaixo, e a disponibilidade é
             calculada a partir deles.
           </p>
           {componentes.length === 0 ? (
             <Alerta tone="vermelho">
-              Kit sem composicao definida. Edite o produto e informe os componentes.
+              Kit sem composição definida. Edite o produto e informe os componentes.
             </Alerta>
           ) : (
             <ul className="divide-y divide-nuvem-200">
@@ -116,7 +115,7 @@ export default async function ProdutoPage({
                   <Link href={`/estoque/${c.component_product_id}?${query.queryString}`} className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-marca-600">{c.component_name}</span>
                     <span className="block text-xs text-stone-500">
-                      {c.component_code} - estoque total {c.total_qty} un.
+                      {c.component_code} · estoque total {c.total_qty} un.
                     </span>
                   </Link>
                   <span className="shrink-0 text-sm font-bold text-tinta-900">{c.quantity} por kit</span>
@@ -147,22 +146,22 @@ export default async function ProdutoPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="Dados do produto">
-          <Row label="Codigo" value={p.code} />
+          <Row label="Código" value={p.code} />
           <Row label="Tipo" value={ehKit ? "Kit / produto composto" : "Produto simples"} />
           <Row label="Categoria" value={p.category ?? "-"} />
-          <Row label="Valor de locacao" value={money(p.rent_price_cents)} />
-          <Row label="Valor de reposicao" value={money(p.replace_cents)} />
-          <Row label="Estoque minimo" value={p.min_qty} />
-          <Row label="Reservas ja feitas" value={`${usos.reservas} (${usos.unidades} un.)`} />
+          <Row label="Valor de locação" value={money(p.rent_price_cents)} />
+          <Row label="Valor de reposição" value={money(p.replace_cents)} />
+          <Row label="Estoque mínimo" value={p.min_qty} />
+          <Row label="Reservas já feitas" value={`${usos.reservas} (${usos.unidades} un.)`} />
           <Row label="Receita acumulada" value={money(usos.receita)} />
-          {p.description && <Row label="Descricao" value={p.description} />}
+          {p.description && <Row label="Descrição" value={p.description} />}
           {p.photo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={p.photo} alt={p.name} className="mt-3 max-h-48 rounded-xl object-contain" />
           )}
         </Section>
 
-        <Section title="Disponibilidade dos proximos 14 dias">
+        <Section title="Disponibilidade dos próximos 14 dias">
           <p className="mb-2 text-xs text-stone-500">A mesma consulta deslocada dia a dia, mantendo os horarios e a duracao. Preparacao: {options.preparationMinutes} min.</p>
           <div className="grid grid-cols-7 gap-1.5">
             {proximos.map((d) => (
@@ -171,7 +170,7 @@ export default async function ProdutoPage({
                 className={`rounded-lg p-1.5 text-center ${
                   d.available <= 0 ? "bg-red-100 text-red-800" : d.low ? "bg-amber-100 text-amber-800" : "bg-emerald-50 text-emerald-800"
                 }`}
-                title={`${dateTimeBR(d.from)} ate ${dateTimeBR(d.to)}: ${d.available} disponivel`}
+                title={`${dateTimeBR(d.from)} até ${dateTimeBR(d.to)}: ${d.available} disponível`}
               >
                 <p className="text-[0.6rem] font-semibold">{d.date.slice(8, 10)}/{d.date.slice(5, 7)}</p>
                 <p className="text-sm font-bold leading-tight">{Math.max(0, d.available)}</p>
@@ -189,7 +188,7 @@ export default async function ProdutoPage({
                   <Link href={`/reservas/${h.reservation_id}`} className="min-w-0">
                     <span className="block truncate font-semibold text-marca-600">{h.number} - {h.customer}</span>
                     <span className="block text-xs text-stone-500">
-                      {dateTimeBR(h.hold_start)} ate {dateTimeBR(h.hold_end)} — {h.physicalName}
+                      {dateTimeBR(h.hold_start)} até {dateTimeBR(h.hold_end)} — {h.physicalName}
                     </span>
                   </Link>
                   <span className="shrink-0 font-bold">{h.qty} un.</span>
@@ -207,12 +206,12 @@ export default async function ProdutoPage({
             <input type="hidden" name="product_id" value={p.id} />
             <input name="qty" type="number" min={1} max={200} defaultValue={1} className="campo w-24" />
             <input name="value" placeholder="Valor un. (R$)" inputMode="decimal" className="campo w-40" />
-            <SubmitButton variant="secundario">Gerar codigos</SubmitButton>
+            <SubmitButton variant="secundario">Gerar códigos</SubmitButton>
           </form>
 
           {units.length === 0 ? (
             <Empty>
-              Nenhuma unidade individual. Gere codigos ({p.code}-001, {p.code}-002...) para controlar item a item.
+              Nenhuma unidade individual. Gere códigos ({p.code}-001, {p.code}-002…) para controlar item a item.
             </Empty>
           ) : (
             <div className="max-h-96 space-y-1.5 overflow-y-auto">
@@ -246,11 +245,11 @@ export default async function ProdutoPage({
             </div>
           )}
           <p className="mt-2 text-xs text-stone-400">
-            Os codigos ficam prontos para etiquetas com QR Code no futuro.
+            Os códigos ficam prontos para etiquetas com QR Code no futuro.
           </p>
         </Section>
 
-        <Section title="Manutencao">
+        <Section title="Manutenção">
           <form action={openMaintenance} className="grid grid-cols-2 gap-2">
             <input type="hidden" name="product_id" value={p.id} />
             <input name="qty" type="number" min={1} defaultValue={1} placeholder="Qtd" className="campo" />
@@ -266,24 +265,24 @@ export default async function ProdutoPage({
               ))}
             </select>
             <div className="col-span-2">
-              <SubmitButton className="w-full">Enviar para manutencao</SubmitButton>
+              <SubmitButton className="w-full">Enviar para Manutenção</SubmitButton>
             </div>
           </form>
 
           <div className="mt-3">
             {maint.length === 0 ? (
-              <Empty>Nenhuma manutencao registrada.</Empty>
+              <Empty>Nenhuma manutenção registrada.</Empty>
             ) : (
               <ul className="divide-y divide-nuvem-200">
                 {maint.map((mt) => (
                   <li key={mt.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">
-                        {mt.qty} un. - {mt.reason || "sem motivo"}
+                        {mt.qty} un. · {mt.reason || "sem motivo"}
                       </span>
                       <span className="block text-xs text-stone-500">
                         {dateBR(mt.started_at)}
-                        {mt.ended_at ? ` ate ${dateBR(mt.ended_at)}` : ""} - {money(mt.cost_cents)}
+                        {mt.ended_at ? ` até ${dateBR(mt.ended_at)}` : ""} · {money(mt.cost_cents)}
                       </span>
                     </span>
                     {mt.status === "aberta" ? (
@@ -294,7 +293,7 @@ export default async function ProdutoPage({
                         </SubmitButton>
                       </form>
                     ) : (
-                      <Badge tone="cinza">Concluida</Badge>
+                      <Badge tone="cinza">Concluída</Badge>
                     )}
                   </li>
                 ))}
@@ -306,7 +305,7 @@ export default async function ProdutoPage({
       )}
 
       {historico.length > 0 && (
-        <Section title="Historico">
+        <Section title="Histórico">
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
@@ -320,7 +319,7 @@ export default async function ProdutoPage({
 
       {user.role === "admin" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
+          <p className="text-sm font-semibold text-tinta-900">Área do administrador</p>
           <div className="flex gap-2">
             <form action={toggleProduct}>
               <input type="hidden" name="id" value={p.id} />

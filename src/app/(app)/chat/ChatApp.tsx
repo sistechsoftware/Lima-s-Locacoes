@@ -114,7 +114,7 @@ function quando(s: string | null | undefined) {
 }
 
 function erroAmigavel(msg: string | undefined): string {
-  if (!msg) return "Falha de conexao. Verifique a internet.";
+  if (!msg) return "Falha de conexão. Verifique a internet.";
   return msg;
 }
 
@@ -188,7 +188,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
       }
       requestAnimationFrame(() => fimRef.current?.scrollIntoView({ block: "end" }));
     } catch {
-      setAviso("Nao foi possivel abrir a conversa.");
+      setAviso("Não foi possível abrir a conversa.");
     } finally {
       setCarregando(false);
     }
@@ -385,7 +385,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
   const iniciarGravacao = useCallback(async () => {
     setAviso("");
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setAviso("Seu navegador nao suporta gravacao de audio.");
+      setAviso("Seu navegador não suporta gravação de áudio.");
       return;
     }
     try {
@@ -410,11 +410,11 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
         if (cancelarGravacaoRef.current) return; // cancelada: descarta sem enviar
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         if (!blob.size) {
-          setAviso("A gravacao ficou vazia. Tente novamente.");
+          setAviso("A gravação ficou vazia. Tente novamente.");
           return;
         }
         if (blob.size > MAX_BYTES) {
-          setAviso(`Audio muito longo (${(blob.size / 1024 / 1024).toFixed(1)} MB). Grave algo mais curto.`);
+          setAviso(`Áudio muito longo (${(blob.size / 1024 / 1024).toFixed(1)} MB). Grave algo mais curto.`);
           return;
         }
         await despachar({ audio: blob, audioSeconds: segundos, durationMs: ms });
@@ -425,7 +425,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
       setGravando(true);
       timerRef.current = setInterval(() => setTempoGravacao((s) => s + 1), 1000);
     } catch {
-      setAviso("Nao foi possivel acessar o microfone. Verifique a permissao do navegador.");
+      setAviso("Não foi possível acessar o microfone. Verifique a permissão do navegador.");
     }
   }, [despachar]);
 
@@ -456,11 +456,11 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
     el.onended = () => setTocando(null);
     el.onerror = () => {
       setTocando(null);
-      setAviso("Nao foi possivel reproduzir o audio.");
+      setAviso("Não foi possível reproduzir o áudio.");
     };
     void el.play().then(() => setTocando(m.id)).catch(() => {
       setTocando(null);
-      setAviso("Toque novamente para reproduzir o audio.");
+      setAviso("Toque novamente para reproduzir o áudio.");
     });
   }, [tocando]);
 
@@ -512,7 +512,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
         setOutra(null);
       }
     } catch {
-      setAviso("Nao foi possivel arquivar a conversa.");
+      setAviso("Não foi possível arquivar a conversa.");
     }
   }, []);
 
@@ -528,18 +528,18 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar conversa ou pessoa..."
+              placeholder="Buscar conversa ou pessoa…"
               className="campo pl-9"
             />
           </div>
           <p className="mt-2 text-xs text-stone-500">
-            {online ? (unreadConv > 0 ? `${unreadConv} conversa(s) com mensagem nova` : "") : "Sem conexao — tentando reconectar..."}
+            {online ? (unreadConv > 0 ? `${unreadConv} conversa(s) com mensagem nova` : "") : "Sem conexão — tentando reconectar…"}
           </p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {conversasFiltradas.length === 0 && !busca && (
             <p className="px-2 py-6 text-center text-sm text-stone-500">
-              Nenhuma conversa ainda. Toque em um contato abaixo para comecar.
+              Nenhuma conversa ainda. Toque em um contato abaixo para começar.
             </p>
           )}
           {conversasFiltradas.map((c) => (
@@ -560,11 +560,11 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                 </span>
                 <span className="flex items-center justify-between gap-2">
                   <span className={`truncate text-xs ${c.unread ? "font-semibold text-tinta-800" : "text-stone-500"}`}>
-                    {c.last_sender_id === me.id ? "Voce: " : ""}
-                    {c.last_kind === "audio" ? "🎙️ Audio"
+                    {c.last_sender_id === me.id ? "Você: " : ""}
+                    {c.last_kind === "audio" ? "🎙️ Áudio"
                       : c.last_kind === "image" ? "🖼️ Imagem"
                       : c.last_kind === "file" ? `📎 ${c.last_body ?? ""}`
-                      : c.last_body || "..."}
+                      : c.last_body || "…"}
                   </span>
                   {c.unread > 0 && (
                     <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-marca-600 px-1.5 text-[0.65rem] font-bold text-white">
@@ -668,7 +668,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                 </div>
               )}
               {carregando && mensagens.length === 0 && (
-                <p className="py-8 text-center text-sm text-stone-400">Carregando conversa...</p>
+                <p className="py-8 text-center text-sm text-stone-400">Carregando conversa…</p>
               )}
               {mensagens.map((m, i) => {
                 const anterior = mensagens[i - 1];
@@ -683,7 +683,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                     <div className={`group flex ${m.mine ? "justify-end" : "justify-start"}`}>
                       {m.deleted_at ? (
                         <div className="max-w-[80%] rounded-2xl bg-nuvem-100 px-3 py-2 text-xs italic text-stone-400">
-                          mensagem excluida
+                          mensagem excluída
                         </div>
                       ) : m.local === "error" ? (
                         <div className="max-w-[80%] rounded-2xl border border-red-300 bg-red-50 px-3 py-2">
@@ -748,7 +748,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                           <div className={`mt-0.5 flex items-center justify-end gap-1 text-[0.62rem] ${m.mine ? "text-white/70" : "text-stone-400"}`}>
                             {m.created_at && <span>{quando(m.created_at).slice(-5)}</span>}
                             {m.mine && !m.local && <span title={m.read_at ? "Lida" : "Enviada"}>{m.read_at ? "✓✓" : "✓"}</span>}
-                            {m.local === "sending" && <span>enviando...</span>}
+                            {m.local === "sending" && <span>enviando…</span>}
                             {m.mine && m.file_id && !m.local && (
                               <button
                                 onClick={() => void excluirMensagem(m)}
@@ -776,8 +776,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
             {/* aviso de erro */}
             {aviso && (
               <div className="mx-3 mb-1 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                {aviso}
-                <button onClick={() => setAviso("")} className="ml-2 font-bold underline">fechar</button>
+                {aviso}                  <button onClick={() => setAviso("")} className="ml-2 font-bold underline">Fechar</button>
               </div>
             )}
 
@@ -787,7 +786,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                 <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-red-50 px-3 py-2.5">
                   <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-600" />
                   <span className="text-sm font-semibold text-red-700">{duracao(tempoGravacao)}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-red-600">gravando audio...</span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-red-600">gravando áudio…</span>
                   <button
                     onClick={() => pararGravacao(true)}
                     className="rounded-xl px-2 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100"
@@ -832,7 +831,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                       }
                     }}
                     rows={1}
-                    placeholder="Mensagem..."
+                    placeholder="Mensagem…"
                     className="campo max-h-32 min-h-11 flex-1 resize-none py-2.5"
                   />
                   {texto.trim() ? (
@@ -849,8 +848,8 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                     <button
                       onClick={() => void iniciarGravacao()}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marca-600 text-white transition active:scale-95"
-                      title="Gravar audio"
-                      aria-label="Gravar audio"
+                      title="Gravar áudio"
+                      aria-label="Gravar áudio"
                     >
                       🎙️
                     </button>

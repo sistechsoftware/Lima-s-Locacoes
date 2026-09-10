@@ -98,14 +98,14 @@ export function Pagination({
         <span />
       )}
       <span className="text-center text-xs text-stone-500">
-        Pagina {page} de {pages} - {total} registro(s)
+        Página {page} de {pages} · {total} registro(s)
       </span>
       {page < pages ? (
         <Link
           href={build(page + 1)}
           className="min-h-11 rounded-xl border border-nuvem-300 bg-white px-4 py-2 text-sm font-semibold"
         >
-          Proxima
+          Próxima
         </Link>
       ) : (
         <span />

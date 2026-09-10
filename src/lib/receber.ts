@@ -50,7 +50,7 @@ export async function gerarRecebiveis(
            FROM freights f LEFT JOIN customers c ON c.id = f.customer_id WHERE f.id = ?`,
         [idOrigem],
       );
-  if (!doc) return "Registro nao encontrado.";
+  if (!doc) return "Registro não encontrado.";
 
   const recebido = await scalar<number>(
     `SELECT COALESCE(SUM(p.amount_cents),0) FROM payments p
@@ -59,7 +59,7 @@ export async function gerarRecebiveis(
     [idOrigem],
   );
   if (recebido > 0) {
-    return "Ja existe recebimento lancado nestas parcelas. Estorne antes de refazer o parcelamento.";
+    return "Já existe recebimento lançado nestas parcelas. Estorne antes de refazer o parcelamento.";
   }
 
   // sinal ou entrada lancados antes do parcelamento ja sao dinheiro em caixa;
@@ -90,8 +90,8 @@ export async function gerarRecebiveis(
   if (doc.total_cents <= 0) return null;
   if (aParcelar <= 0) {
     return jaAgendadoAdiantamento > 0
-      ? `Nada a parcelar: ${money(jaRecebido)} ja recebidos e ${money(jaAgendadoAdiantamento)} agendados de adiantamento cobrem o total de ${money(doc.total_cents)}.`
-      : `Nada a parcelar: ${money(jaRecebido)} ja recebidos cobrem o total de ${money(doc.total_cents)}.`;
+      ? `Nada a parcelar: ${money(jaRecebido)} já recebidos e ${money(jaAgendadoAdiantamento)} agendados de adiantamento cobrem o total de ${money(doc.total_cents)}.`
+      : `Nada a parcelar: ${money(jaRecebido)} já recebidos cobrem o total de ${money(doc.total_cents)}.`;
   }
 
   const parcelas = montarParcelas(aParcelar, opts.parcelas, opts.primeiroVencimento);
@@ -302,7 +302,7 @@ export async function criarAdiantamento(opts: EntradaAdiantamento): Promise<stri
        JOIN customers c ON c.id = r.customer_id WHERE r.id = ?`,
     [opts.reservationId],
   );
-  if (!reserva) return "Reserva nao encontrada.";
+  if (!reserva) return "Reserva não encontrada.";
 
   const saldo = await saldoDisponivelAdiantamento(opts.reservationId);
   const erroValor = validarValorAdiantamento(opts.amountCents, saldo);
@@ -324,7 +324,7 @@ export async function criarAdiantamento(opts: EntradaAdiantamento): Promise<stri
   // dois ao mesmo tempo so criaria confusao sobre qual confirmar
   const existente = await adiantamentoAberto(opts.reservationId);
   if (existente) {
-    return "Ja existe um adiantamento agendado para esta reserva. Confirme ou cancele o atual antes de criar outro.";
+    return "Já existe um adiantamento agendado para esta reserva. Confirme ou cancele o atual antes de criar outro.";
   }
 
   const numero = await nextNumber("financial_entries", "REC");
@@ -358,8 +358,8 @@ export async function atualizarAdiantamentoAgendado(
     `SELECT * FROM financial_entries WHERE id = ? AND category = 'Adiantamento'`,
     [entryId],
   );
-  if (!entry) return "Adiantamento nao encontrado.";
-  if (entry.status !== "aberta") return "Este adiantamento ja foi recebido ou cancelado e nao pode ser alterado.";
+  if (!entry) return "Adiantamento não encontrado.";
+  if (entry.status !== "aberta") return "Este adiantamento já foi recebido ou cancelado e não pode ser alterado.";
 
   // o saldo disponivel ignora este proprio adiantamento, senao ele contaria
   // duas vezes contra si mesmo na hora de validar o novo valor
@@ -374,7 +374,7 @@ export async function atualizarAdiantamentoAgendado(
       WHERE id=? AND status='aberta'`,
     [opts.amountCents, opts.dataPrevista, opts.method, entryId],
   );
-  if (!r.meta.changes) return "Este adiantamento ja foi recebido ou cancelado e nao pode ser alterado.";
+  if (!r.meta.changes) return "Este adiantamento já foi recebido ou cancelado e não pode ser alterado.";
   return null;
 }
 
@@ -407,14 +407,14 @@ export async function confirmarAdiantamento(
     `SELECT * FROM financial_entries WHERE id = ? AND category = 'Adiantamento'`,
     [entryId],
   );
-  if (!entry) return "Adiantamento nao encontrado.";
-  if (entry.status === "cancelada") return "Este adiantamento foi cancelado e nao pode ser confirmado.";
+  if (!entry) return "Adiantamento não encontrado.";
+  if (entry.status === "cancelada") return "Este adiantamento foi cancelado e não pode ser confirmado.";
 
   const marcou = await run(
     `UPDATE financial_entries SET status='quitada', updated_at=datetime('now','localtime') WHERE id=? AND status='aberta'`,
     [entryId],
   );
-  if (!marcou.meta.changes) return "Este adiantamento ja foi confirmado.";
+  if (!marcou.meta.changes) return "Este adiantamento já foi confirmado.";
 
   const metodo = opts.method || entry.expected_method || "pix";
   await insert(

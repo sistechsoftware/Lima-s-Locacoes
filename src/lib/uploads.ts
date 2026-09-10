@@ -53,7 +53,7 @@ export async function saveUpload(file: File | null, userId?: number): Promise<st
   }
   const mime = (file.type || "image/jpeg").toLowerCase();
   if (!ALLOWED.includes(mime)) {
-    throw new UploadError("Formato nao suportado. Use JPG, PNG, WEBP ou GIF.");
+    throw new UploadError("Formato não suportado. Use JPG, PNG, WEBP ou GIF.");
   }
 
   const id = randomId();
@@ -97,11 +97,11 @@ export async function saveChatAttachment(file: File, opts: ChatSaveOptions = {})
   const maxBytes = opts.maxBytes ?? 1_500_000;
   const nome = (file.name || "arquivo").slice(0, 200);
   if (CHAT_FORBIDDEN_EXT.test(nome)) {
-    throw new UploadError("Este tipo de arquivo nao e permitido no chat por seguranca.");
+    throw new UploadError("Este tipo de arquivo não é permitido no chat por segurança.");
   }
   if (file.size > maxBytes) {
     throw new UploadError(
-      `Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)} MB). O limite e de ${(maxBytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB.`,
+      `Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)} MB). O limite é de ${(maxBytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB.`,
     );
   }
   if (file.size === 0) throw new UploadError("Arquivo vazio ou corrompido.");
@@ -110,9 +110,9 @@ export async function saveChatAttachment(file: File, opts: ChatSaveOptions = {})
   if (opts.tipo === "audio") {
     // Safari grava MP4/AAC, Chrome grava webm/ogg; aceita variacoes do mesmo grupo
     if (!mime.startsWith("audio/")) mime = mime === "video/webm" ? "audio/webm" : mime;
-    if (!mime.startsWith("audio/")) throw new UploadError("Formato de audio nao suportado pelo navegador.");
+    if (!mime.startsWith("audio/")) throw new UploadError("Formato de áudio não suportado pelo navegador.");
   } else if (!CHAT_ALLOWED.includes(mime)) {
-    throw new UploadError("Formato nao suportado. Envie imagem, PDF, documento, planilha, texto ou audio.");
+    throw new UploadError("Formato não suportado. Envie imagem, PDF, documento, planilha, texto ou áudio.");
   }
 
   const id = randomId();

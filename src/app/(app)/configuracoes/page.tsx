@@ -55,39 +55,39 @@ export default async function ConfiguracoesPage({
     { value: "empresa", label: "Empresa" },
     { value: "modelos", label: "Modelos" },
     { value: "categorias", label: "Categorias" },
-    { value: "veiculos", label: "Veiculos" },
+    { value: "veiculos", label: "Veículos" },
     { value: "fornecedores", label: "Fornecedores" },
     ...(user.role === "admin" ? [{ value: "contas", label: "Contas" }] : []),
     { value: "frete", label: "Frete" },
     { value: "disponibilidade", label: "Disponibilidade" },
     { value: "fidelidade", label: "Fidelidade" },
-    { value: "aniversarios", label: "Aniversarios" },
+    { value: "aniversarios", label: "Aniversários" },
     ...(user.role === "admin" ? [{ value: "finalidades", label: "Finalidades" }] : []),
-    ...(user.role === "admin" ? [{ value: "usuarios", label: "Usuarios" }] : []),
+    ...(user.role === "admin" ? [{ value: "usuarios", label: "Usuários" }] : []),
     { value: "conta", label: "Minha conta" },
   ];
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Configuracoes" subtitle="Dados da empresa, modelos, usuarios e permissoes" />
-      <Link href="/notificacoes/preferencias" className="inline-block text-sm text-marca-600 underline">Notificacoes: dispositivos, funcoes operacionais e antecedentes</Link>
+      <PageHeader title="Configurações" subtitle="Dados da empresa, modelos, usuários e permissões" />
+      <Link href="/notificacoes/preferencias" className="inline-block text-sm text-marca-600 underline">Notificações: dispositivos, funções operacionais e antecedentes</Link>
       {erro && <Alerta tone="vermelho">{erro}</Alerta>}
       {user.role !== "admin" && aba !== "conta" && (
         <Alerta tone="ambar">
-          Algumas configuracoes sao restritas ao administrador. Voce pode visualizar, mas nao salvar alteracoes
-          criticas.
+          Algumas configurações são restritas ao administrador. Você pode visualizar, mas não salvar alterações
+          críticas.
         </Alerta>
       )}
 
       <Tabs items={ABAS} current={aba} base="/configuracoes" />
 
-      {aba === "disponibilidade" && <Section title="Preparacao apos devolucao">
+      {aba === "disponibilidade" && <Section title="Preparação após Devolução">
         <form action={saveStockSettings} className="space-y-3">
-          <Field label="Tempo de deslocamento e higienizacao (minutos)" hint="Exemplos: 30, 60, 90 ou 120. Zero desativa o acrescimo. Cada consulta permite considerar ou ignorar este tempo.">
+          <Field label="Tempo de deslocamento e higienização (minutos)" hint="Exemplos: 30, 60, 90 ou 120. Zero desativa o acréscimo. Cada consulta permite considerar ou ignorar este tempo.">
             <input name="stock_preparation_minutes" type="number" min="0" max="10080" step="1" required defaultValue={s.stock_preparation_minutes} disabled={user.role !== "admin"} className="campo" />
           </Field>
-          <p className="text-sm text-stone-500">Aplica-se aos intervalos das reservas que bloqueiam estoque. Cancelada, retirada e finalizada continuam sem bloqueio, conforme os status existentes. Alertas automaticos consideram o tempo configurado.</p>
-          {user.role === "admin" && <SubmitButton>Salvar configuracao</SubmitButton>}
+          <p className="text-sm text-stone-500">Aplica-se aos intervalos das reservas que bloqueiam estoque. Cancelada, retirada e finalizada continuam sem bloqueio, conforme os status existentes. Alertas automáticos consideram o tempo configurado.</p>
+          {user.role === "admin" && <SubmitButton>Salvar Configuração</SubmitButton>}
         </form>
       </Section>}
 
@@ -98,7 +98,7 @@ export default async function ConfiguracoesPage({
               <Field label="Nome da empresa">
                 <input name="company_name" defaultValue={s.company_name} className="campo" disabled={user.role !== "admin"} />
               </Field>
-              <Field label="Subtitulo">
+              <Field label="Subtítulo">
                 <input name="company_tagline" defaultValue={s.company_tagline} className="campo" disabled={user.role !== "admin"} />
               </Field>
               <Field label="CNPJ / CPF">
@@ -113,7 +113,7 @@ export default async function ConfiguracoesPage({
               <Field label="E-mail">
                 <input name="company_email" defaultValue={s.company_email} className="campo" disabled={user.role !== "admin"} />
               </Field>
-              <Field label="Endereco">
+              <Field label="Endereço">
                 <input name="company_address" defaultValue={s.company_address} className="campo" disabled={user.role !== "admin"} />
               </Field>
               <Field label="Cidade">
@@ -122,7 +122,7 @@ export default async function ConfiguracoesPage({
               <Field label="Chave Pix">
                 <input name="pix_key" defaultValue={s.pix_key} className="campo" disabled={user.role !== "admin"} />
               </Field>
-              <Field label="Caucao padrao (R$)">
+              <Field label="Caução padrão (R$)">
                 <input
                   name="default_deposit"
                   defaultValue={(Number(s.default_deposit_cents || 0) / 100).toFixed(2)}
@@ -132,7 +132,7 @@ export default async function ConfiguracoesPage({
                 />
               </Field>
             </Grid>
-            <Field label="Dados bancarios">
+            <Field label="Dados bancários">
               <textarea name="bank_info" defaultValue={s.bank_info} rows={2} className="campo" disabled={user.role !== "admin"} />
             </Field>
             <Field label="Logo da empresa">
@@ -144,7 +144,7 @@ export default async function ConfiguracoesPage({
                 <ImageInput name="logo_file" disabled={user.role !== "admin"} />
               </div>
             </Field>
-            {user.role === "admin" && <SubmitButton>Salvar dados da empresa</SubmitButton>}
+            {user.role === "admin" && <SubmitButton>Salvar Dados da Empresa</SubmitButton>}
           </form>
         </Section>
       )}
@@ -169,10 +169,10 @@ export default async function ConfiguracoesPage({
               {"{{endereco_evento}}"}, {"{{itens}}"}, {"{{data_entrega}}"}, {"{{data_retirada}}"},{" "}
               {"{{valor_itens}}"}, {"{{valor_frete}}"}, {"{{valor_montagem}}"}, {"{{valor_desmontagem}}"},{" "}
               {"{{valor_outros}}"}, {"{{valor_desconto}}"}, {"{{valor_total}}"}, {"{{valor_caucao}}"},{" "}
-              {"{{data_hoje}}"}. Um campo sem cadastro vira uma linha para preencher a mao no impresso.
+              {"{{data_hoje}}"}. Um campo sem cadastro vira uma linha para preencher à mão no impresso.
             </p>
             <Grid>
-              <Field label="Mensagem de confirmacao">
+              <Field label="Mensagem de confirmação">
                 <textarea name="wa_confirm" defaultValue={s.wa_confirm} rows={3} className="campo" disabled={user.role !== "admin"} />
               </Field>
               <Field label="Lembrete de entrega">
@@ -181,10 +181,10 @@ export default async function ConfiguracoesPage({
               <Field label="Lembrete de retirada">
                 <textarea name="wa_pickup" defaultValue={s.wa_pickup} rows={3} className="campo" disabled={user.role !== "admin"} />
               </Field>
-              <Field label="Cobranca de pagamento">
+              <Field label="Cobrança de pagamento">
                 <textarea name="wa_payment" defaultValue={s.wa_payment} rows={3} className="campo" disabled={user.role !== "admin"} />
               </Field>
-              <Field label="Envio de orcamento" className="sm:col-span-2">
+              <Field label="Envio de orçamento" className="sm:col-span-2">
                 <textarea name="wa_quote" defaultValue={s.wa_quote} rows={3} className="campo" disabled={user.role !== "admin"} />
               </Field>
             </Grid>
@@ -193,7 +193,7 @@ export default async function ConfiguracoesPage({
               {"{{orcamento}}"}, {"{{data_evento}}"}, {"{{hora_entrega}}"}, {"{{hora_retirada}}"},{" "}
               {"{{endereco_evento}}"}, {"{{itens}}"}, {"{{valor_total}}"}, {"{{saldo}}"}, {"{{pix}}"}.
             </p>
-            {user.role === "admin" && <SubmitButton>Salvar modelos</SubmitButton>}
+            {user.role === "admin" && <SubmitButton>Salvar Modelos</SubmitButton>}
           </form>
         </Section>
       )}
@@ -229,21 +229,21 @@ export default async function ConfiguracoesPage({
       )}
 
       {aba === "veiculos" && (
-        <Section title="Veiculos">
+        <Section title="Veículos">
           <form action={saveVehicle} className="mb-4 grid grid-cols-2 gap-2">
             <input name="name" placeholder="Nome (ex.: Carro + carretinha) *" className="campo col-span-2" required />
             <input name="plate" placeholder="Placa" className="campo" />
             <input name="model" placeholder="Modelo" className="campo" />
             <input name="capacity" placeholder="Capacidade" className="campo" />
-            <input name="notes" placeholder="Observacoes" className="campo" />
+            <input name="notes" placeholder="Observações" className="campo" />
             <div className="col-span-2">
               <SubmitButton variant="secundario" className="w-full">
-                Adicionar veiculo
+                Adicionar Veículo
               </SubmitButton>
             </div>
           </form>
           {vehicles.length === 0 ? (
-            <Empty>Nenhum veiculo cadastrado.</Empty>
+            <Empty>Nenhum veículo cadastrado.</Empty>
           ) : (
             <ul className="space-y-1.5">
               {vehicles.map((v) => (
@@ -278,10 +278,10 @@ export default async function ConfiguracoesPage({
       {aba === "aniversarios" && <BirthdaySettings settings={s} admin={user.role === "admin"} />}
 
       {aba === "finalidades" && user.role === "admin" && (
-        <Section title="Finalidades das saidas">
+        <Section title="Finalidades das Saídas">
           <p className="mb-3 text-sm text-stone-600">
-            Sao as opcoes que aparecem ao lancar uma saida no Financeiro. Desativar ou renomear uma finalidade{" "}
-            <b>nao altera nenhum lancamento ja registrado</b>: cada saida guarda o texto escolhido no dia.
+            São as opções que aparecem ao lançar uma saída no Financeiro. Desativar ou renomear uma finalidade{" "}
+            <b>não altera nenhum lançamento já registrado</b>: cada saída guarda o texto escolhido no dia.
           </p>
 
           <form action={createPurpose} className="mb-4 pilha-filtros">
@@ -311,7 +311,7 @@ export default async function ConfiguracoesPage({
                   </form>
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="text-xs text-stone-500">
-                      {f.usos > 0 ? `${f.usos} saida(s)` : "sem uso"}
+                      {f.usos > 0 ? `${f.usos} saída(s)` : "sem uso"}
                     </span>
                     {f.active ? <Badge tone="verde">ativa</Badge> : <Badge tone="cinza">inativa</Badge>}
                     <form action={togglePurpose}>
@@ -321,7 +321,7 @@ export default async function ConfiguracoesPage({
                         className="px-2.5 py-1.5 text-xs"
                         confirm={
                           f.active
-                            ? `Desativar "${f.name}"? Ela some das opcoes de novos lancamentos, e as ${f.usos} saida(s) ja registradas continuam intactas.`
+                            ? `Desativar "${f.name}"? Ela some das opções de novos lançamentos, e as ${f.usos} saída(s) já registradas continuam intactas.`
                             : undefined
                         }
                       >
@@ -343,10 +343,10 @@ export default async function ConfiguracoesPage({
             <input name="doc" placeholder="CNPJ / CPF" className="campo" />
             <input name="phone" placeholder="Telefone" className="campo" />
             <input name="email" placeholder="E-mail" className="campo" />
-            <input name="notes" placeholder="Observacoes" className="campo" />
+            <input name="notes" placeholder="Observações" className="campo" />
             <div className="col-span-2">
               <SubmitButton variant="secundario" className="w-full">
-                Adicionar fornecedor
+                Adicionar Fornecedor
               </SubmitButton>
             </div>
           </form>
@@ -365,7 +365,7 @@ export default async function ConfiguracoesPage({
                     </span>
                     <span className="block text-xs text-stone-500">
                       {[f.doc, f.phone, f.email].filter(Boolean).join(" - ") || "sem contato"}
-                      {f.compras > 0 ? ` - ${f.compras} compra(s)` : ""}
+                      {f.compras > 0 ? ` · ${f.compras} compra(s)` : ""}
                     </span>
                   </span>
                 </li>
@@ -383,15 +383,15 @@ export default async function ConfiguracoesPage({
               <option value="banco">Conta corrente</option>
               <option value="dinheiro">Dinheiro</option>
               <option value="digital">Conta digital</option>
-              <option value="poupanca">Poupanca</option>
+              <option value="poupanca">Poupança</option>
               <option value="outro">Outra</option>
             </select>
             <input name="bank" placeholder="Banco" className="campo" />
             <input name="initial_balance" placeholder="Saldo inicial (R$)" inputMode="decimal" className="campo" />
-            <input name="notes" placeholder="Observacoes" className="campo" />
+            <input name="notes" placeholder="Observações" className="campo" />
             <div className="col-span-2">
               <SubmitButton variant="secundario" className="w-full">
-                Adicionar conta
+                Adicionar Conta
               </SubmitButton>
             </div>
           </form>
@@ -412,7 +412,7 @@ export default async function ConfiguracoesPage({
                         </span>
                         <span className="block text-xs text-stone-500">
                           {c.kind}
-                          {c.bank ? ` - ${c.bank}` : ""} - inicial {money(c.initial_balance_cents)}
+                          {c.bank ? ` · ${c.bank}` : ""} · inicial {money(c.initial_balance_cents)}
                         </span>
                       </span>
                       <span className={`shrink-0 text-sm font-bold ${saldo < 0 ? "text-red-600" : "text-tinta-900"}`}>
@@ -420,7 +420,7 @@ export default async function ConfiguracoesPage({
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-stone-500">
-                      entradas {money(c.entradas)} - saidas {money(c.saidas)}
+                      entradas {money(c.entradas)} · saídas {money(c.saidas)}
                     </p>
                   </li>
                 );
@@ -428,17 +428,17 @@ export default async function ConfiguracoesPage({
             </ul>
           )}
           <p className="mt-2 text-xs text-stone-500">
-            O saldo e recalculado a partir das movimentacoes, nunca guardado, para nao divergir do extrato.
+            O saldo é recalculado a partir das movimentações, nunca guardado, para não divergir do extrato.
           </p>
         </Section>
       )}
 
       {aba === "usuarios" && user.role === "admin" && (
         <div className="space-y-4">
-          <Section title="Novo usuario">
+          <Section title="Novo Usuário">
             <UserForm />
           </Section>
-          <Section title="Usuarios do sistema">
+          <Section title="Usuários do Sistema">
             <ul className="space-y-1.5">
               {users.map((u: any) => (
                 <li key={u.id} className="rounded-xl border border-nuvem-300 bg-white p-3">
@@ -474,8 +474,8 @@ export default async function ConfiguracoesPage({
               ))}
             </ul>
             <p className="mt-3 text-xs text-stone-500">
-              Operadores acessam reservas, clientes, estoque, agenda e financeiro do dia a dia, mas nao podem excluir
-              registros nem alterar configuracoes criticas da empresa.
+              Operadores acessam reservas, clientes, estoque, agenda e financeiro do dia a dia, mas não podem excluir
+              registros nem alterar configurações críticas da empresa.
             </p>
           </Section>
         </div>
@@ -484,7 +484,7 @@ export default async function ConfiguracoesPage({
       {aba === "conta" && (
         <Section title="Minha conta">
           <p className="mb-3 text-sm text-stone-600">
-            {user.name} - perfil <b className="capitalize">{user.role}</b>
+            {user.name} · perfil <b className="capitalize">{user.role}</b>
           </p>
           <PasswordForm />
         </Section>

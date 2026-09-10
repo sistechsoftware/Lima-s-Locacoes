@@ -71,7 +71,7 @@ export default async function OrcamentoPage({
         }
       />
 
-      {erro && <Alerta tone="vermelho" title="Nao foi possivel converter">{erro}</Alerta>}
+      {erro && <Alerta tone="vermelho" title="Não foi possível converter">{erro}</Alerta>}
       {q.status !== "convertido" && <>
         <AvailabilityFilter query={query} minutes={options.preparationMinutes} fixed />
         {conflicts.length > 0 && <Alerta tone="ambar" title="Conflitos para converter em reserva"><ConflictList conflicts={conflicts} /></Alerta>}
@@ -80,7 +80,7 @@ export default async function OrcamentoPage({
       <Card>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge defs={QUOTE_STATUS} value={q.status} />
-          {q.valid_until && <span className="text-xs text-stone-500">Valido ate {dateBR(q.valid_until)}</span>}
+          {q.valid_until && <span className="text-xs text-stone-500">Válido até {dateBR(q.valid_until)}</span>}
         </div>
 
         {q.status !== "convertido" && (
@@ -107,7 +107,7 @@ export default async function OrcamentoPage({
                 </label>
               )}
               <SubmitButton variant="sucesso" className="w-full sm:w-auto">
-                Converter orcamento em reserva
+                Converter Orçamento em Reserva
               </SubmitButton>
             </form>
           </>
@@ -125,11 +125,11 @@ export default async function OrcamentoPage({
             }
           />
           <Row label="Data do evento" value={q.event_date ? dateBR(q.event_date) : "-"} />
-          <Row label="Horario" value={q.event_time || "-"} />
-          <Row label="Endereco" value={[q.address, q.district, q.city].filter(Boolean).join(", ") || "-"} />
+          <Row label="Horário" value={q.event_time || "-"} />
+          <Row label="Endereço" value={[q.address, q.district, q.city].filter(Boolean).join(", ") || "-"} />
           <Row label="Entrega prevista" value={q.delivery_at ? dateTimeBR(q.delivery_at) : "-"} />
           <Row label="Retirada prevista" value={q.pickup_at ? dateTimeBR(q.pickup_at) : "-"} />
-          {q.notes && <Row label="Observacoes" value={q.notes} />}
+          {q.notes && <Row label="Observações" value={q.notes} />}
         </Section>
 
         <Section title={`Itens (${items.length})`}>
@@ -173,7 +173,7 @@ export default async function OrcamentoPage({
           >
             <Icon name="whatsapp" className="h-5 w-5 shrink-0" />
             <span className="min-w-0">
-              <span className="block">Enviar orcamento pelo WhatsApp</span>
+              <span className="block">Enviar orçamento pelo WhatsApp</span>
               <span className="block truncate text-xs font-normal opacity-80">{resumo}</span>
             </span>
           </a>
@@ -184,7 +184,7 @@ export default async function OrcamentoPage({
       </Section>
 
       {historico.length > 0 && (
-        <Section title="Historico">
+        <Section title="Histórico">
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
@@ -198,11 +198,11 @@ export default async function OrcamentoPage({
 
       {user.role === "admin" && q.status !== "convertido" && (
         <Card className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
+          <p className="text-sm font-semibold text-tinta-900">Área do administrador</p>
           <form action={deleteQuote}>
             <input type="hidden" name="id" value={q.id} />
-            <SubmitButton variant="perigo" confirm={`Excluir o orcamento ${q.number}?`}>
-              Excluir orcamento
+            <SubmitButton variant="perigo" confirm={`Excluir o orçamento ${q.number}?`}>
+              Excluir Orçamento
             </SubmitButton>
           </form>
         </Card>

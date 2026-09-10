@@ -27,7 +27,7 @@ export default function PushDevices() {
       // Must stay inside an explicit user gesture (particularly Safari/iOS).
       const permission = await Notification.requestPermission();
       setPermission(permission);
-      if (permission!=="granted") throw new Error("Permissao nao concedida. Voce pode libera-la nas configuracoes do navegador.");
+      if (permission!=="granted") throw new Error("Permissão não concedida. Você pode liberá-la nas configurações do navegador.");
       const registration = await navigator.serviceWorker.register("/sw.js",{scope:"/",updateViaCache:"none"});
       await navigator.serviceWorker.ready;
       const raw = atob(state.publicKey.replace(/-/g,"+").replace(/_/g,"/"));
@@ -37,8 +37,8 @@ export default function PushDevices() {
       const response = await fetch("/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"subscribe",label,subscription:subscription.toJSON()})});
       const data = await response.json() as {error?:string;resetLocal?:boolean};
       if (!response.ok) { if(data.resetLocal) await subscription.unsubscribe(); throw new Error(data.error); }
-      setMessage("Dispositivo ativado. Os avisos seguem suas funcoes, atribuicoes e preferencias."); await load();
-    } catch(e) { setMessage(e instanceof Error?e.message:"Nao foi possivel ativar."); }
+      setMessage("Dispositivo ativado. Os avisos seguem suas funções, atribuições e preferências."); await load();
+    } catch(e) { setMessage(e instanceof Error?e.message:"Não foi possível ativar."); }
     finally { setBusy(false); }
   }
   async function disable(id:number) {
@@ -46,16 +46,16 @@ export default function PushDevices() {
     try {
       const response = await fetch("/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"disable",id})});
       if(!response.ok) throw new Error("Falha ao desativar. Tente novamente.");
-      await load(); setMessage("Push desativado somente neste dispositivo. Seu historico e atividades continuam disponiveis.");
+      await load(); setMessage("Push desativado somente neste dispositivo. Seu histórico e atividades continuam disponíveis.");
     } catch(e) { setMessage(e instanceof Error?e.message:"Falha de conexao."); }
     finally { setBusy(false); }
   }
   return <section className="cartao p-4 space-y-3">
-    <h2 className="font-bold">Notificacoes neste aparelho</h2>
+    <h2 className="font-bold">Notificações neste aparelho</h2>
     <p className="text-sm text-stone-600">No iPhone/iPad (iOS 16.4+), abra no Safari, use Compartilhar → Adicionar a Tela de Inicio e abra pelo icone antes de ativar. Android e desktop: use um navegador com Web Push. Som, vibracao e exibicao dependem do sistema, modo silencioso e permissao.</p>
-    {!supported && <p className="text-sm text-amber-700">Push indisponivel neste contexto. No iOS, abra o aplicativo instalado na tela inicial. A central interna continua funcionando.</p>}
-    {permission==="denied" && <p className="text-sm text-amber-700">Permissao bloqueada. Libere notificacoes nas configuracoes deste site no navegador.</p>}
-    {!state.publicKey && <p className="text-sm text-amber-700">Servidor push ainda nao configurado.</p>}
+    {!supported && <p className="text-sm text-amber-700">Push indisponível neste contexto. No iOS, abra o aplicativo instalado na tela inicial. A central interna continua funcionando.</p>}
+    {permission==="denied" && <p className="text-sm text-amber-700">Permissão bloqueada. Libere notificações nas configurações deste site no navegador.</p>}
+    {!state.publicKey && <p className="text-sm text-amber-700">Servidor push ainda não configurado.</p>}
     <label className="block text-sm">Nome deste dispositivo<input className="campo mt-1" value={label} onChange={e=>setLabel(e.target.value)} maxLength={80}/></label>
     <button type="button" disabled={busy||!supported||!state.publicKey} onClick={activate} className="rounded-xl bg-marca-600 text-white px-4 py-2 font-semibold disabled:opacity-50">Ativar / reativar neste aparelho</button>
     {message && <p role="status" className="text-sm">{message}</p>}

@@ -145,7 +145,7 @@ describe("assinatura", () => {
   it("arquivo que nao e PNG e recusado mesmo com o cabecalho certo", async () => {
     const criado = await gerarLink(contrato, 1);
     const falso = "data:image/png;base64," + btoa("x".repeat(300));
-    assert.match((await assinar(criado!.token, { ...ENTRADA, imagem: falso }, CONTEXTO)).erro ?? "", /invalida/i);
+    assert.match((await assinar(criado!.token, { ...ENTRADA, imagem: falso }, CONTEXTO)).erro ?? "", /inválida/i);
     assert.equal(await scalar<number>(`SELECT COUNT(*) FROM files`), 0, "nada foi gravado");
   });
 
@@ -165,7 +165,7 @@ describe("assinatura", () => {
     const criado = await gerarLink(contrato, 1);
     await assinar(criado!.token, ENTRADA, CONTEXTO);
     const segunda = await assinar(criado!.token, { ...ENTRADA, nome: "Outra pessoa" }, CONTEXTO);
-    assert.match(segunda.erro ?? "", /ja foi assinado/i);
+    assert.match(segunda.erro ?? "", /já foi assinado/i);
     assert.equal((await one<any>(`SELECT signer_name FROM contract_signatures WHERE id=?`, [criado!.id])).signer_name, "Joao Ribeiro");
   });
 });
@@ -209,7 +209,7 @@ describe("revogacao e expiracao", () => {
     const criado = await gerarLink(contrato, 1);
     assert.equal(await revogarLink(criado!.id), true);
     const r = await assinar(criado!.token, ENTRADA, CONTEXTO);
-    assert.match(r.erro ?? "", /nao esta mais valido/i);
+    assert.match(r.erro ?? "", /não é mais válido/i);
   });
 
   it("revogar duas vezes nao quebra nada", async () => {

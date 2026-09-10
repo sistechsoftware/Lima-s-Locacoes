@@ -35,7 +35,7 @@ export function SubmitButton({
       }}
       className={`${BTN[variant]} ${className}`}
     >
-      {pending ? "Aguarde..." : children}
+      {pending ? "Aguarde…" : children}
     </button>
   );
 }

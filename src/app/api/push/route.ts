@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   const user = await apiUser(request,true);
-  if (!user) return Response.json({ error: "Sessao expirada ou origem invalida." }, { status:401 });
+  if (!user) return Response.json({ error: "Sessão expirada ou origem inválida." }, { status:401 });
   try {
     if (!await rateLimit(`push:${user.id}`,20)) return Response.json({error:"Aguarde um minuto."},{status:429});
     const input = await smallJson(request);
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         "SELECT id,endpoint,p256dh,auth FROM push_subscriptions WHERE id=? AND user_id=? AND enabled=1",
         [Number(input.id), user.id],
       );
-      if (!device) throw new Error("Dispositivo nao encontrado ou desativado.");
+      if (!device) throw new Error("Dispositivo não encontrado ou desativado.");
       // Push real, so para este aparelho. O resultado volta cru para a tela:
       // e ele que diz se o problema e credencial, rede ou o servico do fabricante.
       const sender = webPushSender({ publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT });
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       try {
         status = await sender(
           { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
-          { id: `teste-${Date.now()}`, title: "Teste de Notificacao", body: "Se voce recebeu esta mensagem, o Push esta funcionando corretamente.", url: "/notificacoes" },
+          { id: `teste-${Date.now()}`, title: "Teste de Notificação", body: "Se você recebeu esta mensagem, o push está funcionando corretamente.", url: "/notificacoes" },
         );
       } catch (e) {
         falha = sanitizeError(e);
@@ -79,13 +79,13 @@ export async function POST(request: Request) {
       );
       return Response.json({ ok, status, error: ok ? null : explicaFalha(status, falha), detalhe: falha || null });
     }
-    if (input.action !== "subscribe") throw new Error("Acao invalida.");
+    if (input.action !== "subscribe") throw new Error("Ação inválida.");
     const s = validateSubscription(input.subscription);
     const existing = await one<{id:number;user_id:number}>("SELECT id,user_id FROM push_subscriptions WHERE endpoint=?",[s.endpoint]);
-    if (existing && existing.user_id!==user.id) return Response.json({error:"Este navegador esta inscrito em outra conta. Remova a inscricao local e ative novamente.",resetLocal:true},{status:409});
-    if (!existing && await scalar<number>("SELECT COUNT(*) FROM push_subscriptions WHERE user_id=?",[user.id])>=20) throw new Error("Limite de 20 dispositivos por usuario.");
+    if (existing && existing.user_id!==user.id) return Response.json({error:"Este navegador está inscrito em outra conta. Remova a inscrição local e ative novamente.",resetLocal:true},{status:409});
+    if (!existing && await scalar<number>("SELECT COUNT(*) FROM push_subscriptions WHERE user_id=?",[user.id])>=20) throw new Error("Limite de 20 dispositivos por usuário.");
     const expires = input.subscription.expirationTime;
-    if (expires != null && (!Number.isFinite(expires) || expires <= Date.now())) throw new Error("Inscricao expirada. Ative novamente.");
+    if (expires != null && (!Number.isFinite(expires) || expires <= Date.now())) throw new Error("Inscrição expirada. Ative novamente.");
     const label = String(input.label ?? "Meu dispositivo").trim().slice(0,80) || "Meu dispositivo";
     await run(`INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth,label,expiration_time) VALUES (?,?,?,?,?,?)
       ON CONFLICT(endpoint) DO UPDATE SET p256dh=excluded.p256dh,auth=excluded.auth,label=excluded.label,expiration_time=excluded.expiration_time,enabled=1,updated_at=unixepoch(),last_error=NULL

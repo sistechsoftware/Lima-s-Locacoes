@@ -42,7 +42,7 @@ export default async function EditarCompraPage({ params }: { params: Promise<{ i
           discount_cents: i.discount_cents,
         }))}
         parcelasIniciais={Math.max(1, parcelas)}
-        submitLabel="Salvar alteracoes"
+        submitLabel="Salvar alterações"
       />
     </div>
   );

@@ -111,14 +111,14 @@ export async function assinar(
   if (erroEntrada) return { erro: erroEntrada };
 
   const bytes = bytesDaAssinatura(entrada.imagem);
-  if (!bytes) return { erro: "Assinatura invalida." };
+  if (!bytes) return { erro: "Assinatura inválida." };
 
   const registro = await porToken(token);
-  if (!registro) return { erro: "Link invalido." };
+  if (!registro) return { erro: "Link inválido." };
 
   const bloqueio = impedimento(registro, nowLocal());
   if (bloqueio) {
-    return { erro: bloqueio === "assinado" ? "Este contrato ja foi assinado." : "Este link nao esta mais valido." };
+    return { erro: bloqueio === "assinado" ? "Este contrato já foi assinado." : "Este link não é mais válido." };
   }
 
   const agora = nowLocal();
@@ -156,7 +156,7 @@ export async function assinar(
   );
   if (!marcou.meta.changes) {
     await run(`DELETE FROM files WHERE id = ?`, [arquivoId]);
-    return { erro: "Este contrato ja foi assinado." };
+    return { erro: "Este contrato já foi assinado." };
   }
 
   await run(

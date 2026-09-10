@@ -25,7 +25,7 @@ export async function regenerateContract(fd: FormData) {
   const c = await one<any>(`SELECT * FROM contracts WHERE id = ?`, [id]);
   if (!c) return;
   if (c.status === "assinado") {
-    redirect(`/contratos/${id}?erro=${encodeURIComponent("Contrato assinado nao pode ser regerado.")}`);
+    redirect(`/contratos/${id}?erro=${encodeURIComponent("Contrato assinado não pode ser regerado.")}`);
   }
   const body = await buildContractBody(c.reservation_id, c.number);
   await run(`UPDATE contracts SET body = ? WHERE id = ?`, [body, id]);
@@ -76,7 +76,7 @@ export async function gerarLinkAssinatura(fd: FormData) {
   const user = await requireUser();
   const contractId = Number(fd.get("id"));
   const criado = await gerarLink(contractId, user.id);
-  if (!criado) redirect(`/contratos/${contractId}?erro=${encodeURIComponent("Contrato nao encontrado.")}`);
+  if (!criado) redirect(`/contratos/${contractId}?erro=${encodeURIComponent("Contrato não encontrado.")}`);
 
   await run(`UPDATE contracts SET status='enviado', sent_at=? WHERE id=? AND status='pendente'`, [
     nowLocal(),

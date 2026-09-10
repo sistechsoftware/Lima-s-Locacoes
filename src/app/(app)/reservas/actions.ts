@@ -124,7 +124,7 @@ export async function updateReservation(_prev: string | null, fd: FormData): Pro
   const version = await stockVersion();
   const id = Number(fd.get("id"));
   const current = await one<any>("SELECT * FROM reservations WHERE id=?", [id]);
-  if (!current) return "Reserva nao encontrada.";
+  if (!current) return "Reserva não encontrada.";
   let h: ReturnType<typeof readHeader>;
   try { h = readHeader(fd); } catch (e) { return (e as Error).message; }
   const items = readItems(fd);
@@ -211,7 +211,7 @@ export async function addPayment(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("reservation_id"));
   const amount = parseMoney(String(fd.get("amount") ?? ""));
-  if (amount <= 0) redirect(`/reservas/${id}?erro=${encodeURIComponent("Informe um valor valido.")}`);
+  if (amount <= 0) redirect(`/reservas/${id}?erro=${encodeURIComponent("Informe um valor válido.")}`);
 
   const r = await one<any>(`SELECT number FROM reservations WHERE id = ?`, [id]);
   await insert(

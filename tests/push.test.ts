@@ -86,7 +86,7 @@ describe("diagnostico de falha de envio", () => {
   it("separa credencial recusada de queda de rede", () => {
     assert.match(explicaFalha(401, ""), /VAPID/i);
     assert.match(explicaFalha(403, ""), /VAPID/i);
-    assert.match(explicaFalha(503, ""), /indisponivel/i);
+    assert.match(explicaFalha(503, ""), /indisponível/i);
     assert.match(explicaFalha(429, ""), /ritmo/i);
     assert.match(explicaFalha(0, "TypeError: fetch failed"), /TypeError/);
     assert.match(explicaFalha(0, ""), /rede/i);
@@ -191,7 +191,7 @@ describe("lembrete de adiantamento", () => {
     await tick(undefined, ancora);
 
     const aviso = await one<any>(`SELECT * FROM user_notifications ORDER BY id DESC LIMIT 1`);
-    assert.match(aviso.body, /Opa! Hoje e dia de cobrar o adiantamento do cliente Joao da Silva/);
+    assert.match(aviso.body, /Opa! Hoje é dia de cobrar o adiantamento do cliente Joao da Silva/);
     assert.match(aviso.body, /R\$ 200,00/);
     assert.ok(!aviso.title.includes("Vencimento"), "nao pode sobrar o titulo generico");
   });
@@ -204,7 +204,7 @@ describe("lembrete de adiantamento", () => {
 
     const aviso = await one<any>(`SELECT * FROM user_notifications WHERE body LIKE '%previsto%' LIMIT 1`);
     assert.ok(aviso, "o lembrete antecipado precisa existir");
-    assert.match(aviso.body, /adiantamento de Joao da Silva.*R\$ 200,00.*previsto para amanha/);
+    assert.match(aviso.body, /adiantamento de Joao da Silva.*R\$ 200,00.*previsto para amanhã/);
   });
 
   it("um lembrete de parcela comum (sem categoria Adiantamento) mantem a mensagem generica de sempre", async () => {

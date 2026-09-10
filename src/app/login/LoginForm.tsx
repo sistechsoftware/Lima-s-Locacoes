@@ -8,7 +8,7 @@ export default function LoginForm() {
   const [error, action] = useActionState(loginAction, null);
   return (
     <form action={action} className="space-y-4">
-      <Field label="Usuario">
+      <Field label="Usuário">
         <input
           name="username"
           className="campo"

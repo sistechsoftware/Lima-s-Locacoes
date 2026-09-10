@@ -51,20 +51,20 @@ export default async function ClientePage({
   );
   const historico = (await logsFor("cliente", c.id)).slice(0, 10);
 
-  const wa = waLink(c.whatsapp || c.phone, `Ola, ${c.name.split(" ")[0]}! Aqui e da Lima's Locacoes.`);
+  const wa = waLink(c.whatsapp || c.phone, `Olá, ${c.name.split(" ")[0]}! Aqui é da Lima's Locações.`);
   const maps = mapsLink(c.address, c.district, c.city);
 
   return (
     <div className="space-y-4">
       <PageHeader
         title={c.name}
-        subtitle={[docBR(c.doc), phoneBR(c.phone)].filter(Boolean).join(" - ") || "Cliente"}
+        subtitle={[docBR(c.doc), phoneBR(c.phone)].filter(Boolean).join(" · ") || "Cliente"}
         action={
           <>
             <LinkButton href={`/reservas/nova?cliente=${c.id}`} variant="primario">
-              + Nova reserva
+              + Nova Reserva
             </LinkButton>
-            <LinkButton href={`/orcamentos/novo?cliente=${c.id}`}>+ Orcamento</LinkButton>
+            <LinkButton href={`/orcamentos/novo?cliente=${c.id}`}>+ Orçamento</LinkButton>
             <LinkButton href={`/clientes/${c.id}/editar`}>Editar</LinkButton>
           </>
         }
@@ -72,13 +72,13 @@ export default async function ClientePage({
 
       {aviso === "inativado" && (
         <Alerta tone="ambar" title="Cliente inativado">
-          O cliente possui historico de locacoes, por isso foi inativado em vez de excluido.
+          O cliente possui histórico de locações, por isso foi inativado em vez de excluído.
         </Alerta>
       )}
-      {!c.active && <Alerta tone="ambar">Este cliente esta inativo.</Alerta>}
+      {!c.active && <Alerta tone="ambar">Este cliente está inativo.</Alerta>}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat label="Locacoes" value={c.locacoes} />
+        <Stat label="Locações" value={c.locacoes} />
         <Stat label="Total gasto" value={money(c.total_cents)} />
         <Stat label="Saldo em aberto" value={money(c.saldo_cents)} tone={c.saldo_cents > 0 ? "vermelho" : "verde"} />
         <Stat label="Canceladas" value={c.canceladas} />
@@ -90,13 +90,13 @@ export default async function ClientePage({
           <Row label="Telefone" value={phoneBR(c.phone) || "-"} />
           <Row label="WhatsApp" value={phoneBR(c.whatsapp) || "-"} />
           <Row label="E-mail" value={c.email || "-"} />
-          <Row label="Endereco" value={c.address || "-"} />
+          <Row label="Endereço" value={c.address || "-"} />
           <Row label="Bairro" value={c.district || "-"} />
           <Row label="Cidade" value={c.city || "-"} />
           <Row label="CEP" value={c.zip || "-"} />
-          <Row label="Ultima locacao" value={c.ultima ? dateBR(c.ultima) : "-"} />
-          <Row label="Proxima locacao" value={c.proxima ? dateBR(c.proxima) : "-"} />
-          {c.notes && <Row label="Observacoes" value={c.notes} />}
+          <Row label="Última locação" value={c.ultima ? dateBR(c.ultima) : "-"} />
+          <Row label="Próxima locação" value={c.proxima ? dateBR(c.proxima) : "-"} />
+          {c.notes && <Row label="Observações" value={c.notes} />}
 
           <div className="mt-3 flex flex-wrap gap-2">
             {wa && (
@@ -170,9 +170,9 @@ export default async function ClientePage({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title={`Orcamentos (${orcamentos.length})`}>
+        <Section title={`Orçamentos (${orcamentos.length})`}>
           {orcamentos.length === 0 ? (
-            <Empty>Nenhum orcamento.</Empty>
+            <Empty>Nenhum orçamento.</Empty>
           ) : (
             <div className="space-y-2">
               {orcamentos.map((q) => (
@@ -208,7 +208,7 @@ export default async function ClientePage({
       </div>
 
       {historico.length > 0 && (
-        <Section title="Historico de alteracoes">
+        <Section title="Histórico de alterações">
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
@@ -223,9 +223,9 @@ export default async function ClientePage({
       {user.role === "admin" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
+            <p className="text-sm font-semibold text-tinta-900">Área do administrador</p>
             <p className="text-xs text-stone-500">
-              Clientes com historico sao inativados em vez de excluidos, para preservar as reservas.
+              Clientes com histórico são inativados em vez de excluídos, para preservar as reservas.
             </p>
           </div>
           <div className="flex gap-2">
@@ -235,7 +235,7 @@ export default async function ClientePage({
             </form>
             <form action={deleteCustomer}>
               <input type="hidden" name="id" value={c.id} />
-              <SubmitButton variant="perigo" confirm={`Excluir o cliente ${c.name}? Esta acao nao pode ser desfeita.`}>
+              <SubmitButton variant="perigo" confirm={`Excluir o cliente ${c.name}? Esta ação não pode ser desfeita.`}>
                 Excluir
               </SubmitButton>
             </form>
@@ -245,7 +245,7 @@ export default async function ClientePage({
 
       <p className="text-center">
         <Link href="/clientes" className="text-sm font-semibold text-marca-600">
-          Voltar para clientes
+          Voltar para Clientes
         </Link>
       </p>
     </div>

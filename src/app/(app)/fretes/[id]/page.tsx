@@ -27,7 +27,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
   const pago = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE freight_id = ?`, [f.id]);
   const historico = await logsFor("frete", f.id);
   const maps = mapsLink(f.destination);
-  const wa = waLink(f.whatsapp || f.phone, `Ola! Sobre o frete ${f.number} do dia ${dateBR(f.date)}.`);
+  const wa = waLink(f.whatsapp || f.phone, `Olá! Sobre o frete ${f.number} do dia ${dateBR(f.date)}.`);
 
   return (
     <div className="space-y-4">
@@ -65,7 +65,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
               rel="noreferrer"
               className="inline-flex items-center gap-2 rounded-xl bg-marca-600 px-4 py-2.5 text-sm font-semibold text-white"
             >
-              <Icon name="operacao" className="h-4 w-4" /> Rota ate o destino
+              <Icon name="operacao" className="h-4 w-4" /> Rota até o destino
             </a>
           )}
           {wa && (
@@ -96,13 +96,13 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
             }
           />
           <Row label="Telefone" value={phoneBR(f.phone) || "-"} />
-          <Row label="Data" value={`${dateBR(f.date)}${f.time ? ` as ${timeBR(f.time)}` : ""}`} />
+          <Row label="Data" value={`${dateBR(f.date)}${f.time ? ` às ${timeBR(f.time)}` : ""}`} />
           <Row label="Origem" value={f.origin || "-"} />
           <Row label="Destino" value={f.destination || "-"} />
           <Row label="Carga" value={f.cargo || "-"} />
-          <Row label="Veiculo" value={f.vehicle_name || "-"} />
+          <Row label="Veículo" value={f.vehicle_name || "-"} />
           <Row label="Forma de pagamento" value={PAYMENT_METHOD_LABEL[f.method] ?? f.method} />
-          {f.notes && <Row label="Observacoes" value={f.notes} />}
+          {f.notes && <Row label="Observações" value={f.notes} />}
         </Section>
 
         <Section title="Pagamentos">
@@ -135,7 +135,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
                 {pagamentos.map((p) => (
                   <li key={p.id} className="flex items-center justify-between py-2 text-sm">
                     <span>
-                      {dateBR(p.paid_at)} - {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
+                      {dateBR(p.paid_at)} · {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
                     </span>
                     <span className="font-bold text-emerald-600">{money(p.amount_cents)}</span>
                   </li>
@@ -153,7 +153,7 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
       </div>
 
       {historico.length > 0 && (
-        <Section title="Historico">
+        <Section title="Histórico">
           <ul className="space-y-1.5 text-sm">
             {historico.map((h: any) => (
               <li key={h.id} className="flex gap-2 text-stone-600">
@@ -167,11 +167,11 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
 
       {user.role === "admin" && (
         <Card className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-tinta-900">Area do administrador</p>
+          <p className="text-sm font-semibold text-tinta-900">Área do administrador</p>
           <form action={deleteFreight}>
             <input type="hidden" name="id" value={f.id} />
             <SubmitButton variant="perigo" confirm={`Excluir o frete ${f.number}?`}>
-              Excluir frete
+              Excluir Frete
             </SubmitButton>
           </form>
         </Card>

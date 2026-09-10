@@ -11,7 +11,7 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
   const kind = KIND[op.kind] ?? OPERATION_KINDS[0];
   const endereco = [op.address, op.district, op.city].filter(Boolean).join(", ");
   const maps = mapsLink(op.address, op.district, op.city);
-  const wa = waLink(op.whatsapp || op.phone, `Ola, ${op.customer ?? ""}!`);
+  const wa = waLink(op.whatsapp || op.phone, `Olá, ${op.customer ?? ""}!`);
   const late = op.scheduled_at.slice(0, 10) < new Date().toISOString().slice(0, 10) && op.status !== "concluida";
 
   return (
@@ -41,8 +41,8 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
             {endereco && <p className="truncate text-xs text-stone-500">{endereco}</p>}
             <p className="mt-0.5 text-xs text-stone-400">
               {op.reservation_number}
-              {op.assignee ? ` - ${op.assignee}` : ""}
-              {op.phone ? ` - ${phoneBR(op.phone)}` : ""}
+              {op.assignee ? ` · ${op.assignee}` : ""}
+              {op.phone ? ` · ${phoneBR(op.phone)}` : ""}
             </p>
           </div>
         </div>

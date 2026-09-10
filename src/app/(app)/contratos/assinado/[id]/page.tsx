@@ -28,8 +28,8 @@ export default async function DocumentoAssinadoPage({ params }: { params: Promis
     <div className="space-y-4">
       <div className="nao-imprimir space-y-4">
         <PageHeader
-          title={`${doc.contract_number} assinado`}
-          subtitle={`${doc.customer_name} - ${dateTimeBR(doc.signed_at)}`}
+          title={`${doc.contract_number} Assinado`}
+          subtitle={`${doc.customer_name} · ${dateTimeBR(doc.signed_at)}`}
           action={
             <>
               <PrintButton />
@@ -43,7 +43,7 @@ export default async function DocumentoAssinadoPage({ params }: { params: Promis
           }
         />
         <Alerta tone="verde" title="Documento congelado">
-          Este e o texto exato que o cliente leu e aceitou. Alteracoes feitas no contrato depois da assinatura nao
+          Este é o texto exato que o cliente leu e aceitou. Alterações feitas no contrato depois da assinatura não
           aparecem aqui: para mudar algo, gere um novo contrato.
         </Alerta>
       </div>
@@ -60,7 +60,7 @@ export default async function DocumentoAssinadoPage({ params }: { params: Promis
         </pre>
 
         <section className="mt-8 border-t border-nuvem-200 pt-4">
-          <p className="mb-2 text-xs font-semibold uppercase text-stone-500">Assinatura do contratante</p>
+          <p className="mb-2 text-xs font-semibold uppercase text-stone-500">Assinatura do Contratante</p>
           {doc.signature_file_id && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -74,14 +74,14 @@ export default async function DocumentoAssinadoPage({ params }: { params: Promis
         </section>
 
         <section className="mt-6 rounded-xl bg-nuvem-100 p-3 text-[0.7rem] leading-relaxed text-stone-600 print:bg-transparent print:p-0">
-          <p className="font-semibold uppercase text-stone-500">Registro da assinatura</p>
-          <p>Aceite dos termos e assinatura em {dateTimeBR(doc.signed_at)} (horario de Brasilia).</p>
+          <p className="font-semibold uppercase text-stone-500">Registro da Assinatura</p>
+          <p>Aceite dos termos e assinatura em {dateTimeBR(doc.signed_at)} (horário de Brasília).</p>
           <p>
             Contrato {doc.contract_number}
-            {doc.reservation_number ? `, reserva ${doc.reservation_number}` : ""}, versao {doc.version}.
+            {doc.reservation_number ? `, reserva ${doc.reservation_number}` : ""}, versão {doc.version}.
           </p>
           <p>Identificador da assinatura: {doc.id}.</p>
-          {doc.document_hash && <p className="break-all">Verificacao SHA-256: {doc.document_hash}</p>}
+          {doc.document_hash && <p className="break-all">Verificação SHA-256: {doc.document_hash}</p>}
           {doc.ip_address && <p>Origem registrada: {doc.ip_address}</p>}
         </section>
       </article>

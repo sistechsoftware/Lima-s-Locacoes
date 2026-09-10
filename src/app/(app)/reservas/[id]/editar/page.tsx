@@ -33,7 +33,7 @@ export default async function EditarReservaPage({ params }: { params: Promise<{ 
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader title={`Editar ${reservation.number}`} subtitle="Alteracoes revalidam o estoque e a agenda" />
+      <PageHeader title={`Editar ${reservation.number}`} subtitle="Alterações revalidam o estoque e a agenda" />
       <ReservationForm
         preparationMinutes={await preparationMinutes()}
         action={updateReservation}
@@ -42,7 +42,7 @@ export default async function EditarReservaPage({ params }: { params: Promise<{ 
         reservation={reservation}
         items={items}
         isAdmin={user.role === "admin"}
-        submitLabel="Salvar alteracoes"
+        submitLabel="Salvar alterações"
       />
     </div>
   );

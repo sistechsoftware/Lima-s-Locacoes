@@ -15,7 +15,7 @@ export async function savePreferences(fd: FormData) {
   const user = await requireUser();
   const values = Object.keys(NOTIFICATION_TYPES).map(type=>{
     const mode = String(fd.get(type) ?? "auto");
-    if (!["auto","on","off"].includes(mode)) throw new Error("Preferencia invalida.");
+    if (!["auto","on","off"].includes(mode)) throw new Error("Preferência inválida.");
     return {sql:"INSERT INTO notification_preferences(user_id,type,mode) VALUES (?,?,?) ON CONFLICT(user_id,type) DO UPDATE SET mode=excluded.mode",params:[user.id,type,mode]};
   });
   await batch(values);
@@ -27,7 +27,7 @@ export async function saveRoles(fd: FormData) {
   if (!await one("SELECT id FROM users WHERE id=?",[id])) throw new Error("Usuario inexistente.");
   const allowed = (await all<{key:string}>("SELECT key FROM operational_roles")).map(r=>r.key);
   const roles = [...new Set(fd.getAll("roles").map(String))];
-  if (roles.some(r=>!allowed.includes(r))) throw new Error("Funcao invalida.");
+  if (roles.some(r=>!allowed.includes(r))) throw new Error("Função inválida.");
   await batch([{sql:"DELETE FROM user_operational_roles WHERE user_id=?",params:[id]},...roles.map(role=>({sql:"INSERT INTO user_operational_roles(user_id,role) VALUES (?,?)",params:[id,role]}))]);
   await logAction(admin,"editar","usuario",id,`${admin.name} atualizou funcoes operacionais`,{roles});
   revalidatePath("/notificacoes/preferencias");
@@ -65,7 +65,7 @@ export async function completeSeparation(fd: FormData) {
   const a = await one<{assignee_id:number|null}>("SELECT assignee_id FROM activities WHERE id=? AND kind='separacao' AND status='pending'",[id]);
   if (!a) return;
   const roles = await all<{role:string}>("SELECT role FROM user_operational_roles WHERE user_id=?",[user.id]);
-  if (user.role!=="admin" && a.assignee_id!==user.id && !roles.some(r=>r.role==="gestor" || (a.assignee_id===null && r.role==="separador"))) throw new Error("Voce nao e responsavel por esta separacao.");
+  if (user.role!=="admin" && a.assignee_id!==user.id && !roles.some(r=>r.role==="gestor" || (a.assignee_id===null && r.role==="separador"))) throw new Error("Você não é responsável por esta separação.");
   await run("UPDATE activities SET status='completed',revision=revision+1 WHERE id=? AND status='pending'",[id]);
   await logAction(user,"concluir","atividade",id,`${user.name} concluiu a separacao dos materiais`);
   revalidatePath("/notificacoes/atividades");

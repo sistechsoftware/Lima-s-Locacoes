@@ -31,7 +31,7 @@ export function impedimento(a: Assinatura, agoraISO: string): Impedimento {
 export const podeAssinar = (a: Assinatura, agoraISO: string) => impedimento(a, agoraISO) === null;
 
 export const MENSAGEM_IMPEDIMENTO: Record<Exclude<Impedimento, null>, string> = {
-  assinado: "Este contrato ja foi assinado. Nao e possivel assinar de novo.",
+  assinado: "Este contrato já foi assinado. Não é possível assinar de novo.",
   revogado: "Este link foi cancelado pela empresa. Fale com a gente para receber um novo.",
   expirado: "Este link expirou. Fale com a gente para receber um novo.",
 };
@@ -103,16 +103,16 @@ export type EntradaAssinatura = { nome: string; aceite: boolean; imagem: string 
  */
 export function validarEntrada(e: Partial<EntradaAssinatura>): string | null {
   const nome = String(e.nome ?? "").trim();
-  if (nome.length < 3) return "Informe o nome de quem esta assinando.";
+  if (nome.length < 3) return "Informe o nome de quem está assinando.";
   if (nome.length > 120) return "Nome muito longo.";
-  if (!e.aceite) return "E preciso marcar que leu e concorda com os termos.";
+  if (!e.aceite) return "É preciso marcar que leu e concorda com os termos.";
 
   const imagem = String(e.imagem ?? "");
-  if (!imagem) return "Faca a assinatura antes de confirmar.";
-  if (imagem.length > MAX_ASSINATURA_BYTES) return "Assinatura muito pesada. Tente um traco mais simples.";
+  if (!imagem) return "Faça a assinatura antes de confirmar.";
+  if (imagem.length > MAX_ASSINATURA_BYTES) return "Assinatura muito pesada. Tente um traço mais simples.";
   // quem decide se e uma imagem de verdade e a leitura dos bytes, nao o tamanho
   // do texto: um PNG legitimo pode ser pequeno, e um texto longo pode ser lixo
-  if (!bytesDaAssinatura(imagem)) return "Assinatura invalida.";
+  if (!bytesDaAssinatura(imagem)) return "Assinatura inválida.";
   return null;
 }
 
@@ -143,11 +143,11 @@ export const MAX_DOCUMENTO_BYTES = 5_000_000;
 
 export function validarDocumento(mime: string, tamanho: number): string | null {
   if (!MIMES_DOCUMENTO.includes(mime.toLowerCase())) {
-    return "Formato nao aceito. Envie PDF, JPG ou PNG.";
+    return "Formato não aceito. Envie PDF, JPG ou PNG.";
   }
   if (tamanho <= 0) return "Arquivo vazio.";
   if (tamanho > MAX_DOCUMENTO_BYTES) {
-    return `Arquivo muito grande (${(tamanho / 1024 / 1024).toFixed(1)} MB). O limite e de 5 MB.`;
+    return `Arquivo muito grande (${(tamanho / 1024 / 1024).toFixed(1)} MB). O limite é de 5 MB.`;
   }
   return null;
 }

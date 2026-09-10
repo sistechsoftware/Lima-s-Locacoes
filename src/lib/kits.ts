@@ -210,14 +210,14 @@ export function computeConflicts(lines: Line[], specs: SpecMap, available: Map<n
 export function conflictText(c: LineConflict): string {
   if (c.kind === "kit") {
     const detalhe = c.components
-      .map((x) => `${x.product}: precisa de ${x.required}, disponivel ${x.available}`)
+      .map((x) => `${x.product}: precisa de ${x.required}, disponível ${x.available}`)
       .join("; ");
     return (
-      `Estoque insuficiente para este kit. Disponivel para esta operacao: ${c.available} kits.` +
+      `Estoque insuficiente para este kit. Disponível para esta operação: ${c.available} kits.` +
       (detalhe ? ` (${detalhe})` : "")
     );
   }
-  return `${c.product}: pedido ${c.requested}, disponivel ${c.available} neste intervalo.`;
+  return `${c.product}: pedido ${c.requested}, disponível ${c.available} neste intervalo.`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -245,15 +245,15 @@ export function validateComposition(
     if (!Number.isFinite(c.quantity) || c.quantity <= 0) {
       return "A quantidade de cada componente deve ser maior que zero.";
     }
-    if (!Number.isInteger(c.quantity)) return "A quantidade de cada componente deve ser um numero inteiro.";
-    if (parentId && c.product_id === parentId) return "Um produto nao pode ser componente de si mesmo.";
+    if (!Number.isInteger(c.quantity))      return "A quantidade de cada componente deve ser um número inteiro.";
+    if (parentId && c.product_id === parentId) return "Um produto não pode ser componente de si mesmo.";
     if (seen.has(c.product_id)) return "O mesmo produto foi adicionado duas vezes na composicao.";
     seen.add(c.product_id);
 
     const spec = specs.get(c.product_id);
-    if (!spec) return "Componente invalido: produto nao encontrado.";
+    if (!spec) return "Componente inválido: produto não encontrado.";
     if (spec.kind === "kit") {
-      return `"${spec.name}" e um kit. Kits dentro de kits nao sao permitidos: use apenas produtos simples na composicao.`;
+      return `"${spec.name}" é um kit. Kits dentro de kits não são permitidos: use apenas produtos simples na composição.`;
     }
   }
   return null;

@@ -44,8 +44,8 @@ export default async function EstoquePage({
         subtitle={`${produtos.length} produto(s) cadastrado(s)`}
         action={
           <>
-            <LinkButton href={`/disponibilidade?${query.queryString}`}>Consultar disponibilidade</LinkButton>
-            <LinkButton href="/estoque/novo" variant="primario">+ Novo produto</LinkButton>
+            <LinkButton href={`/disponibilidade?${query.queryString}`}>Consultar Disponibilidade</LinkButton>
+            <LinkButton href="/estoque/novo" variant="primario">+ Novo Produto</LinkButton>
           </>
         }
       />
@@ -53,14 +53,14 @@ export default async function EstoquePage({
       <AvailabilityFilter query={query} minutes={options.preparationMinutes} hidden={{ aba }} />
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Stat
-          label="Disponiveis na consulta"
+          label="Disponíveis na consulta"
           value={disponibilidade.filter((d) => d.kind !== "kit").reduce((s, d) => s + Math.max(0, d.available), 0)}
         />
         <Stat label="Reservados na consulta" value={disponibilidade.reduce((s, d) => s + d.reserved, 0)} />
         <Stat label="Kits cadastrados" value={produtos.filter((p) => p.kind === "kit").length} />
-        <Stat label="Em manutencao" value={produtos.reduce((s, p) => s + p.maintenance_qty, 0)} />
+        <Stat label="Em manutenção" value={produtos.reduce((s, p) => s + p.maintenance_qty, 0)} />
         <Stat
-          label="Abaixo do minimo"
+          label="Abaixo do mínimo"
           value={disponibilidade.filter((d) => d.low).length}
           tone={disponibilidade.some((d) => d.low) ? "vermelho" : undefined}
         />
@@ -72,7 +72,7 @@ export default async function EstoquePage({
           { value: "ativos", label: "Ativos" },
           { value: "kits", label: "Kits" },
           { value: "baixo", label: "Estoque baixo" },
-          { value: "manutencao", label: "Em manutencao" },
+          { value: "manutencao", label: "Em manutenção" },
           { value: "inativos", label: "Inativos" },
         ]}
         current={aba}
@@ -97,11 +97,11 @@ export default async function EstoquePage({
                           {p.kind === "kit" && <Badge tone="terracota">Kit</Badge>}
                           {!p.active && <Badge tone="cinza">Inativo</Badge>}
                           {d?.low && <Badge tone="vermelho">Estoque baixo</Badge>}
-                          {p.maintenance_qty > 0 && <Badge tone="roxo">{p.maintenance_qty} em manutencao</Badge>}
+                          {p.maintenance_qty > 0 && <Badge tone="roxo">{p.maintenance_qty} em manutenção</Badge>}
                         </div>
                         <p className="truncate text-sm font-bold text-tinta-900">{p.name}</p>
                         <p className="text-xs text-stone-500">
-                          {p.code} - locacao {money(p.rent_price_cents)}
+                          {p.code} · locação {money(p.rent_price_cents)}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
@@ -109,7 +109,7 @@ export default async function EstoquePage({
                           {d ? Math.max(0, d.available) : p.total_qty}
                         </p>
                         <p className="text-[0.65rem] uppercase text-stone-400">
-                          {!p.active ? "estoque cadastrado (inativo)" : p.kind === "kit" ? "kits montaveis" : `de ${p.total_qty} na consulta`}
+                          {!p.active ? "estoque cadastrado (inativo)" : p.kind === "kit" ? "kits montáveis" : `de ${p.total_qty} na consulta`}
                         </p>
                       </div>
                     </Link>

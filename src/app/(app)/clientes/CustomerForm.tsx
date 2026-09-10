@@ -9,7 +9,7 @@ export default function CustomerForm({
   action,
   customer,
   next,
-  submitLabel = "Salvar cliente",
+  submitLabel = "Salvar Cliente",
 }: {
   action: Action;
   customer?: any;
@@ -40,7 +40,7 @@ export default function CustomerForm({
         <Field label="E-mail">
           <input name="email" type="email" defaultValue={v.email ?? ""} className="campo" />
         </Field>
-        <Field label="Data de nascimento" hint="Opcional. Serve para avisar o aniversario do cliente.">
+        <Field label="Data de nascimento" hint="Opcional. Serve para avisar o aniversário do cliente.">
           <input
             name="birth_date"
             type="date"
@@ -51,7 +51,7 @@ export default function CustomerForm({
         </Field>
       </Grid>
 
-      <Field label="Endereco">
+      <Field label="Endereço">
         <input name="address" defaultValue={v.address ?? ""} className="campo" />
       </Field>
 
@@ -67,7 +67,7 @@ export default function CustomerForm({
         </Field>
       </Grid>
 
-      <Field label="Observacoes">
+      <Field label="Observações">
         <textarea name="notes" defaultValue={v.notes ?? ""} rows={3} className="campo" />
       </Field>
 

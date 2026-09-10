@@ -8,7 +8,7 @@ import { dateBR, docBR, money, phoneBR } from "./format";
 export async function buildContractBody(reservationId: number, contractNumber: string): Promise<string> {
   const s = await getSettings();
   const r = await getReservation(reservationId);
-  if (!r) throw new Error("Reserva nao encontrada");
+  if (!r) throw new Error("Reserva não encontrada");
   const items = await reservationItems(reservationId);
   const m = await reservationMoney(reservationId);
 

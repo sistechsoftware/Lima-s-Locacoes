@@ -158,7 +158,7 @@ describe("validacao das faixas", () => {
   });
 
   it("recusa maxima menor que a minima", () => {
-    assert.match(erros([{ min_qty: 10, max_qty: 5, unit_price_cents: 1000 }])[0], /menor que a minima/i);
+    assert.match(erros([{ min_qty: 10, max_qty: 5, unit_price_cents: 1000 }])[0], /menor que a mínima/i);
   });
 
   it("recusa quantidade zero ou negativa", () => {
@@ -219,7 +219,7 @@ describe("promocoes conflitantes no mesmo produto", () => {
       { starts_on: null, ends_on: null, tiers: [{ min_qty: 1, max_qty: 10, unit_price_cents: 1400 }] },
       [{ id: 9, starts_on: null, ends_on: null, tiers: FAIXAS }],
     );
-    assert.match(erro ?? "", /ja existe outra promocao/i);
+    assert.match(erro ?? "", /já existe outra promoção/i);
   });
 
   it("aceita quando os periodos nao se cruzam", () => {
@@ -243,7 +243,7 @@ describe("promocoes conflitantes no mesmo produto", () => {
       { starts_on: null, ends_on: null, tiers: [{ min_qty: 500, max_qty: 600, unit_price_cents: 700 }] },
       [{ id: 9, starts_on: null, ends_on: null, tiers: [{ min_qty: 15, max_qty: null, unit_price_cents: 1000 }] }],
     );
-    assert.match(erro ?? "", /ja existe outra promocao/i);
+    assert.match(erro ?? "", /já existe outra promoção/i);
   });
 });
 

@@ -59,7 +59,7 @@ export async function createProduct(_prev: string | null, fd: FormData): Promise
   if (!p.name) return "Informe o nome do produto.";
   if (!p.code) return "Informe um codigo (ex.: MESA, CAD).";
   if (await scalar<number>(`SELECT COUNT(*) FROM products WHERE code = ?`, [p.code]) > 0)
-    return "Ja existe um produto com este codigo.";
+    return "Já existe um produto com este código.";
 
   const components = readComponents(fd);
   if (p.kind === "kit") {
@@ -103,10 +103,10 @@ export async function updateProduct(_prev: string | null, fd: FormData): Promise
   const id = Number(fd.get("id"));
   const p = readProduct(fd);
   const current = await one<any>(`SELECT * FROM products WHERE id = ?`, [id]);
-  if (!current) return "Produto nao encontrado.";
+  if (!current) return "Produto não encontrado.";
   if (!p.name) return "Informe o nome do produto.";
   if (await scalar<number>(`SELECT COUNT(*) FROM products WHERE code = ? AND id <> ?`, [p.code, id]) > 0)
-    return "Ja existe outro produto com este codigo.";
+    return "Já existe outro produto com este código.";
 
   const components = readComponents(fd);
   if (p.kind === "kit") {
@@ -119,7 +119,7 @@ export async function updateProduct(_prev: string | null, fd: FormData): Promise
       [id],
     );
     if (usadoComoKit > 0) {
-      return "Este kit ja foi usado em reservas. Crie um produto novo em vez de converte-lo em produto simples.";
+      return "Este kit já foi usado em reservas. Crie um produto novo em vez de convertê-lo em produto simples.";
     }
   }
   if (p.kind === "simples") {

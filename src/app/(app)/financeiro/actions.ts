@@ -59,7 +59,7 @@ export async function addExpense(fd: FormData) {
   // ou uma leitura que nao acha o registro, e falha, nao sucesso
   const gravado = id > 0 ? await one<any>(`SELECT id, amount_cents FROM expenses WHERE id = ?`, [id]) : null;
   if (!gravado) {
-    redirect(destino(fd, { erro: "A saida nao foi gravada. Nada foi lancado; tente novamente." }));
+    redirect(destino(fd, { erro: "A saída não foi gravada. Nada foi lançado; tente novamente." }));
   }
 
   await logAction(user, "criar", "despesa", id, `${user.name} lancou despesa de ${money(amount)}`);
@@ -119,7 +119,7 @@ export async function addIncome(fd: FormData) {
 
   const gravado = id > 0 ? await one<any>(`SELECT id FROM payments WHERE id = ?`, [id]) : null;
   if (!gravado) {
-    redirect(destino(fd, { erro: "A entrada nao foi gravada. Nada foi lancado; tente novamente." }));
+    redirect(destino(fd, { erro: "A entrada não foi gravada. Nada foi lançado; tente novamente." }));
   }
 
   await logAction(user, "criar", "pagamento", id, `${user.name} lancou entrada de ${money(amount)}`);

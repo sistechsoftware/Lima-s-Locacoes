@@ -92,9 +92,9 @@ export default async function FinanceiroPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Financeiro" subtitle={`${dateBR(de)} ate ${dateBR(ate)}`} />
+      <PageHeader title="Financeiro" subtitle={`${dateBR(de)} até ${dateBR(ate)}`} />
 
-      {sp.erro && <Alerta tone="vermelho" title="Nao foi lancado">{sp.erro}</Alerta>}
+      {sp.erro && <Alerta tone="vermelho" title="Não foi lançado">{sp.erro}</Alerta>}
       {sp.ok && <Alerta tone="verde" title="Pronto">{sp.ok}</Alerta>}
 
       <Card>
@@ -114,7 +114,7 @@ export default async function FinanceiroPage({
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Stat label="Entradas" value={money(totalEntradas)} tone="verde" />
-        <Stat label="Saidas" value={money(totalSaidas)} tone="vermelho" />
+        <Stat label="Saídas" value={money(totalSaidas)} tone="vermelho" />
         <Stat label="Resultado" value={money(totalEntradas - totalSaidas)} tone={totalEntradas - totalSaidas >= 0 ? "verde" : "vermelho"} />
         <Stat label="A receber (total)" value={money(totalReceber)} tone={totalReceber > 0 ? "vermelho" : "verde"} />
       </div>
@@ -123,7 +123,7 @@ export default async function FinanceiroPage({
         items={[
           { value: "resumo", label: "Resumo" },
           { value: "entradas", label: "Entradas", count: entradas.length },
-          { value: "saidas", label: "Saidas", count: saidas.length },
+          { value: "saidas", label: "Saídas", count: saidas.length },
           { value: "receber", label: "A receber", count: parcelasReceber.filter((p) => p.situacao !== "quitada").length },
           { value: "pagar", label: "A pagar", count: parcelasPagar.filter((p) => p.situacao !== "quitada").length },
         ]}
@@ -135,7 +135,7 @@ export default async function FinanceiroPage({
         <div className="grid gap-4 lg:grid-cols-2">
           <Section title="Entradas por forma de pagamento">
             {porMetodo.length === 0 ? (
-              <Empty>Nenhuma entrada no periodo.</Empty>
+              <Empty>Nenhuma entrada no período.</Empty>
             ) : (
               <ul className="divide-y divide-nuvem-200">
                 {porMetodo.map((m) => (
@@ -147,9 +147,9 @@ export default async function FinanceiroPage({
               </ul>
             )}
           </Section>
-          <Section title="Saidas por categoria">
+          <Section title="Saídas por categoria">
             {porCategoria.length === 0 ? (
-              <Empty>Nenhuma saida no periodo.</Empty>
+              <Empty>Nenhuma saída no período.</Empty>
             ) : (
               <ul className="divide-y divide-nuvem-200">
                 {porCategoria.map((c) => (
@@ -161,12 +161,12 @@ export default async function FinanceiroPage({
               </ul>
             )}
           </Section>
-          <Section title="Caucoes">
+          <Section title="Cauções">
             <p className="text-sm text-stone-600">
-              Total retido por danos ate hoje: <b className="text-tinta-900">{money(caucaoRetida)}</b>
+              Total retido por danos até hoje: <b className="text-tinta-900">{money(caucaoRetida)}</b>
             </p>
             <p className="mt-1 text-xs text-stone-500">
-              A caucao nao entra no faturamento: e devolvida ao cliente, exceto na parte retida.
+              A caução não entra no faturamento: é devolvida ao cliente, exceto na parte retida.
             </p>
           </Section>
         </div>
@@ -175,7 +175,7 @@ export default async function FinanceiroPage({
       {aba === "entradas" && (
         <Section title={`Entradas (${entradas.length})`}>
           {entradas.length === 0 ? (
-            <Empty>Nenhuma entrada no periodo.</Empty>
+            <Empty>Nenhuma entrada no período.</Empty>
           ) : (
             <ul className="divide-y divide-nuvem-200">
               {entradas.map((e) => (
@@ -185,14 +185,14 @@ export default async function FinanceiroPage({
                       {e.customer_name ?? e.notes ?? "Entrada"}
                     </p>
                     <p className="text-xs text-stone-500">
-                      {dateBR(e.paid_at)} - {PAYMENT_METHOD_LABEL[e.method] ?? e.method}
-                      {e.reservation_number ? ` - ` : ""}
+                      {dateBR(e.paid_at)} · {PAYMENT_METHOD_LABEL[e.method] ?? e.method}
+                      {e.reservation_number ? ` · ` : ""}
                       {e.reservation_number && (
                         <Link href={`/reservas/${e.reservation_id}`} className="text-marca-600">
                           {e.reservation_number}
                         </Link>
                       )}
-                      {e.freight_number ? ` - ${e.freight_number}` : ""}
+                      {e.freight_number ? ` · ${e.freight_number}` : ""}
                     </p>
                   </div>
                   <span className="shrink-0 font-bold text-emerald-600">{money(e.amount_cents)}</span>
@@ -205,7 +205,7 @@ export default async function FinanceiroPage({
 
       {aba === "saidas" && (
         <div className="space-y-4">
-          <Section title="Lancar saida">
+          <Section title="Lançar Saída">
             <form action={addExpense} className="grid grid-cols-2 gap-2">
               {/* o periodo viaja junto para o lancamento voltar para a mesma tela */}
               <input type="hidden" name="aba" value="saidas" />
@@ -219,7 +219,7 @@ export default async function FinanceiroPage({
                   </option>
                 ))}
               </select>
-              <input name="description" placeholder="Descricao" className="campo col-span-2" />
+              <input name="description" placeholder="Descrição" className="campo col-span-2" />
               <input name="amount" placeholder="Valor (R$)" inputMode="decimal" className="campo" required />
               <select name="method" className="campo">
                 {PAYMENT_METHODS.map((m) => (
@@ -237,14 +237,14 @@ export default async function FinanceiroPage({
                 ))}
               </select>
               <div className="col-span-2">
-                <SubmitButton className="w-full">Lancar saida</SubmitButton>
+                <SubmitButton className="w-full">Lançar Saída</SubmitButton>
               </div>
             </form>
 
             {user.role === "admin" && (
               <details className="mt-3">
                 <summary className="cursor-pointer text-sm font-semibold text-marca-600">
-                  + Nova finalidade
+                  + Nova Finalidade
                 </summary>
                 {/* form separado: um formulario dentro do outro seria HTML invalido */}
                 <form action={createPurpose} className="mt-2 pilha-filtros">
@@ -253,16 +253,16 @@ export default async function FinanceiroPage({
                   <input type="hidden" name="ate" value={ate} />
                   <input
                     name="name"
-                    placeholder="Ex.: Manutencao do veiculo"
+                    placeholder="Ex.: Manutenção do veículo"
                     maxLength={60}
                     required
                     className="campo min-w-0 flex-1 basis-48"
                   />
-                  <SubmitButton variant="secundario">Salvar finalidade</SubmitButton>
+                  <SubmitButton variant="secundario">Salvar Finalidade</SubmitButton>
                 </form>
                 <p className="mt-1 text-xs text-stone-500">
-                  A nova finalidade fica disponivel na hora e ja vem selecionada. Para renomear ou desativar, use
-                  Configuracoes.
+                  A nova finalidade fica disponível na hora e já vem selecionada. Para renomear ou desativar, use
+                  Configurações.
                 </p>
               </details>
             )}
@@ -270,7 +270,7 @@ export default async function FinanceiroPage({
 
           <Section title={`Saidas (${saidas.length})`}>
             {saidas.length === 0 ? (
-              <Empty>Nenhuma saida no periodo.</Empty>
+              <Empty>Nenhuma saída no período.</Empty>
             ) : (
               <ul className="divide-y divide-nuvem-200">
                 {saidas.map((e) => (
@@ -278,11 +278,11 @@ export default async function FinanceiroPage({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-tinta-900">
                         {e.category}
-                        {e.description ? ` - ${e.description}` : ""}
+                        {e.description ? ` · ${e.description}` : ""}
                       </p>
                       <p className="text-xs text-stone-500">
-                        {dateBR(e.date)} - {PAYMENT_METHOD_LABEL[e.method] ?? e.method}
-                        {e.reservation_number ? ` - ${e.reservation_number}` : ""}
+                        {dateBR(e.date)} · {PAYMENT_METHOD_LABEL[e.method] ?? e.method}
+                        {e.reservation_number ? ` · ${e.reservation_number}` : ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -290,7 +290,7 @@ export default async function FinanceiroPage({
                       {user.role === "admin" && (
                         <form action={deleteExpense}>
                           <input type="hidden" name="id" value={e.id} />
-                          <SubmitButton variant="perigo" confirm="Remover esta saida?" className="px-2 py-1 text-xs">
+                          <SubmitButton variant="perigo" confirm="Remover esta saída?" className="px-2 py-1 text-xs">
                             x
                           </SubmitButton>
                         </form>
@@ -364,7 +364,7 @@ function ListaParcelas({
           <Empty>
             {receber
               ? "Nenhuma parcela a receber. Gere o parcelamento na tela da reserva ou do frete."
-              : "Nenhuma parcela a pagar. As parcelas aparecem aqui quando voce registra uma compra."}
+              : "Nenhuma parcela a pagar. As parcelas aparecem aqui quando você registra uma compra."}
           </Empty>
         ) : (
           <ul className="space-y-2">
@@ -374,10 +374,10 @@ function ListaParcelas({
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-tinta-900">{p.description}</span>
                     <span className="block text-xs text-stone-500">
-                      {p.number} - vence {dateBR(p.due_date)}
-                      {p.installments_total > 1 ? ` - ${p.installment}/${p.installments_total}` : ""}
-                      {p.customer_name ? ` - ${p.customer_name}` : ""}
-                      {p.supplier_name ? ` - ${p.supplier_name}` : ""}
+                      {p.number} · vence em {dateBR(p.due_date)}
+                      {p.installments_total > 1 ? ` · ${p.installment}/${p.installments_total}` : ""}
+                      {p.customer_name ? ` · ${p.customer_name}` : ""}
+                      {p.supplier_name ? ` · ${p.supplier_name}` : ""}
                     </span>
                     {p.liquidado_cents > 0 && (
                       <span className="block text-xs text-stone-500">
@@ -409,7 +409,7 @@ function ListaParcelas({
                     ))}
                   </select>
                   <select name="account_id" defaultValue={p.account_id ?? ""} className="campo">
-                    <option value="">Conta...</option>
+                    <option value="">Conta…</option>
                     {contas.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}

@@ -13,7 +13,7 @@ import { getFileById } from "@/lib/uploads";
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await apiUser(request);
-  if (!user) return new Response("Sessao expirada.", { status: 401 });
+  if (!user) return new Response("Sessão expirada.", { status: 401 });
   const { id } = await params;
   if (!/^[0-9a-f]{32}$/.test(id)) return new Response("Not found", { status: 404 });
 
@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   );
   if (!vinculo) return new Response("Not found", { status: 404 });
   if (!(await isParticipant(vinculo.conversation_id, user.id))) {
-    return new Response("Sem permissao.", { status: 403 });
+    return new Response("Sem permissão.", { status: 403 });
   }
 
   const file = await getFileById(id);

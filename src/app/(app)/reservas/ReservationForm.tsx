@@ -24,7 +24,7 @@ export default function ReservationForm({
   isAdmin,
   defaultCustomerId,
   freteInicial,
-  submitLabel = "Salvar reserva",
+  submitLabel = "Salvar Reserva",
   preparationMinutes = 0,
 }: {
   action: Action;
@@ -117,7 +117,7 @@ export default function ReservationForm({
       <input type="hidden" name="discount" value={discount} />
 
       <section className="cartao p-4">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Cliente e evento</h2>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Cliente e Evento</h2>
         <div className="space-y-3">
           <Field label="Cliente *">
             <div className="flex gap-2">
@@ -128,7 +128,7 @@ export default function ReservationForm({
                 className="campo flex-1"
                 required
               >
-                <option value="">Selecione...</option>
+                <option value="">Selecione…</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -155,12 +155,12 @@ export default function ReservationForm({
                 required
               />
             </Field>
-            <Field label="Horario do evento">
+            <Field label="Horário do evento">
               <input name="event_time" type="time" defaultValue={reservation?.event_time ?? ""} className="campo" />
             </Field>
           </Grid>
 
-          <Field label="Endereco do evento">
+          <Field label="Endereço do evento">
             <input name="address" value={address} onChange={(e) => setAddress(e.target.value)} className="campo" />
           </Field>
           <Grid>
@@ -222,7 +222,7 @@ export default function ReservationForm({
       <section className="cartao p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase tracking-wide text-stone-500">Itens</h2>
-          {checking && <span className="text-xs text-stone-400">verificando estoque...</span>}
+          {checking && <span className="text-xs text-stone-400">Verificando estoque…</span>}
         </div>
 
         {conflicts.length > 0 && (
@@ -241,7 +241,7 @@ export default function ReservationForm({
                 </label>
               ) : (
                 <p className="mt-2 text-xs font-semibold">
-                  Ajuste as quantidades ou peca autorizacao ao administrador.
+                  Ajuste as quantidades ou peça autorização ao administrador.
                 </p>
               )}
             </Alerta>
@@ -252,7 +252,7 @@ export default function ReservationForm({
       </section>
 
       <section className="cartao p-4">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Servicos e valores</h2>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Serviços e Valores</h2>
         <Grid>
           <Field label="Frete (R$)">
             <input value={freight} onChange={(e) => setFreight(e.target.value)} inputMode="decimal" className="campo" />
@@ -268,13 +268,13 @@ export default function ReservationForm({
               className="campo"
             />
           </Field>
-          <Field label="Outros servicos (R$)">
+          <Field label="Outros serviços (R$)">
             <input value={other} onChange={(e) => setOther(e.target.value)} inputMode="decimal" className="campo" />
           </Field>
           <Field label="Desconto (R$)">
             <input value={discount} onChange={(e) => setDiscount(e.target.value)} inputMode="decimal" className="campo" />
           </Field>
-          <Field label="Caucao (R$)" hint="Valor separado da locacao.">
+          <Field label="Caução (R$)" hint="Valor separado da locação.">
             <input
               name="deposit"
               defaultValue={cents(reservation?.deposit_cents)}
@@ -371,7 +371,7 @@ export default function ReservationForm({
                   />
                   <span>
                     <span className="block font-semibold text-tinta-900">Agendar pagamento</span>
-                    <span className="block text-xs text-stone-500">Fica como previsto ate confirmar o recebimento.</span>
+                    <span className="block text-xs text-stone-500">Fica como previsto até confirmar o recebimento.</span>
                   </span>
                 </label>
               </div>
@@ -401,7 +401,7 @@ export default function ReservationForm({
                   <>
                     <Linha label="Adiantamento agendado (a receber)" value={money(parseMoney(advanceAmount))} />
                     <p className="pt-1 text-xs text-stone-500">
-                      Nada e descontado do saldo ate o recebimento ser confirmado.
+                      Nada é descontado do saldo até o recebimento ser confirmado.
                     </p>
                   </>
                 )}
@@ -422,7 +422,7 @@ export default function ReservationForm({
               ))}
             </select>
           </Field>
-          <Field label="Observacoes">
+          <Field label="Observações">
             <input name="notes" defaultValue={reservation?.notes ?? ""} className="campo" />
           </Field>
         </Grid>

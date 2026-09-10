@@ -14,7 +14,7 @@ import { UploadError } from "@/lib/uploads";
  */
 export async function GET(request: Request) {
   const user = await apiUser(request);
-  if (!user) return Response.json({ error: "Sessao expirada." }, { status: 401 });
+  if (!user) return Response.json({ error: "Sessão expirada." }, { status: 401 });
   const url = new URL(request.url);
   const c = Number(url.searchParams.get("c")) || 0;
 
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const user = await apiUser(request, true);
-  if (!user) return Response.json({ error: "Sessao expirada ou origem invalida." }, { status: 401 });
+  if (!user) return Response.json({ error: "Sessão expirada ou origem inválida." }, { status: 401 });
   try {
     if (!(await rateLimit(`chat:${user.id}`, 60))) {
       return Response.json({ error: "Muitas mensagens seguidas. Aguarde um instante." }, { status: 429 });
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const user = await apiUser(request, true);
-  if (!user) return Response.json({ error: "Sessao expirada ou origem invalida." }, { status: 401 });
+  if (!user) return Response.json({ error: "Sessão expirada ou origem inválida." }, { status: 401 });
   try {
     const input = (await request.json()) as { action?: string; c?: number; arquivar?: boolean };
     const c = Number(input.c);
@@ -98,16 +98,16 @@ export async function PATCH(request: Request) {
       await archiveConversation(user.id, c, !!input.arquivar);
       return Response.json({ ok: true });
     }
-    throw new ChatError("Acao invalida.");
+    throw new ChatError("Ação inválida.");
   } catch (e) {
     if (e instanceof ChatError) return Response.json({ error: e.message }, { status: 400 });
-    return Response.json({ error: "Falha na operacao." }, { status: 500 });
+    return Response.json({ error: "Falha na operação." }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   const user = await apiUser(request, true);
-  if (!user) return Response.json({ error: "Sessao expirada ou origem invalida." }, { status: 401 });
+  if (!user) return Response.json({ error: "Sessão expirada ou origem inválida." }, { status: 401 });
   try {
     const id = Number(new URL(request.url).searchParams.get("id"));
     await deleteMessage(user.id, id);

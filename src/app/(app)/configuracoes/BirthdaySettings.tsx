@@ -26,17 +26,17 @@ export default function BirthdaySettings({ settings, admin }: { settings: Record
             disabled={!admin}
             className="h-4 w-4"
           />
-          Avisar automaticamente sobre aniversarios
+          Avisar automaticamente sobre aniversários
         </label>
         <p className="mt-1 text-xs text-stone-500">
-          Desligado, a tela de Aniversariantes continua disponivel, mas o sistema nao gera aviso nem push.
+          Desligado, a tela de Aniversariantes continua disponível, mas o sistema não gera aviso nem push.
         </p>
       </section>
 
       <section className="cartao p-4">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Quando avisar</h3>
         <Grid>
-          <Field label="Antecedencia (dias)" hint="Quantos dias antes o sistema avisa. 0 avisa so no dia.">
+          <Field label="Antecedência (dias)" hint="Quantos dias antes o sistema avisa. 0 avisa somente no dia.">
             <input
               name="days_ahead"
               type="number"
@@ -81,7 +81,7 @@ export default function BirthdaySettings({ settings, admin }: { settings: Record
               disabled={!admin}
               className="h-4 w-4"
             />
-            Avisar sobre os aniversarios proximos
+            Avisar sobre os aniversários próximos
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -92,16 +92,16 @@ export default function BirthdaySettings({ settings, admin }: { settings: Record
               disabled={!admin}
               className="h-4 w-4"
             />
-            Enviar tambem como notificacao no celular
+            Enviar também como notificação no celular
           </label>
         </div>
         <p className="mt-2 text-xs text-stone-500">
-          O aviso vai para o sino de todos os usuarios ativos. Quem desligou o tipo &quot;Aniversariantes&quot; nas suas
-          preferencias nao recebe push.
+          O aviso vai para o sino de todos os usuários ativos. Quem desligou o tipo &quot;Aniversariantes&quot; nas suas
+          preferências não recebe push.
         </p>
       </section>
 
-      {admin && <SubmitButton>Salvar aniversarios</SubmitButton>}
+      {admin && <SubmitButton>Salvar Aniversários</SubmitButton>}
     </form>
   );
 }

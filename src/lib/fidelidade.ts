@@ -213,13 +213,13 @@ export type EventoFidelidade =
   | "reversao";
 
 export const EVENTOS: Record<EventoFidelidade, string> = {
-  progresso: "Avanco no programa",
+  progresso: "Avanço no programa",
   quase_la: "Cliente perto da recompensa",
   conquista: "Recompensa conquistada",
   uso: "Recompensa utilizada",
   vencendo: "Recompensa perto de vencer",
   expirada: "Recompensa expirada",
-  reversao: "Pontuacao revertida",
+  reversao: "Pontuação revertida",
 };
 
 /**
@@ -251,25 +251,25 @@ export const VARIAVEIS_FIDELIDADE = [
 
 export const MODELOS_PADRAO: Record<EventoFidelidade, string> = {
   progresso:
-    "Obrigado pela sua locacao, {cliente_nome}! Voce ja tem {locacoes_realizadas} de {locacoes_necessarias} locacoes no nosso programa de fidelidade. Faltam {locacoes_restantes} para ganhar ate {quantidade_kits} kits gratis.",
+    "Obrigado pela sua locação, {cliente_nome}! Você já tem {locacoes_realizadas} de {locacoes_necessarias} locações no nosso programa de fidelidade. Faltam {locacoes_restantes} para ganhar até {quantidade_kits} kits grátis.",
   quase_la:
-    "Falta apenas {locacoes_restantes} locacao para voce conquistar ate {quantidade_kits} kits gratis, {cliente_nome}! Obrigado por escolher a {empresa_nome}.",
+    "Falta apenas {locacoes_restantes} locação para você conquistar até {quantidade_kits} kits grátis, {cliente_nome}! Obrigado por escolher a {empresa_nome}.",
   conquista:
-    "Parabens, {cliente_nome}! Voce completou {locacoes_necessarias} locacoes e conquistou ate {quantidade_kits} kits gratis. Fale com a gente para usar na sua proxima locacao.",
+    "Parabéns, {cliente_nome}! Você completou {locacoes_necessarias} locações e conquistou até {quantidade_kits} kits grátis. Fale com a gente para usar na sua próxima locação.",
   uso: "Sua recompensa de fidelidade foi utilizada na locacao {numero_locacao}. Obrigado por continuar escolhendo a {empresa_nome}!",
   vencendo:
-    "Voce tem uma recompensa de ate {quantidade_kits} kits gratis disponivel, {cliente_nome}. Ela vale ate {data_expiracao}.",
-  expirada: "Sua recompensa de ate {quantidade_kits} kits gratis expirou em {data_expiracao}.",
+    "Você tem uma recompensa de até {quantidade_kits} kits grátis disponível, {cliente_nome}. Ela vale até {data_expiracao}.",
+  expirada: "Sua recompensa de até {quantidade_kits} kits grátis expirou em {data_expiracao}.",
   reversao:
-    "A locacao {numero_locacao} foi cancelada e a pontuacao de fidelidade foi ajustada. Qualquer duvida, fale com a gente.",
+    "A locação {numero_locacao} foi cancelada e a pontuação de fidelidade foi ajustada. Qualquer dúvida, fale com a gente.",
 };
 
 /** Frase curta do progresso, usada na tela e nos avisos internos. */
 export function resumoProgresso(p: Progresso, kits: number): string {
-  if (p.faltam === 0 && p.pontos > 0) return `Meta atingida: ate ${kits} kits gratis`;
+  if (p.faltam === 0 && p.pontos > 0) return `Meta atingida: até ${kits} kits grátis`;
   return p.faltam === 1
-    ? `${p.noCiclo}/${p.meta} - falta 1 locacao para ate ${kits} kits gratis`
-    : `${p.noCiclo}/${p.meta} - faltam ${p.faltam} locacoes para ate ${kits} kits gratis`;
+    ? `${p.noCiclo}/${p.meta} · falta 1 locação para até ${kits} kits grátis`
+    : `${p.noCiclo}/${p.meta} · faltam ${p.faltam} locações para até ${kits} kits grátis`;
 }
 
 /** Antecedencias de lembrete, do mais distante ao mais proximo. */

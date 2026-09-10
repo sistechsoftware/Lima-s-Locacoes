@@ -12,7 +12,7 @@ export default async function CalculadoraFretePage() {
   const s = await getSettings();
 
   const config: ConfigFrete = {
-    fuelType: s.freight_fuel_type || "Combustivel",
+    fuelType: s.freight_fuel_type || "Combustível",
     fuelPriceCents: Number(s.freight_fuel_price_cents) || 0,
     consumption: Number(s.freight_consumption) || 0,
     costPerKmCents: Number(s.freight_cost_per_km_cents) || 0,
@@ -24,7 +24,7 @@ export default async function CalculadoraFretePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Calcular frete" subtitle="Quanto cobrar por uma viagem" />
+      <PageHeader title="Calcular Frete" subtitle="Quanto cobrar por uma viagem" />
       <Calculator configs={{ comum: freightConfig(s,"comum"), locacao: freightConfig(s,"locacao") }} salvarPreco={salvarPrecoCombustivel} />
     </div>
   );

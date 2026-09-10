@@ -36,7 +36,7 @@ function lerData(fd: FormData, campo: string): string | null {
 }
 
 async function validar(fd: FormData, productId: number, faixas: Faixa[], exceto?: number): Promise<string | null> {
-  if (!productId) return "Escolha o produto da promocao.";
+  if (!productId) return "Escolha o produto da promoção.";
 
   const problemas = validarFaixas(faixas);
   if (temErro(problemas)) {
@@ -45,7 +45,7 @@ async function validar(fd: FormData, productId: number, faixas: Faixa[], exceto?
 
   const inicio = lerData(fd, "starts_on");
   const fim = lerData(fd, "ends_on");
-  if (inicio && fim && fim < inicio) return "A data final nao pode ser anterior a data inicial.";
+  if (inicio && fim && fim < inicio) return "A data final não pode ser anterior à data inicial.";
 
   // duas promocoes valendo para a mesma quantidade deixariam o preco a sorte da
   // ordem da consulta; melhor recusar e deixar o operador decidir
@@ -88,7 +88,7 @@ export async function createPromotion(_prev: string | null, fd: FormData): Promi
     ],
   );
   await gravarFaixas(id, faixas);
-  await logAction(user, "criar", "promocao", id, `${user.name} criou uma promocao por quantidade`);
+  await logAction(user, "criar", "promocao", id, `${user.name} criou uma promoção por quantidade`);
   revalidatePath("/promocoes");
   redirect(`/promocoes/${id}`);
 }
@@ -116,7 +116,7 @@ export async function updatePromotion(_prev: string | null, fd: FormData): Promi
   );
   await gravarFaixas(id, faixas);
   // documentos ja salvos guardam o proprio preco: mudar a promocao nao mexe neles
-  await logAction(user, "editar", "promocao", id, `${user.name} alterou a promocao`);
+  await logAction(user, "editar", "promocao", id, `${user.name} alterou a promoção`);
   revalidatePath("/promocoes");
   revalidatePath(`/promocoes/${id}`);
   redirect(`/promocoes/${id}`);
@@ -129,7 +129,7 @@ export async function togglePromotion(fd: FormData) {
   if (!promocao) return;
   const novo = promocao.active ? 0 : 1;
   await run(`UPDATE promotions SET active=?, updated_at=datetime('now','localtime') WHERE id=?`, [novo, id]);
-  await logAction(user, "editar", "promocao", id, `${user.name} ${novo ? "ativou" : "desativou"} a promocao`);
+  await logAction(user, "editar", "promocao", id, `${user.name} ${novo ? "ativou" : "desativou"} a promoção`);
   revalidatePath("/promocoes");
   revalidatePath(`/promocoes/${id}`);
 }
@@ -148,7 +148,7 @@ export async function deletePromotion(fd: FormData) {
   );
   if (!promocao) return;
   await run(`DELETE FROM promotions WHERE id = ?`, [id]);
-  await logAction(user, "excluir", "promocao", id, `${user.name} excluiu a promocao de ${promocao.product_name}`);
+  await logAction(user, "excluir", "promocao", id, `${user.name} excluiu a promoção de ${promocao.product_name}`);
   revalidatePath("/promocoes");
   redirect("/promocoes");
 }

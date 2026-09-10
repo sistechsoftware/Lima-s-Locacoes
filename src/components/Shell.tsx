@@ -29,7 +29,7 @@ export function Sidebar({ company, logo }: { company: string; logo?: string }) {
         )}
         <span className="min-w-0">
           <span className="block truncate text-sm font-bold leading-tight text-tinta-900">{company}</span>
-          <span className="block text-[0.68rem] uppercase tracking-wide text-stone-400">Gestao de locacoes</span>
+          <span className="block text-[0.68rem] uppercase tracking-wide text-stone-400">Gestão de Locações</span>
         </span>
       </Link>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
@@ -87,7 +87,7 @@ export function TopBar({
 
         <Link
           href="/notificacoes"
-          aria-label="Notificacoes"
+          aria-label="Notificações"
           className="relative shrink-0 rounded-xl p-2 text-tinta-700 hover:bg-nuvem-100"
         >
           <Icon name="sino" />
@@ -102,7 +102,7 @@ export function TopBar({
           <button
             onClick={() => setOpen((v) => !v)}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-marca-600 text-xs font-bold text-white"
-            aria-label="Menu do usuario"
+            aria-label="Menu do usuário"
           >
             {initials(user.name)}
           </button>
@@ -119,7 +119,7 @@ export function TopBar({
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-nuvem-50"
                 >
-                  <Icon name="configuracoes" className="h-4 w-4" /> Configuracoes
+                  <Icon name="configuracoes" className="h-4 w-4" /> Configurações
                 </Link>
                 <form action="/api/logout" method="post">
                   <button className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
@@ -225,13 +225,13 @@ export function BottomNav() {
 /* ------------------------------ botao flutuante ------------------------------- */
 
 const ACOES = [
-  { href: "/reservas/nova", label: "Nova reserva", icon: "reservas" },
-  { href: "/orcamentos/novo", label: "Novo orçamento", icon: "orcamento" },
-  { href: "/clientes/novo", label: "Novo cliente", icon: "clientes" },
-  { href: "/operacao/nova", label: "Nova entrega", icon: "operacao" },
-  { href: "/fretes/novo", label: "Novo frete", icon: "fretes" },
-  { href: "/compras/nova", label: "Nova compra", icon: "estoque" },
-  { href: "/fretes/calculadora", label: "Calcular frete", icon: "financeiro" },
+  { href: "/reservas/nova", label: "Nova Reserva", icon: "reservas" },
+  { href: "/orcamentos/novo", label: "Novo Orçamento", icon: "orcamento" },
+  { href: "/clientes/novo", label: "Novo Cliente", icon: "clientes" },
+  { href: "/operacao/nova", label: "Nova Entrega", icon: "operacao" },
+  { href: "/fretes/novo", label: "Novo Frete", icon: "fretes" },
+  { href: "/compras/nova", label: "Nova Compra", icon: "estoque" },
+  { href: "/fretes/calculadora", label: "Calcular Frete", icon: "financeiro" },
 ];
 
 export function FloatingAction() {
@@ -261,7 +261,7 @@ export function FloatingAction() {
           ))}
         <button
           onClick={() => setOpen((v) => !v)}
-          aria-label="Acoes rapidas"
+          aria-label="Ações rápidas"
           className="flex h-14 w-14 items-center justify-center rounded-full bg-marca-600 text-white shadow-xl transition active:scale-95"
         >
           <Icon name={open ? "fechar" : "mais"} className="h-7 w-7" />

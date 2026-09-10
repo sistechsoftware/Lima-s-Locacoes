@@ -120,13 +120,13 @@ export default function ItemsEditor({
     <div className="space-y-3">
       <div className="flex gap-2">
         <select value={picker} onChange={(e) => add(Number(e.target.value))} className="campo flex-1">
-          <option value="">+ Adicionar produto...</option>
+          <option value="">+ Adicionar produto…</option>
           {grouped.map(([cat, list]) => (
             <optgroup key={cat} label={cat}>
               {list.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.kind === "kit" ? "[KIT] " : ""}
-                  {p.name} - {money(p.rent_price_cents)}
+                  {p.name} · {money(p.rent_price_cents)}
                 </option>
               ))}
             </optgroup>
@@ -164,8 +164,8 @@ export default function ItemsEditor({
                       {p?.kind === "kit"
                         ? p?.composition
                           ? `Consome ${p.composition} por unidade`
-                          : "Kit sem composicao definida"
-                        : `${p?.code} - estoque total ${p?.total_qty}`}
+                          : "Kit sem composição definida"
+                        : `${p?.code} · estoque total ${p?.total_qty}`}
                     </p>
                   </div>
                   <button
@@ -235,7 +235,7 @@ export default function ItemsEditor({
 
                 {promo.promocional && !item.preco_manual && (
                   <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-emerald-50 px-2 py-1.5 text-xs text-emerald-800">
-                    <span className="font-bold">Promocao aplicada</span>
+                    <span className="font-bold">Promoção aplicada</span>
                     <span>
                       {rotuloFaixa(promo.faixa!)}: {money(promo.unit_price_cents)} cada
                     </span>
@@ -249,14 +249,14 @@ export default function ItemsEditor({
                 )}
                 {item.preco_manual && p?.promocao && (
                   <p className="mt-2 text-xs text-stone-500">
-                    Preco digitado a mao: a promocao nao esta sendo aplicada nesta linha.
+                    Preço digitado à mão: a promoção não está sendo aplicada nesta linha.
                   </p>
                 )}
 
                 <div className="mt-2 flex items-center justify-between">
                   {info ? (
                     <span className="text-xs font-bold text-red-700">
-                      Faltam {info.missing} - disponivel {info.available}
+                      Faltam {info.missing} · disponível {info.available}
                       {p?.kind === "kit" ? " kit(s)" : ""}
                     </span>
                   ) : (

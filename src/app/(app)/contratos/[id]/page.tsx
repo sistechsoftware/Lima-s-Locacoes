@@ -53,7 +53,7 @@ export default async function ContratoPage({
       <div className="nao-imprimir space-y-4">
         <PageHeader
           title={c.number}
-          subtitle={`${c.customer_name} - reserva ${c.reservation_number}`}
+          subtitle={`${c.customer_name} · reserva ${c.reservation_number}`}
           action={
             <>
               <PrintButton />
@@ -69,23 +69,23 @@ export default async function ContratoPage({
 
         {sp.erro && <Alerta tone="vermelho">{sp.erro}</Alerta>}
 
-        <Section title="Assinatura virtual">
+        <Section title="Assinatura Virtual">
           {assinada ? (
             <>
               <Alerta tone="verde" title="Contrato assinado">
-                Assinado por {assinada.signer_name} em {dateTimeBR(assinada.signed_at)}. A versao assinada esta
-                congelada: editar o contrato aqui nao altera o documento que o cliente aceitou.
+                Assinado por {assinada.signer_name} em {dateTimeBR(assinada.signed_at)}. A versão assinada está
+                congelada: editar o contrato aqui não altera o documento que o cliente aceitou.
               </Alerta>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <Link
                   href={`/contratos/assinado/${assinada.id}`}
                   className="rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
                 >
-                  Ver documento assinado
+                  Ver Documento Assinado
                 </Link>
                 {assinada.document_hash && (
                   <span className="text-xs text-stone-400">
-                    verificacao SHA-256 {String(assinada.document_hash).slice(0, 16)}...
+                    verificação SHA-256 {String(assinada.document_hash).slice(0, 16)}…
                   </span>
                 )}
               </div>
@@ -103,7 +103,7 @@ export default async function ContratoPage({
                     <p className="text-sm font-semibold text-tinta-900">Link ativo, aguardando assinatura</p>
                     <p className="text-xs text-stone-500">
                       Criado em {utcParaLocal(pendente.created_at)}
-                      {pendente.expires_at ? ` - expira em ${dateTimeBR(pendente.expires_at)}` : " - sem expiracao"}
+                      {pendente.expires_at ? ` · expira em ${dateTimeBR(pendente.expires_at)}` : " · sem expiração"}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -114,7 +114,7 @@ export default async function ContratoPage({
                     <form action={revogarLinkAssinatura}>
                       <input type="hidden" name="id" value={pendente.id} />
                       <input type="hidden" name="contract_id" value={c.id} />
-                      <SubmitButton variant="perigo" confirm="Revogar este link? O cliente nao conseguira mais assinar.">
+                      <SubmitButton variant="perigo" confirm="Revogar este link? O cliente não conseguirá mais assinar.">
                         Revogar
                       </SubmitButton>
                     </form>
@@ -127,7 +127,7 @@ export default async function ContratoPage({
                   </p>
                   <form action={gerarLinkAssinatura}>
                     <input type="hidden" name="id" value={c.id} />
-                    <SubmitButton>Gerar link para assinatura</SubmitButton>
+                    <SubmitButton>Gerar Link para Assinatura</SubmitButton>
                   </form>
                 </div>
               )}
@@ -165,10 +165,8 @@ export default async function ContratoPage({
             <form action={regenerateContract}>
               <input type="hidden" name="id" value={c.id} />
               <SubmitButton
-                variant="secundario"
-                confirm="Regerar o texto com os dados atuais da reserva? O texto atual sera substituido."
-              >
-                Regerar texto
+                variant="secundario"confirm="Regerar o texto com os dados atuais da reserva? O texto atual será substituído.">
+                Regerar Texto
               </SubmitButton>
             </form>
             {user.role === "admin" && (
@@ -176,7 +174,7 @@ export default async function ContratoPage({
                 href={`/contratos/${c.id}?editar=1`}
                 className="inline-flex items-center rounded-xl border border-nuvem-300 bg-white px-4 py-2.5 text-sm font-semibold"
               >
-                Editar texto
+                Editar Texto
               </Link>
             )}
           </div>
@@ -187,7 +185,7 @@ export default async function ContratoPage({
             <form action={saveContractBody} className="space-y-2">
               <input type="hidden" name="id" value={c.id} />
               <textarea name="body" defaultValue={c.body} rows={20} className="campo font-mono text-xs" />
-              <SubmitButton>Salvar texto</SubmitButton>
+              <SubmitButton>Salvar Texto</SubmitButton>
             </form>
           </Card>
         )}

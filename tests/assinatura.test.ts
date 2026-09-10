@@ -113,14 +113,14 @@ describe("validacao do que a pagina publica manda", () => {
     // enviado, mas nao e uma imagem de verdade
     assert.match(
       validarEntrada({ nome: "Joao Ribeiro", aceite: true, imagem: "data:image/png;base64,AA" }) ?? "",
-      /invalida/i,
+      /inválida/i,
     );
   });
 
   it("recusa arquivo que nao e PNG, mesmo disfarcado", () => {
     assert.match(
       validarEntrada({ nome: "Joao Ribeiro", aceite: true, imagem: "data:text/html;base64," + "x".repeat(300) }) ?? "",
-      /invalida/i,
+      /inválida/i,
     );
   });
 

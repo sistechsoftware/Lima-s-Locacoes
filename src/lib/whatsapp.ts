@@ -24,7 +24,7 @@ export async function messagesForReservation(reservation: any, itemsSummary: str
     itens: itemsSummary,
     valor_total: money(reservation.total_cents),
     saldo: money(balanceCents),
-    pix: s.pix_key || "(configure a chave Pix em Configuracoes)",
+    pix: s.pix_key || "(configure a chave Pix em Configurações)",
   };
 
   const build = (key: string, label: string, template: string): WaMessage => {
@@ -33,10 +33,10 @@ export async function messagesForReservation(reservation: any, itemsSummary: str
   };
 
   return [
-    build("confirm", "Confirmacao", s.wa_confirm),
+    build("confirm", "Confirmação", s.wa_confirm),
     build("delivery", "Lembrete de entrega", s.wa_delivery),
     build("pickup", "Lembrete de retirada", s.wa_pickup),
-    build("payment", "Cobranca de saldo", s.wa_payment),
+    build("payment", "Cobrança de saldo", s.wa_payment),
   ];
 }
 
@@ -51,7 +51,7 @@ export async function messageForQuote(quote: any, itemsSummary: string): Promise
     itens: itemsSummary,
     valor_total: money(quote.total_cents),
   });
-  return { key: "quote", label: "Enviar orcamento", href: waLink(phone, text), text };
+  return { key: "quote", label: "Enviar orçamento", href: waLink(phone, text), text };
 }
 
 export function plainMessage(phone: string | null | undefined, text: string): WaMessage {

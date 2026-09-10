@@ -148,13 +148,13 @@ export function textoAviso(
     const lista = listar(nomes);
     return {
       title: nomes.length === 1 ? "Aniversariante de hoje" : `Aniversariantes de hoje (${nomes.length})`,
-      body: nomes.length === 1 ? `Hoje e aniversario de ${lista}.` : `Hoje e aniversario de ${lista}.`,
+      body: nomes.length === 1 ? `Hoje é aniversario de ${lista}.` : `Hoje é aniversario de ${lista}.`,
     };
   }
-  const quando = dias === 1 ? "amanha" : `em ${dias} dias`;
+  const quando = dias === 1 ? "amanhã" : `em ${dias} dias`;
   return {
-    title: "Aniversario proximo",
-    body: nomes.length === 1 ? `${nomes[0]} faz aniversario ${quando}.` : `${listar(nomes)} fazem aniversario ${quando}.`,
+    title: "Aniversário próximo",
+    body: nomes.length === 1 ? `${nomes[0]} faz aniversário ${quando}.` : `${listar(nomes)} fazem aniversário ${quando}.`,
   };
 }
 
@@ -173,4 +173,4 @@ export function listar(nomes: string[], limite = 3): string {
 export const primeiroNome = (nome: string) => String(nome ?? "").trim().split(/\s+/)[0] ?? "";
 
 export const MODELO_PARABENS =
-  "Feliz aniversario, {cliente_nome}! Toda a equipe da {empresa_nome} deseja um dia muito especial. Conte com a gente na sua proxima festa!";
+  "Feliz aniversário, {cliente_nome}! Toda a equipe da {empresa_nome} deseja um dia muito especial. Conte com a gente na sua próxima festa!";

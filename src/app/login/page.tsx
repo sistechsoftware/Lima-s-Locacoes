@@ -29,7 +29,7 @@ export default async function LoginPage() {
         <p className="mt-5 text-center text-xs leading-relaxed text-stone-500">
           Acesso inicial: <b>admin / admin123</b> ou <b>operador / operador123</b>
           <br />
-          Altere as senhas em Configuracoes apos o primeiro acesso.
+          Altere as senhas em Configurações após o primeiro acesso.
         </p>
       </div>
     </main>

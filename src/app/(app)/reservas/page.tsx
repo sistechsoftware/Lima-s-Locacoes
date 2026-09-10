@@ -75,10 +75,10 @@ export default async function ReservasPage({
       <PageHeader
         title="Reservas"
         subtitle={`${total} reserva(s)`}
-        action={<LinkButton href="/reservas/nova" variant="primario">+ Nova reserva</LinkButton>}
+        action={<LinkButton href="/reservas/nova" variant="primario">+ Nova Reserva</LinkButton>}
       />
 
-      <SearchForm action="/reservas" placeholder="LIMA-001, cliente, endereco..." defaultValue={q}>
+      <SearchForm action="/reservas" placeholder="LIMA-001, cliente, endereço…" defaultValue={q}>
         {/* min-w-0: dentro do flex do SearchForm, deixa o select encolher no
             celular sem empurrar o campo de busca para fora da tela */}
         <select name="status" defaultValue={status} className="campo min-w-[9rem] basis-36 sm:w-auto">
@@ -111,7 +111,7 @@ export default async function ReservasPage({
                   </>
                 }
                 title={`${r.number} - ${r.customer_name}`}
-                subtitle={`${dateBR(r.event_date)}${r.event_time ? ` as ${r.event_time}` : ""}`}
+                subtitle={`${dateBR(r.event_date)}${r.event_time ? ` às ${r.event_time}` : ""}`}
                 meta={[r.address, r.district].filter(Boolean).join(", ")}
                 right={<p className="text-sm font-bold">{money(r.total_cents)}</p>}
                 body={<ReservationItems items={itensPorReserva.get(r.id) ?? []} />}

@@ -7,11 +7,11 @@ import { logAction } from "@/lib/audit";
 export async function loginAction(_prev: string | null, formData: FormData): Promise<string | null> {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  if (!username || !password) return "Informe usuario e senha.";
+  if (!username || !password) return "Informe usuário e senha.";
 
   const user = await one<any>(`SELECT * FROM users WHERE lower(username) = ?`, [username]);
   if (!user || !user.active || !verifyPassword(password, user.password_hash)) {
-    return "Usuario ou senha invalidos.";
+    return "Usuário ou senha inválidos.";
   }
   await createSession(user.id);
   await logAction({ id: user.id, name: user.name, username: user.username, role: user.role }, "login", "usuario", user.id, `${user.name} entrou no sistema`);

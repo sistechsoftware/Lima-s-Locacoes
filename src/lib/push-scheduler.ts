@@ -38,10 +38,10 @@ export function sanitizeError(e: unknown): string {
 
 /** Texto que o dono do aparelho ve, com o caminho da solucao quando existe. */
 export function explicaFalha(status: number, falha: string): string {
-  if (status === 401 || status === 403) return "Servidor recusou a credencial VAPID. Confira as chaves em producao.";
-  if (status === 413) return "Mensagem grande demais para o servico de push.";
-  if (status === 429) return "Servico de push pediu para reduzir o ritmo. Sera reenviado.";
-  if (status >= 500) return "Servico de push indisponivel no momento. Sera reenviado.";
+  if (status === 401 || status === 403) return "Servidor recusou a credencial VAPID. Confira as chaves em produção.";
+  if (status === 413) return "Mensagem grande demais para o serviço de push.";
+  if (status === 429) return "Serviço de push pediu para reduzir o ritmo. Será reenviado.";
+  if (status >= 500) return "Serviço de push indisponível no momento. Será reenviado.";
   if (status) return `Falha de envio (HTTP ${status}).`;
   return falha ? `Falha de envio: ${falha}` : "Falha de envio (rede).";
 }
@@ -77,7 +77,7 @@ export async function runNotificationScheduler(db: D1Database, now = Math.floor(
     }
     const type = notificationType(e.event_type,e.kind);
     const rule = await db.prepare("SELECT message FROM notification_rules WHERE type=?").bind(type).first<{ message: string }>();
-    const prefix = e.event_type === "reminder" ? (e.offset_minutes ? `Em ${e.offset_minutes} min` : "Agora") : e.event_type === "cancelamento" ? "Cancelamento" : e.event_type === "alteracao" ? "Alteracao" : "Novo agendamento";
+    const prefix = e.event_type === "reminder" ? (e.offset_minutes ? `Em ${e.offset_minutes} min` : "Agora") : e.event_type === "cancelamento" ? "Cancelamento" : e.event_type === "alteracao" ? "Alteração" : "Novo agendamento";
     let title = `${prefix}: ${e.title}`.slice(0,180);
     let body = (rule?.message || `${e.title} — ${e.scheduled_at.replace("T"," ")}. Abra para conferir os detalhes.`).slice(0,500);
     // Adiantamento: a mesma fila de lembrete de qualquer financial_entries,

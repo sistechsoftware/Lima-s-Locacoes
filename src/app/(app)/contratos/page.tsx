@@ -40,7 +40,7 @@ export default async function ContratosPage({
   return (
     <div className="space-y-4">
       <PageHeader title="Contratos" subtitle={`${total} contrato(s)`} />
-      <SearchForm action="/contratos" placeholder="CTR-001, LIMA-001, cliente..." defaultValue={q} hidden={{ aba }} />
+      <SearchForm action="/contratos" placeholder="CTR-001, LIMA-001, cliente…" defaultValue={q} hidden={{ aba }} />
       <Tabs
         items={[{ value: "todos", label: "Todos" }, ...CONTRACT_STATUS.map((s) => ({ value: s.value, label: s.label }))]}
         current={aba}
@@ -49,7 +49,7 @@ export default async function ContratosPage({
 
       {rows.length === 0 ? (
         <Empty>
-          Nenhum contrato encontrado. Gere o contrato a partir da pagina de uma reserva.
+          Nenhum contrato encontrado. Gere o contrato a partir da página de uma reserva.
         </Empty>
       ) : (
         <div className="space-y-2">

@@ -24,7 +24,7 @@ export default function OperationForm({
   const [error, formAction] = useActionState(action, null);
   return (
     <form action={formAction} className="space-y-4">
-      <Field label="Tipo de operacao">
+      <Field label="Tipo de Operação">
         <select name="kind" defaultValue={defaultKind ?? "entrega"} className="campo">
           {OPERATION_KINDS.map((k) => (
             <option key={k.value} value={k.value}>
@@ -36,7 +36,7 @@ export default function OperationForm({
 
       <Field label="Reserva *">
         <select name="reservation_id" defaultValue={defaultReservation ?? ""} className="campo" required>
-          <option value="">Selecione...</option>
+          <option value="">Selecione…</option>
           {reservations.map((r) => (
             <option key={r.id} value={r.id}>
               {r.number} - {r.customer_name} ({r.event_date})
@@ -46,7 +46,7 @@ export default function OperationForm({
       </Field>
 
       <Grid>
-        <Field label="Data e horario *">
+        <Field label="Data e Horário *">
           <input name="scheduled_at" type="datetime-local" className="campo" required />
         </Field>
         <Field label="Status">
@@ -58,15 +58,15 @@ export default function OperationForm({
             ))}
           </select>
         </Field>
-        <Field label="Responsavel">
+        <Field label="Responsável">
           <input name="assignee" className="campo" placeholder="Quem vai executar" />
         </Field>
-        <Field label="Usuario responsavel pelos avisos" hint="Opcional. Quando definido, recebe com exclusividade.">
-          <select name="assignee_id" className="campo"><option value="">Equipe pelas funcoes</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select>
+        <Field label="Usuário responsável pelos avisos" hint="Opcional. Quando definido, recebe com exclusividade.">
+          <select name="assignee_id" className="campo"><option value="">Equipe pelas funções</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select>
         </Field>
-        <Field label="Veiculo">
+        <Field label="Veículo">
           <select name="vehicle_id" className="campo">
-            <option value="">Sem veiculo</option>
+            <option value="">Sem veículo</option>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name}
@@ -76,14 +76,14 @@ export default function OperationForm({
         </Field>
       </Grid>
 
-      <Field label="Observacoes">
+      <Field label="Observações">
         <textarea name="notes" rows={3} className="campo" />
       </Field>
 
       {error && (
         <p className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p>
       )}
-      <SubmitButton className="w-full sm:w-auto">Agendar operacao</SubmitButton>
+      <SubmitButton className="w-full sm:w-auto">Agendar Operação</SubmitButton>
     </form>
   );
 }

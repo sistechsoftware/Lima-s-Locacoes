@@ -13,7 +13,7 @@ import { pecasFisicas } from "@/lib/reservations";
  * funcionar sem JavaScript, no PWA instalado e na impressao.
  */
 export function ReservationItems({ items, limite = 3 }: { items: ItemResumo[]; limite?: number }) {
-  if (items.length === 0) return <p className="text-xs text-stone-400">Sem itens lancados.</p>;
+  if (items.length === 0) return <p className="text-xs text-stone-400">Sem itens lançados.</p>;
 
   const visiveis = items.slice(0, limite);
   const escondidos = items.slice(limite);
@@ -41,7 +41,7 @@ export function ReservationItems({ items, limite = 3 }: { items: ItemResumo[]; l
       )}
 
       {temKit && (
-        <p className="pt-0.5 text-[0.68rem] text-stone-400">Total fisico: {pecas} pecas</p>
+        <p className="pt-0.5 text-[0.68rem] text-stone-400">Total físico: {pecas} peças</p>
       )}
     </div>
   );

@@ -63,7 +63,7 @@ export default function ImageInput({
     const input = ref.current;
     if (!input?.files?.length) return;
 
-    setStatus("Preparando imagem...");
+    setStatus("Preparando imagem…");
     try {
       const originais = [...input.files];
       const prontos = await Promise.all(originais.map(comprimir));
@@ -80,7 +80,7 @@ export default function ImageInput({
           : `${prontos.length} imagem(ns) prontas.`,
       );
     } catch {
-      setStatus("Nao foi possivel preparar a imagem. Ela sera enviada como esta.");
+      setStatus("Não foi possível preparar a imagem. Ela será enviada como está.");
     }
   }
 
