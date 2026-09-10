@@ -2,6 +2,7 @@ import "server-only";
 import { all, getDb, insert, one, run } from "./db";
 import { getSettings } from "./settings";
 import { nowLocal, today } from "./format";
+import { buildContractBodyDigital } from "./contracts";
 import {
   bytesDaAssinatura,
   gerarToken,
@@ -73,6 +74,50 @@ export async function revogarLink(id: number): Promise<boolean> {
 }
 
 /**
+ * Primeiro acesso do cliente ao link define o corpo do contrato digital.
+ *
+ * O corpo vindo do modelo de impressao (gerado em ensureContract) e trocado ali
+ * mesmo pelo texto renderizado a partir do MODELO DIGITAL, com
+ * {{data_assinatura_digital}} resolvida para a data desta abertura. De la em
+ * diante o texto esta congelado: reabrir o link no dia seguinte nao muda a
+ * data, e editar o modelo digital depois nao altera o que o cliente ja leu.
+ *
+ * A gravacao usa a mesma trava otimista da assinatura (WHERE ... AND
+ * body_frozen_at IS NULL): duas aberturas simultaneas geram um congelamento so.
+ * Contratos assinados em versoes antigas, sem body_frozen_at, nao sao tocados.
+ */
+export async function congelarCorpoAoAbrir(registro: any): Promise<any> {
+  if (registro.body_frozen_at) return registro;
+  if (registro.status !== "pendente") return registro;
+  if (registro.expires_at && nowLocal() > registro.expires_at.slice(0, 19)) return registro;
+  if (registro.contract_status === "assinado") return registro;
+
+  const contrato = await one<any>(
+    `SELECT number, reservation_id, status FROM contracts WHERE id = ?`,
+    [registro.contract_id],
+  );
+  if (!contrato || contrato.status === "assinado") return registro;
+
+  // fuso do negocio: a data entra no formato "Uberlândia, 12 de setembro de 2026"
+  const corpoDigital = await buildContractBodyDigital(contrato.reservation_id, contrato.number);
+  const agora = nowLocal();
+
+  const marcou = await run(
+    `UPDATE contracts SET body = ?, body_frozen_at = ? WHERE id = ? AND body_frozen_at IS NULL`,
+    [corpoDigital, agora, registro.contract_id],
+  );
+  if (!marcou.meta.changes) {
+    // outra abertura congelou primeiro: leia o texto que ganhou a corrida
+    const existente = await one<any>(
+      `SELECT body, body_frozen_at FROM contracts WHERE id = ?`,
+      [registro.contract_id],
+    );
+    return { ...registro, body: existente?.body ?? registro.body, body_frozen_at: existente?.body_frozen_at ?? agora };
+  }
+  return { ...registro, body: corpoDigital, body_frozen_at: agora };
+}
+
+/**
  * Carrega o contrato pelo token da URL publica.
  *
  * A busca e pelo hash: o token nunca aparece no banco, e um token invalido nao
@@ -82,7 +127,7 @@ export async function porToken(token: string) {
   if (!TOKEN_VALIDO.test(token)) return null;
   const hash = await sha256(token);
   return await one<any>(
-    `SELECT a.*, c.number AS contract_number, c.body, c.status AS contract_status,
+    `SELECT a.*, c.number AS contract_number, c.body, c.status AS contract_status, c.body_frozen_at AS body_frozen_at,
             r.number AS reservation_number, r.event_date, r.address, r.district, r.city, r.total_cents,
             cli.name AS customer_name
        FROM contract_signatures a

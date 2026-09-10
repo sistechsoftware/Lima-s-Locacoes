@@ -68,8 +68,17 @@ export async function saveTemplates(fd: FormData) {
    */
   const modeloBruto = String(fd.get("contract_template") ?? "");
   const contract_template = contractUsesHtml(modeloBruto) ? sanitizeContractHtml(modeloBruto) : modeloBruto;
+  /*
+   * Modelo digital: mesma barreira de seguranca do impresso, salvamento
+   * independente — editar um modelo nao altera o outro.
+   */
+  const modeloBrutoDigital = String(fd.get("contract_template_digital") ?? "");
+  const contract_template_digital = contractUsesHtml(modeloBrutoDigital)
+    ? sanitizeContractHtml(modeloBrutoDigital)
+    : modeloBrutoDigital;
   await setSettings({
     contract_template,
+    contract_template_digital,
     wa_confirm: String(fd.get("wa_confirm") ?? ""),
     wa_delivery: String(fd.get("wa_delivery") ?? ""),
     wa_pickup: String(fd.get("wa_pickup") ?? ""),

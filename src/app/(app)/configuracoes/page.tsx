@@ -154,10 +154,16 @@ export default async function ConfiguracoesPage({
         <Section title="Modelos de contrato e WhatsApp">
           <form action={saveTemplates} className="space-y-4">
             <Field
-              label="Modelo do contrato / termo de responsabilidade"
-              hint="Use {{campo}} para inserir dados automaticamente e a barra acima para formatar (negrito, listas, alinhamento…)."
+              label="Modelo do contrato para impressão / termo de responsabilidade"
+              hint="Usado apenas nos contratos impressos e assinados à mão. Use {{campo}} para inserir dados automaticamente e a barra acima para formatar (negrito, listas, alinhamento…)."
             >
               <EditorContrato name="contract_template" valorInicial={s.contract_template} disabled={user.role !== "admin"} />
+            </Field>
+            <Field
+              label="Modelo do contrato digital (assinatura online)"
+              hint="Usado apenas no link de assinatura digital que o cliente abre. Além dos campos do contrato impresso, aceita {{data_assinatura_digital}}, que vira “Uberlândia, 12 de setembro de 2026” na data em que o cliente abrir o contrato para assinar."
+            >
+              <EditorContrato name="contract_template_digital" valorInicial={s.contract_template_digital} disabled={user.role !== "admin"} />
             </Field>
             <p className="text-xs text-stone-500">
               Campos do contrato: {"{{cliente}}"}, {"{{cliente_doc}}"} (CPF/CNPJ), {"{{cliente_telefone}}"},{" "}
@@ -168,6 +174,12 @@ export default async function ConfiguracoesPage({
               {"{{valor_itens}}"}, {"{{valor_frete}}"}, {"{{valor_montagem}}"}, {"{{valor_desmontagem}}"},{" "}
               {"{{valor_outros}}"}, {"{{valor_desconto}}"}, {"{{valor_total}}"}, {"{{valor_caucao}}"},{" "}
               {"{{data_hoje}}"}. Um campo sem cadastro vira uma linha para preencher à mão no impresso.
+            </p>
+            <p className="text-xs text-stone-500">
+              No modelo digital, além destes campos, está disponível a variável{" "}
+              <b>{"{{data_assinatura_digital}}"}</b>, que o sistema preenche com “Uberlândia, 12 de setembro de 2026”
+              na data em que o cliente abrir o contrato para assinar. A partir dessa abertura o texto fica congelado,
+              exatamente como o cliente leu.
             </p>
             <Grid>
               <Field label="Mensagem de confirmação">

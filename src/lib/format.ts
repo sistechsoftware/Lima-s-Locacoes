@@ -206,6 +206,19 @@ export function endOfMonth(dateISO: string): string {
   return calendarioISO(d);
 }
 
+/**
+ * Data por extenso em português, para o contrato digital.
+ *
+ * "2026-09-12" vira "12 de setembro de 2026". Segue a mesma regra das demais
+ * datas: a entrada e data de calendario (YYYY-MM-DD), sem fuso, e a formatacao
+ * usa os campos UTC — nunca o relogio do servidor, que roda em UTC e poderia
+ * deslocar o dia.
+ */
+export function dataPorExtensoBR(dataISO: string | null | undefined): string {
+  const d = parseLocal(dataISO);
+  return d ? d.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
+}
+
 export function daysBetween(a: string, b: string): number {
   const da = parseLocal(a)!, dbb = parseLocal(b)!;
   return Math.round((dbb.getTime() - da.getTime()) / 864e5);

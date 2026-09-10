@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { one, run } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
-import { buildContractBody, ensureContract } from "@/lib/contracts";
+import { buildContractBody, buildContractBodyDigital, ensureContract } from "@/lib/contracts";
 import { nowLocal, today } from "@/lib/format";
-import { gerarLink, revogarLink } from "@/lib/assinatura-db";
+import { assinaturasDoContrato, gerarLink, revogarLink } from "@/lib/assinatura-db";
 
 export async function generateContract(fd: FormData) {
   const user = await requireUser();
@@ -18,7 +18,14 @@ export async function generateContract(fd: FormData) {
   redirect(`/contratos/${id}`);
 }
 
-/** Regera o texto a partir do modelo atual e dos dados atuais da reserva. */
+/**
+ * Regera o texto a partir do modelo atual e dos dados atuais da reserva.
+ *
+ * O modelo segue o uso do contrato: com link de assinatura digital em aberto,
+ * o texto vem do MODELO DIGITAL — o que o cliente le no link; sem link, do
+ * modelo de impressao. Assinado, nada muda: o texto congelado nunca é
+ * sobrescrito (o redirect acima já bloqueia esse caminho).
+ */
 export async function regenerateContract(fd: FormData) {
   const user = await requireUser();
   const id = Number(fd.get("id"));
@@ -27,7 +34,11 @@ export async function regenerateContract(fd: FormData) {
   if (c.status === "assinado") {
     redirect(`/contratos/${id}?erro=${encodeURIComponent("Contrato assinado não pode ser regerado.")}`);
   }
-  const body = await buildContractBody(c.reservation_id, c.number);
+  const assinaturas = await assinaturasDoContrato(id);
+  const temLinkAberto = assinaturas.some((a: any) => a.status === "pendente");
+  const body = temLinkAberto
+    ? await buildContractBodyDigital(c.reservation_id, c.number)
+    : await buildContractBody(c.reservation_id, c.number);
   await run(`UPDATE contracts SET body = ? WHERE id = ?`, [body, id]);
   await logAction(user, "editar", "contrato", id, `${user.name} regerou o contrato ${c.number}`);
   revalidatePath(`/contratos/${id}`);
