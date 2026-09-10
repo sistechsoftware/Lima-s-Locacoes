@@ -4,6 +4,7 @@ import { impedimento, MENSAGEM_IMPEDIMENTO } from "@/lib/assinatura";
 import { getSettings } from "@/lib/settings";
 import { dateBR, dateTimeBR, money, nowLocal } from "@/lib/format";
 import PainelAssinatura from "./PainelAssinatura";
+import ContratoTexto from "@/components/ContratoTexto";
 
 export const dynamic = "force-dynamic";
 
@@ -65,9 +66,7 @@ export default async function AssinarPage({ params }: { params: Promise<{ token:
       <section className="cartao mb-4 p-4">
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-stone-500">Contrato</h2>
         <div className="max-h-[55vh] overflow-y-auto rounded-xl bg-white p-3">
-          <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-tinta-800">
-            {registro.body_snapshot || registro.body}
-          </pre>
+          <ContratoTexto texto={registro.body_snapshot || registro.body} className="break-words text-sm leading-relaxed text-tinta-800" />
         </div>
       </section>
 

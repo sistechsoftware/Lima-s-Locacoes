@@ -11,6 +11,7 @@ import { Alerta, Badge, Card, Empty, Field, Grid, PageHeader, Section } from "@/
 import { Tabs } from "@/components/List";
 import { SubmitButton } from "@/components/SubmitButton";
 import ImageInput from "@/components/ImageInput";
+import EditorContrato from "@/components/EditorContrato";
 import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveFreightSettings, saveTemplates, toggleUser } from "./actions";
 import { saveVehicle, deleteVehicle } from "../operacao/actions";
 import { createAccount, createSupplier } from "../compras/actions";
@@ -152,14 +153,11 @@ export default async function ConfiguracoesPage({
       {aba === "modelos" && (
         <Section title="Modelos de contrato e WhatsApp">
           <form action={saveTemplates} className="space-y-4">
-            <Field label="Modelo do contrato / termo de responsabilidade" hint="Use {{campo}} para inserir dados automaticamente.">
-              <textarea
-                name="contract_template"
-                defaultValue={s.contract_template}
-                rows={16}
-                className="campo font-mono text-xs"
-                disabled={user.role !== "admin"}
-              />
+            <Field
+              label="Modelo do contrato / termo de responsabilidade"
+              hint="Use {{campo}} para inserir dados automaticamente e a barra acima para formatar (negrito, listas, alinhamento…)."
+            >
+              <EditorContrato name="contract_template" valorInicial={s.contract_template} disabled={user.role !== "admin"} />
             </Field>
             <p className="text-xs text-stone-500">
               Campos do contrato: {"{{cliente}}"}, {"{{cliente_doc}}"} (CPF/CNPJ), {"{{cliente_telefone}}"},{" "}

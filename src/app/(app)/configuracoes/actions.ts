@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { getSettings, setSettings } from "@/lib/settings";
+import { contractUsesHtml, sanitizeContractHtml } from "@/lib/contract-html";
 
 export async function saveStockSettings(fd: FormData) {
   const user = await assertAdmin();
@@ -60,8 +61,15 @@ export async function saveCompanySettings(fd: FormData): Promise<void> {
 
 export async function saveTemplates(fd: FormData) {
   const user = await assertAdmin();
+  /**
+   * Modelo formatado (HTML vindo do editor) e sanitizado aqui, no servidor:
+   * a barreira de seguranca nunca depende do navegador. Modelo em texto puro
+   * e guardado exatamente como chegou, sem transformacao nenhuma.
+   */
+  const modeloBruto = String(fd.get("contract_template") ?? "");
+  const contract_template = contractUsesHtml(modeloBruto) ? sanitizeContractHtml(modeloBruto) : modeloBruto;
   await setSettings({
-    contract_template: String(fd.get("contract_template") ?? ""),
+    contract_template,
     wa_confirm: String(fd.get("wa_confirm") ?? ""),
     wa_delivery: String(fd.get("wa_delivery") ?? ""),
     wa_pickup: String(fd.get("wa_pickup") ?? ""),
