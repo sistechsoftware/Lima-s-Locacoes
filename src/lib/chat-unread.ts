@@ -1,13 +1,15 @@
-"use client";
-
-import { useSyncExternalStore } from "react";
-
 /**
  * Estado compartilhado do contador de mensagens nao lidas.
  *
+ * IMPORTANTE: este arquivo NAO pode ter "use client".
+ * Ele e importado pelo layout do servidor (para semear o primeiro quadro com
+ * os contadores vindos do banco) e por componentes cliente (para ler o estado).
+ * Se virasse referencia de cliente, chamar seedUnread() no servidor lancaria
+ * "Attempted to call seedUnread() from the server" e derrubaria todas as paginas
+ * autenticadas em producao — foi exatamente o bug corrigido aqui.
+ *
  * Uma unica fonte de verdade para o sino do topo, o badge do menu inferior e
- * a tela do chat: os tres leem daqui, entao nunca divergem (antes, o topo
- * consultava por conta propria e podia mostrar 3 enquanto o menu mostrava 2).
+ * a tela do chat: os tres leem daqui, entao nunca divergem.
  *
  * O polling e centralizado e adaptativo:
  *  - consulta pesada so a endpoint leve /api/chat/unread (duas contas, sem
@@ -20,9 +22,13 @@ import { useSyncExternalStore } from "react";
  *  - o chat dispara o evento "chat:atualizado" ao ler/enviar mensagem e o
  *    contador reconsulta na hora, sem esperar o proximo ciclo.
  *
- * A referida contagem de "quem quer polling" (hold/release) evita timers
- * duplicados: nao importa quantos componentes usem o contador, existe no
- * maximo um ciclo ativo por pagina.
+ * A contagem de "quem quer polling" (hold/release) evita timers duplicados:
+ * nao importa quantos componentes usem o contador, existe no maximo um ciclo
+ * ativo por pagina.
+ *
+ * O hook de leitura (useUnread) mora em @/lib/use-unread — arquivos com hook
+ * precisam de "use client" e este modulo precisa ficar livre de React para
+ * ser seguro de importar tanto no servidor quanto no cliente.
  */
 
 export type UnreadState = {
@@ -148,8 +154,12 @@ export function pokeUnread() {
   programar();
 }
 
-/** Sinaliza que um componente da pagina usa o contador (idempotente). */
+/**
+ * Sinaliza que um componente da pagina usa o contador (idempotente).
+ * So faz efeito no navegador: no servidor nao existe ciclo de polling.
+ */
 export function holdUnreadPolling() {
+  if (typeof window === "undefined") return;
   holders++;
   if (holders === 1) {
     document.addEventListener("visibilitychange", aoVisibilidade);
@@ -162,6 +172,7 @@ export function holdUnreadPolling() {
 
 /** Libera a participacao do componente; encerra o ciclo quando o ultimo sai. */
 export function releaseUnreadPolling() {
+  if (typeof window === "undefined") return;
   holders = Math.max(0, holders - 1);
   if (holders === 0) {
     if (timeout) {
@@ -174,14 +185,11 @@ export function releaseUnreadPolling() {
   }
 }
 
-function subscrever(cb: () => void) {
+/** Usado pelo hook de leitura (use-unread); nao altere o contrato. */
+export function subscrever(cb: () => void) {
   listeners.add(cb);
   return () => {
     listeners.delete(cb);
   };
 }
 
-/** Hook de leitura: re-renderiza so o que consome o contador, nada mais. */
-export function useUnread(): UnreadState {
-  return useSyncExternalStore(subscrever, getUnread, getUnread);
-}

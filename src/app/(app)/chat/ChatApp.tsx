@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icons";
 import Avatar from "@/components/Avatar";
-import { holdUnreadPolling, releaseUnreadPolling, seedUnread, useUnread } from "@/lib/chat-unread";
+import { holdUnreadPolling, releaseUnreadPolling, seedUnread } from "@/lib/chat-unread";
+import { useUnread } from "@/lib/use-unread";
 
 /* --------------------------------- tipos -------------------------------- */
 

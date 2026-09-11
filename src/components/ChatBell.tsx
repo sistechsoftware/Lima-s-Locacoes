@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { holdUnreadPolling, pokeUnread, releaseUnreadPolling, useUnread } from "@/lib/chat-unread";
+import { holdUnreadPolling, pokeUnread, releaseUnreadPolling } from "@/lib/chat-unread";
+import { useUnread } from "@/lib/use-unread";
 
 /**
  * Sino do chat: contador de mensagens nao lidas.

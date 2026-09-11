@@ -6,7 +6,8 @@ import { Icon } from "./Icons";
 import ChatBell from "./ChatBell";
 import Avatar from "./Avatar";
 import { EXTRA_NAV, MOBILE_NAV, NAV } from "@/lib/nav";
-import { pokeUnread, useUnread } from "@/lib/chat-unread";
+import { pokeUnread } from "@/lib/chat-unread";
+import { useUnread } from "@/lib/use-unread";
 
 type User = { id: number; name: string; role: string; avatar_url?: string | null };
 
