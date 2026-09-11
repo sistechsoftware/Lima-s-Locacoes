@@ -1,5 +1,5 @@
 import { apiUser, rateLimit } from "@/lib/api-security";
-import { ChatError, conversationsSnapshot, contactableUsers, listMessages, markRead, sendMessage, stateSince, unreadConversations, unreadMessages, deleteMessage } from "@/lib/chat";
+import { ChatError, conversationsSnapshot, contactableUsers, listMessages, markRead, sendMessage, stateSince, unreadCounters, deleteMessage } from "@/lib/chat";
 import { UploadError } from "@/lib/uploads";
 
 /**
@@ -20,14 +20,19 @@ export async function GET(request: Request) {
 
   try {
     if (!c) {
-      const [users, conversations, unreadMsgs, unreadConv] = await Promise.all([
+      const [users, snapshot, contadores] = await Promise.all([
         contactableUsers(user.id),
         conversationsSnapshot(user.id),
-        unreadMessages(user.id),
-        unreadConversations(user.id),
+        unreadCounters(user.id, true),
       ]);
       return Response.json(
-        { users, conversations: conversations.conversations, unread: unreadMsgs, unreadConversations: unreadConv },
+        {
+          users,
+          conversations: snapshot.conversations,
+          unread: contadores.unread,
+          unreadConversations: contadores.unreadConversations,
+          unreadPorConversa: contadores.conversations,
+        },
         { headers: { "Cache-Control": "no-store" } },
       );
     }
@@ -91,7 +96,11 @@ export async function PATCH(request: Request) {
     if (!c) throw new ChatError("Conversa inexistente.");
     if (input.action === "lida") {
       await markRead(user.id, c);
-      return Response.json({ ok: true });
+      // A leitura muda o contador: o PATCH responde com a mesma fonte usada
+      // pelo sino do topo e pelo menu inferior, e o cliente semeia na hora —
+      // sem esperar o proximo ciclo de polling.
+      const contadores = await unreadCounters(user.id, true);
+      return Response.json({ ok: true, ...contadores });
     }
     if (input.action === "arquivar") {
       const { archiveConversation } = await import("@/lib/chat");

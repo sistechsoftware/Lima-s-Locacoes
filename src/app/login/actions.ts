@@ -14,7 +14,7 @@ export async function loginAction(_prev: string | null, formData: FormData): Pro
     return "Usuário ou senha inválidos.";
   }
   await createSession(user.id);
-  await logAction({ id: user.id, name: user.name, username: user.username, role: user.role }, "login", "usuario", user.id, `${user.name} entrou no sistema`);
+  await logAction({ id: user.id, name: user.name, username: user.username, role: user.role, avatar_url: user.avatar_url ?? null }, "login", "usuario", user.id, `${user.name} entrou no sistema`);
   redirect("/dashboard");
 }
 

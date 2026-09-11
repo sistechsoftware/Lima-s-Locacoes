@@ -1,7 +1,26 @@
 import "server-only";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { all, batch, insert, one, run, scalar } from "./db";
 import type { SessionUser } from "./auth";
 import { saveChatAttachment } from "./uploads";
+import { webPushSender } from "./push-scheduler";
+
+/**
+ * Contexto Cloudflare da requisicao, quando existir.
+ *
+ * O push imediato usa o binding VAPID e o waitUntil do Worker. Fora de uma
+ * requisicao (testes automatizados) o contexto nao existe e o push segue
+ * pela fila do cron, que ja cobre esse caso — a funcao abaixo devolve null
+ * e o chamador simplesmente pula a entrega imediata.
+ */
+function contextoPush(): { env: CloudflareEnv; waitUntil: (p: Promise<any>) => void } | null {
+  try {
+    const { env, ctx } = getCloudflareContext();
+    return { env, waitUntil: (p: Promise<any>) => ctx?.waitUntil?.(p) ?? void p };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Chat entre usuarios.
@@ -22,8 +41,8 @@ const MAX_BODY = 4000;
 
 /** Usuarios ativos com quem se pode conversar (exceto o proprio). */
 export async function contactableUsers(me: number) {
-  return await all<{ id: number; name: string; username: string; role: string }>(
-    `SELECT id, name, username, role FROM users
+  return await all<{ id: number; name: string; username: string; role: string; avatar_url: string | null }>(
+    `SELECT id, name, username, role, avatar_url FROM users
       WHERE active = 1 AND id <> ? ORDER BY name`,
     [me],
   );
@@ -69,6 +88,7 @@ export type ConversationRow = {
   other_id: number;
   other_name: string;
   other_username: string;
+  other_avatar_url: string | null;
   last_message_id: number;
   last_body: string | null;
   last_kind: string;
@@ -85,7 +105,7 @@ export type ConversationRow = {
 export async function listConversations(me: number): Promise<ConversationRow[]> {
   return await all<ConversationRow>(
     `SELECT c.id AS conversation_id,
-            o.id AS other_id, o.name AS other_name, o.username AS other_username,
+            o.id AS other_id, o.name AS other_name, o.username AS other_username, o.avatar_url AS other_avatar_url,
             COALESCE(m.id, 0) AS last_message_id, m.body AS last_body,
             m.kind AS last_kind, m.sender_id AS last_sender_id, m.created_at AS last_created_at,
             (SELECT COUNT(*) FROM chat_messages cm
@@ -150,6 +170,8 @@ export type ChatMessage = {
   created_at: string;
   /** Preenchido no payload da API, nao no banco. */
   sender_name?: string;
+  /** Foto do remetente, resolvida junto com as mensagens (uma unica consulta). */
+  sender_avatar_url?: string | null;
   mine?: boolean;
 };
 
@@ -169,21 +191,27 @@ export async function listMessages(
   conversationId: number,
   before = 0,
   limit = 40,
-): Promise<{ messages: ChatMessage[]; other: { id: number; name: string; username: string } }> {
+): Promise<{ messages: ChatMessage[]; other: { id: number; name: string; username: string; avatar_url: string | null } }> {
   await assertParticipant(conversationId, me);
-  const outra = await one<{ id: number; name: string; username: string }>(
-    `SELECT u.id, u.name, u.username FROM chat_conversations c
-       JOIN users u ON u.id = CASE WHEN c.user_low = ? THEN c.user_high ELSE c.user_low END
-      WHERE c.id = ?`,
-    [me, conversationId],
-  );
+  const outra = await otherParticipant(me, conversationId);
   const lim = Math.min(Math.max(Number(limit) || 40, 1), 80);
   const messages = await all<ChatMessage>(
-    `SELECT m.* FROM chat_messages m
+    `SELECT m.*, u.avatar_url AS sender_avatar_url FROM chat_messages m
+       JOIN users u ON u.id = m.sender_id
       WHERE m.conversation_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`,
     [conversationId, before || Number.MAX_SAFE_INTEGER, lim],
   );
   return { messages: messages.reverse(), other: outra! };
+}
+
+/** Outro participante da conversa (nome, login e foto) sem trazer mensagens. */
+export async function otherParticipant(me: number, conversationId: number) {
+  return await one<{ id: number; name: string; username: string; avatar_url: string | null }>(
+    `SELECT u.id, u.name, u.username, u.avatar_url FROM chat_conversations c
+       JOIN users u ON u.id = CASE WHEN c.user_low = ? THEN c.user_high ELSE c.user_low END
+      WHERE c.id = ?`,
+    [me, conversationId],
+  );
 }
 
 export type NewMessage = {
@@ -323,6 +351,75 @@ async function notificarDestinatario(conversationId: number, remetente: SessionU
       params: [destino.user_id, link],
     },
   ]);
+
+  //
+  // Push imediato: o cron de 1 minuto só processa 3 entregas por ciclo,
+  // então uma mensagem de chat esperava dezenas de segundos pela fila.
+  // Aqui a entrega acontece na própria requisição que gravou a mensagem —
+  // em paralelo, fora do caminho da resposta (waitUntil). As entregas em
+  // 'pending' seguem existindo como plano B: o cron tenta de novo com
+  // backoff, e a deduplicação por notification_id no service worker
+  // garante que o aparelho não mostre duas vezes.
+  //
+  const ctxPush = contextoPush();
+  if (ctxPush) {
+    const env = ctxPush.env;
+    if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
+      const pendentes = await all<{ id: number; notification_id: number; endpoint: string; p256dh: string; auth: string }>(
+        `SELECT d.id, n.id AS notification_id, s.endpoint, s.p256dh, s.auth
+           FROM push_deliveries d
+           JOIN push_subscriptions s ON s.id = d.subscription_id
+           JOIN user_notifications n ON n.id = d.notification_id
+          WHERE n.user_id = ? AND n.type = 'chat' AND n.link = ?
+            AND d.status = 'pending' AND s.enabled = 1
+            AND (s.expiration_time IS NULL OR s.expiration_time > ?)`,
+        [destino.user_id, link, Date.now()],
+      );
+      if (pendentes.length) {
+        const enviar = webPushSender({
+          publicKey: env.VAPID_PUBLIC_KEY,
+          privateKey: env.VAPID_PRIVATE_KEY,
+          subject: env.VAPID_SUBJECT,
+        });
+        ctxPush.waitUntil(
+          (async () => {
+            const entregues: number[] = [];
+            for (const job of pendentes) {
+              let status = 0;
+              try {
+                status = await enviar(
+                  { endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.auth } },
+                  { id: job.notification_id, title, body: preview, url: link },
+                );
+              } catch {
+                status = 0;
+              }
+              if (status >= 200 && status < 300) {
+                entregues.push(job.id);
+              } else if (status === 404 || status === 410) {
+                await run(
+                  `UPDATE push_deliveries SET status = 'cancelled', last_error = 'HTTP ' || ? WHERE id = ?`,
+                  [status, job.id],
+                );
+                await run(
+                  `UPDATE push_subscriptions SET enabled = 0, last_error = 'Inscrição expirada. Reative neste dispositivo.' WHERE id = (
+                     SELECT subscription_id FROM push_deliveries WHERE id = ?)`,
+                  [job.id],
+                );
+              }
+              // outros erros ficam pending: o cron reenvia com backoff
+            }
+            if (entregues.length) {
+              await batch([
+                { sql: `UPDATE push_deliveries SET status = 'sent', sent_at = unixepoch(), last_error = NULL WHERE id IN (${entregues.map(() => "?").join(",")})`, params: entregues },
+                { sql: `UPDATE push_subscriptions SET last_success_at = unixepoch(), last_error = NULL WHERE id IN (SELECT subscription_id FROM push_deliveries WHERE id IN (${entregues.map(() => "?").join(",")}))`, params: entregues },
+              ]);
+            }
+          })(),
+        );
+      }
+    }
+  }
 }
 
 /* ------------------------------- leitura -------------------------------- */
@@ -397,20 +494,59 @@ export async function unreadMessages(me: number): Promise<number> {
   );
 }
 
+/**
+ * Fonte unica dos contadores de nao lidas.
+ *
+ * Topo, menu inferior e tela de chat leem deste par: duas contas independentes
+ * divergiam (topo mostrando 3 enquanto o menu mostrava 2). Os testes
+ * automatizados chamam a versao so-numeros; com `detalhes`, a resposta da API
+ * lista as conversas pendentes sem refazer a lista completa.
+ */
+export async function unreadCounters(
+  me: number,
+  detalhes: true,
+): Promise<{ unread: number; unreadConversations: number; conversations: { conversation_id: number; unread: number }[] }>;
+export async function unreadCounters(me: number, detalhes?: false): Promise<{ unread: number; unreadConversations: number }>;
+export async function unreadCounters(me: number, detalhes = false) {
+  // Uma unica consulta indexada resolve tudo: o total de nao lidas e a soma
+  // por conversa, e "conversas com pendencia" sao as linhas com unread > 0 —
+  // mesma condicao do COUNT antigo (existe mensagem do outro acima do cursor).
+  const rows = await all<{ conversation_id: number; unread: number }>(
+    `SELECT p.conversation_id,
+            (SELECT COUNT(*) FROM chat_messages m
+              WHERE m.conversation_id = p.conversation_id AND m.id > p.last_read_message_id
+                AND m.sender_id <> ?) AS unread
+       FROM chat_participants p
+      WHERE p.user_id = ?`,
+    [me, me],
+  );
+  const comPendencia = rows.filter((r) => r.unread > 0);
+  const base = {
+    unread: comPendencia.reduce((s, r) => s + r.unread, 0),
+    unreadConversations: comPendencia.length,
+  };
+  if (!detalhes) return base;
+  return {
+    ...base,
+    conversations: comPendencia.map((r) => ({ conversation_id: r.conversation_id, unread: r.unread })),
+  };
+}
+
 /** Estado incremental: mensagens novas desde `after` + contadores. */
 export async function stateSince(me: number, conversationId: number, after: number) {
   const participantes = await isParticipant(conversationId, me);
   if (!participantes) throw new ChatError("Conversa inexistente.");
-  const mensagens = await all<ChatMessage>(
-    `SELECT * FROM chat_messages WHERE conversation_id = ? AND id > ? ORDER BY id LIMIT 60`,
-    [conversationId, after],
-  );
-  return {
-    messages: mensagens,
-    readCursor: await lastReadOf(conversationId, me),
-    unreadConversations: await unreadConversations(me),
-    unreadMessages: await unreadMessages(me),
-  };
+  const [mensagens, readCursor, contadores] = await Promise.all([
+    all<ChatMessage>(
+      `SELECT m.*, u.avatar_url AS sender_avatar_url FROM chat_messages m
+         JOIN users u ON u.id = m.sender_id
+        WHERE m.conversation_id = ? AND m.id > ? ORDER BY id LIMIT 60`,
+      [conversationId, after],
+    ),
+    lastReadOf(conversationId, me),
+    unreadCounters(me, true),
+  ]);
+  return { messages: mensagens, readCursor, ...contadores };
 }
 
 /** Alteracoes na lista de conversas desde uma versao (soma de ids + contagem). */

@@ -4,10 +4,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icons";
 import ChatBell from "./ChatBell";
+import Avatar from "./Avatar";
 import { EXTRA_NAV, MOBILE_NAV, NAV } from "@/lib/nav";
-import { initials } from "@/lib/format";
+import { pokeUnread } from "@/lib/chat-unread";
+import { useUnread } from "@/lib/use-unread";
 
-type User = { id: number; name: string; role: string };
+type User = { id: number; name: string; role: string; avatar_url?: string | null };
 
 const active = (pathname: string, href: string) =>
   pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -54,18 +56,10 @@ export function Sidebar({ company, logo }: { company: string; logo?: string }) {
 
 /* ------------------------------- barra superior ------------------------------- */
 
-export function TopBar({
-  user,
-  unread,
-  company,
-  logo,
-}: {
-  user: User;
-  unread: number;
-  company: string;
-  logo?: string;
-}) {
+export function TopBar({ user, company, logo }: { user: User; company: string; logo?: string }) {
   const [open, setOpen] = useState(false);
+  // Mesma fonte do badge do menu inferior: o estado compartilhado do chat.
+  const { unread } = useUnread();
   return (
     <header className="nao-imprimir sticky top-0 z-30 border-b border-nuvem-300 bg-white/95 backdrop-blur">
       <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
@@ -101,10 +95,10 @@ export function TopBar({
         <div className="relative shrink-0">
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-marca-600 text-xs font-bold text-white"
+            className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full"
             aria-label="Menu do usuário"
           >
-            {initials(user.name)}
+            <Avatar src={user.avatar_url} name={user.name} className="h-9 w-9 text-xs" bg="bg-marca-600 text-white" />
           </button>
           {open && (
             <>
@@ -162,6 +156,8 @@ function GlobalSearch() {
 export function BottomNav() {
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
+  // Mesmo estado do sino do topo: uma unica fonte de verdade para o badge.
+  const { unread } = useUnread();
 
   useEffect(() => setSheet(false), [pathname]);
 
@@ -199,11 +195,19 @@ export function BottomNav() {
             <Link
               key={n.href}
               href={n.href}
-              className={`flex flex-col items-center gap-0.5 py-2 text-[0.63rem] font-semibold ${
+              className={`relative flex flex-col items-center gap-0.5 py-2 text-[0.63rem] font-semibold ${
                 active(pathname, n.href) ? "text-marca-600" : "text-stone-500"
               }`}
             >
-              <Icon name={n.icon} className="mt-1 h-[22px] w-[22px]" />
+              <span className="relative mt-1 inline-flex">
+                <Icon name={n.icon} className="h-[22px] w-[22px]" />
+                {/* Badge de nao lidas so no item Mensagem/Chat; nada muda nos demais. */}
+                {n.href === "/chat" && unread > 0 && (
+                  <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[0.58rem] font-bold leading-none text-white ring-2 ring-white">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
+              </span>
               <span className="leading-none">{n.label.split(" ")[0]}</span>
             </Link>
           ))}

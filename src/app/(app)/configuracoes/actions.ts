@@ -3,7 +3,7 @@ import { preparationValue } from "@/lib/availability-time";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { insert, one, run, scalar } from "@/lib/db";
-import { assertAdmin, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
+import { assertAdmin, hashPassword, requireUser, verifyPassword, type SessionUser } from "@/lib/auth";
 import { getSettings, setSettings } from "@/lib/settings";
 import { contractUsesHtml, sanitizeContractHtml } from "@/lib/contract-html";
 
@@ -101,13 +101,24 @@ export async function createUser(_prev: string | null, fd: FormData): Promise<st
   if (password.length < 6) return "A senha deve ter ao menos 6 caracteres.";
   if (await scalar<number>(`SELECT COUNT(*) FROM users WHERE username = ?`, [username]) > 0) return "Usuario ja existe.";
 
-  const id = await insert(`INSERT INTO users (name, username, email, phone, password_hash, role) VALUES (?,?,?,?,?,?)`, [
+  let avatarPath: string | null = null;
+  const avatarFile = fd.get("avatar_file");
+  if (avatarFile instanceof File && avatarFile.size > 0) {
+    try {
+      avatarPath = await saveUpload(avatarFile, user.id);
+    } catch (e) {
+      return e instanceof UploadError ? e.message : "Não foi possível salvar a foto.";
+    }
+  }
+
+  const id = await insert(`INSERT INTO users (name, username, email, phone, password_hash, role, avatar_url) VALUES (?,?,?,?,?,?,?)`, [
     name,
     username,
     String(fd.get("email") ?? ""),
     String(fd.get("phone") ?? ""),
     hashPassword(password),
     role === "admin" ? "admin" : "operador",
+    avatarPath,
   ]);
   await logAction(user, "criar", "usuario", id, `${user.name} criou o usuario ${name} (${role})`);
   revalidatePath("/configuracoes");
@@ -148,6 +159,76 @@ export async function changeOwnPassword(_prev: string | null, fd: FormData): Pro
   await run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hashPassword(next), user.id]);
   await logAction(user, "editar", "usuario", user.id, `${user.name} alterou a propria senha`);
   return null;
+}
+
+/* ---------------------------------- avatar ----------------------------------- */
+
+/**
+ * Foto de perfil: cada usuario edita a PROPRIA foto; o admin pode trocar a de
+ * qualquer um pela tela de usuarios. A imagem vive na tabela files existente
+ * (mesmo pipeline da logo da empresa) e no usuario fica so a URL. Ao trocar,
+ * o arquivo anterior e descartado quando ninguem mais o usa — sem orfaos e
+ * sem apagar imagem compartilhada (removeFileByUrl confere o uso em anexos).
+ */
+async function aplicarAvatar(userId: number, file: File, ator: SessionUser, quandoAdmin = false): Promise<string | null> {
+  if (quandoAdmin && ator.role !== "admin") return "Somente o administrador pode alterar a foto de outro usuário.";
+  if (userId !== ator.id && ator.role !== "admin") return "Você só pode alterar a sua própria foto.";
+  let nova: string | null = null;
+  try {
+    nova = await saveUpload(file, ator.id);
+  } catch (e) {
+    return e instanceof UploadError ? e.message : "Não foi possível salvar a foto.";
+  }
+  if (!nova) return null;
+  const anterior = await scalar<string | null>(`SELECT avatar_url FROM users WHERE id = ?`, [userId]);
+  await run(`UPDATE users SET avatar_url = ? WHERE id = ?`, [nova, userId]);
+  if (anterior && anterior !== nova) await removeFileByUrl(anterior);
+  await logAction(ator, "editar", "usuario", userId, `${ator.name} atualizou a foto de perfil`);
+  revalidatePath("/", "layout");
+  return null;
+}
+
+/** O usuario troca a propria foto (useActionState, mesma forma do PasswordForm). */
+export async function saveMyAvatar(_prev: string | null, fd: FormData): Promise<string | null> {
+  const user = await requireUser();
+  const file = fd.get("avatar_file");
+  if (!(file instanceof File) || file.size === 0) return "Escolha uma imagem primeiro.";
+  return await aplicarAvatar(user.id, file, user);
+}
+
+/** Remove a propria foto (quando existe). */
+export async function removeMyAvatar(): Promise<void> {
+  const user = await requireUser();
+  const anterior = await scalar<string | null>(`SELECT avatar_url FROM users WHERE id = ?`, [user.id]);
+  if (!anterior) return;
+  await run(`UPDATE users SET avatar_url = NULL WHERE id = ?`, [user.id]);
+  await removeFileByUrl(anterior);
+  await logAction(user, "editar", "usuario", user.id, `${user.name} removeu a foto de perfil`);
+  revalidatePath("/", "layout");
+}
+
+/** Admin troca a foto de qualquer usuario (form action, como toggleUser). */
+export async function saveUserAvatarAdmin(fd: FormData): Promise<void> {
+  const admin = await assertAdmin();
+  const id = Number(fd.get("id"));
+  const file = fd.get("avatar_file");
+  if (!Number.isInteger(id) || !(file instanceof File) || file.size === 0) {
+    redirect(`/configuracoes?aba=usuarios&erro=${encodeURIComponent("Escolha uma imagem para a foto.")}`);
+  }
+  const erro = await aplicarAvatar(id, file as File, admin, true);
+  if (erro) redirect(`/configuracoes?aba=usuarios&erro=${encodeURIComponent(erro)}`);
+}
+
+/** Admin remove a foto de qualquer usuario. */
+export async function removeUserAvatarAdmin(fd: FormData): Promise<void> {
+  const admin = await assertAdmin();
+  const id = Number(fd.get("id"));
+  const anterior = await scalar<string | null>(`SELECT avatar_url FROM users WHERE id = ?`, [id]);
+  if (!anterior) return;
+  await run(`UPDATE users SET avatar_url = NULL WHERE id = ?`, [id]);
+  await removeFileByUrl(anterior);
+  await logAction(admin, "editar", "usuario", id, `${admin.name} removeu a foto de perfil`);
+  revalidatePath("/", "layout");
 }
 
 /* --------------------------------- categorias ----------------------------------- */

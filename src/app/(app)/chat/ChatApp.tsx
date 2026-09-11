@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icons";
-import { initials } from "@/lib/format";
+import Avatar from "@/components/Avatar";
+import { holdUnreadPolling, releaseUnreadPolling, seedUnread } from "@/lib/chat-unread";
+import { useUnread } from "@/lib/use-unread";
 
 /* --------------------------------- tipos -------------------------------- */
 
-type User = { id: number; name: string; username: string; role: string };
+type User = { id: number; name: string; username: string; role: string; avatar_url: string | null };
 type Conversation = {
   conversation_id: number;
   other_id: number;
   other_name: string;
   other_username: string;
+  other_avatar_url: string | null;
   last_message_id: number;
   last_body: string | null;
   last_kind: string;
@@ -36,6 +39,8 @@ type Message = {
   read_at: string | null;
   deleted_at: string | null;
   created_at: string;
+  /** Foto do remetente, resolvida no servidor junto com as mensagens. */
+  sender_avatar_url?: string | null;
   mine?: boolean;
   /** estado otimista: "sending" | "error" */
   local?: string;
@@ -44,11 +49,9 @@ type Message = {
 };
 
 type Props = {
-  me: { id: number; name: string; role: string };
+  me: { id: number; name: string; role: string; avatar_url: string | null };
   initialUsers: User[];
   initialConversations: Conversation[];
-  initialUnread: number;
-  initialUnreadConversations: number;
 };
 
 /* ------------------------------- utilidades ------------------------------ */
@@ -62,15 +65,26 @@ type ApiLista = {
   conversations?: Conversation[];
   unread?: number;
   unreadConversations?: number;
+  unreadPorConversa?: { conversation_id: number; unread: number }[];
   error?: string;
 };
 type ApiMensagens = {
   messages?: Message[];
-  other?: { id: number; name: string; username: string };
-  unreadMessages?: number;
+  other?: { id: number; name: string; username: string; avatar_url: string | null };
+  unread?: number;
   unreadConversations?: number;
+  unreadPorConversa?: { conversation_id: number; unread: number }[];
   error?: string;
 };
+
+/** Contadores: uma fonte so, a mesma do topo e do menu inferior. */
+function semearContadores(d: { unread?: number; unreadConversations?: number; unreadPorConversa?: { conversation_id: number; unread: number }[] }) {
+  seedUnread({
+    unread: d.unread ?? 0,
+    unreadConversations: d.unreadConversations ?? 0,
+    conversations: d.unreadPorConversa ?? [],
+  });
+}
 
 const MAX_BYTES = 1_500_000;
 
@@ -120,15 +134,15 @@ function erroAmigavel(msg: string | undefined): string {
 
 /* ------------------------------- componente ------------------------------ */
 
-export default function ChatApp({ me, initialUsers, initialConversations, initialUnread, initialUnreadConversations }: Props) {
+export default function ChatApp({ me, initialUsers, initialConversations }: Props) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
-  const [unread, setUnread] = useState(initialUnread);
-  const [unreadConv, setUnreadConv] = useState(initialUnreadConversations);
+  // Contador de nao lidas: estado compartilhado (topo e menu leem o mesmo).
+  const { unreadConversations: unreadConv } = useUnread();
 
   const [ativa, setAtiva] = useState<number | null>(null);
   const [mensagens, setMensagens] = useState<Message[]>([]);
-  const [outra, setOutra] = useState<{ id: number; name: string; username: string } | null>(null);
+  const [outra, setOutra] = useState<{ id: number; name: string; username: string; avatar_url: string | null } | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [temMais, setTemMais] = useState(false);
   const [busca, setBusca] = useState("");
@@ -178,11 +192,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
       if (!mostrarMais) {
         maiorIdRef.current = msgs.length ? msgs[msgs.length - 1].id : 0;
         setTemMais(msgs.length >= 40);
-        void fetch("/api/chat", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "lida", c: conversationId }),
-        }).catch(() => {});
+        void marcarLida(conversationId);
       } else {
         setTemMais(msgs.length >= 40);
       }
@@ -194,6 +204,25 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
     }
   }, [me.id]);
 
+  /**
+   * Marca a conversa como lida e semeia o contador compartilhado com a
+   * resposta: o badge do topo e do menu caem na hora, sem esperar polling.
+   */
+  const marcarLida = useCallback(async (conversationId: number) => {
+    try {
+      const res = await fetch("/api/chat", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "lida", c: conversationId }),
+      });
+      if (!res.ok) return;
+      const data = await json<ApiLista>(res);
+      semearContadores(data);
+    } catch {
+      /* offline: o proximo ciclo corrige */
+    }
+  }, []);
+
   /** Clique em um contato: abre a conversa existente ou prepara uma nova. */
   const conversarCom = useCallback((u: User) => {
     const existente = conversations.find((c) => c.other_id === u.id);
@@ -201,7 +230,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
       void abrirConversa(existente.conversation_id);
     } else {
       setAtiva(-u.id); // conversa nova ainda sem mensagem
-      setOutra({ id: u.id, name: u.name, username: u.username });
+      setOutra({ id: u.id, name: u.name, username: u.username, avatar_url: u.avatar_url });
       setMensagens([]);
       setTemMais(false);
       maiorIdRef.current = 0;
@@ -222,8 +251,8 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
         setOnline(true);
         setUsers(data.users ?? []);
         setConversations(data.conversations ?? []);
-        setUnread(data.unread ?? 0);
-        setUnreadConv(data.unreadConversations ?? 0);
+        // Fonte unica: topo e menu recebem os mesmos numeros daqui.
+        semearContadores(data);
       } catch {
         if (vivo) setOnline(false);
       }
@@ -255,15 +284,10 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
             requestAnimationFrame(() => fimRef.current?.scrollIntoView({ block: "end" }));
           }
           if (novas.some((n) => !n.mine)) {
-            void fetch("/api/chat", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "lida", c }),
-            }).catch(() => {});
+            void marcarLida(c);
           }
         }
-        setUnread(data.unreadMessages ?? 0);
-        setUnreadConv(data.unreadConversations ?? 0);
+        semearContadores(data);
       } catch {
         if (vivo) setOnline(false);
       }
@@ -276,6 +300,13 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
       clearInterval(pollMsgs);
     };
   }, [me.id]);
+
+  // A tela do chat tambem participa do ciclo compartilhado (idempotente):
+  // o polling de contadores continua unico, mesmo com o sino montado.
+  useEffect(() => {
+    holdUnreadPolling();
+    return () => releaseUnreadPolling();
+  }, []);
 
   /* ------------------------------- envio ---------------------------------- */
 
@@ -550,9 +581,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                 ativa === c.conversation_id ? "bg-marca-50" : "hover:bg-nuvem-100"
               }`}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-marca-600 text-sm font-bold text-white">
-                {initials(c.other_name)}
-              </span>
+              <Avatar src={c.other_avatar_url} name={c.other_name} className="h-10 w-10 text-sm" bg="bg-marca-600 text-white" />
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline justify-between gap-2">
                   <span className="truncate text-sm font-bold text-tinta-900">{c.other_name}</span>
@@ -587,9 +616,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
               onClick={() => conversarCom(u)}
               className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition hover:bg-nuvem-100"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-nuvem-200 text-sm font-bold text-tinta-700">
-                {initials(u.name)}
-              </span>
+              <Avatar src={u.avatar_url} name={u.name} className="h-10 w-10 text-sm" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-tinta-900">{u.name}</span>
                 <span className="block truncate text-xs capitalize text-stone-500">{u.role}</span>
@@ -621,9 +648,7 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
               >
                 <Icon name="saida" className="h-5 w-5" />
               </button>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-marca-600 text-xs font-bold text-white">
-                {initials(outra.name)}
-              </span>
+              <Avatar src={outra.avatar_url} name={outra.name} className="h-9 w-9 text-xs" bg="bg-marca-600 text-white" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-tinta-900">{outra.name}</p>
                 <p className="truncate text-xs text-stone-500">@{outra.username}</p>
@@ -681,6 +706,15 @@ export default function ChatApp({ me, initialUsers, initialConversations, initia
                       </p>
                     )}
                     <div className={`group flex ${m.mine ? "justify-end" : "justify-start"}`}>
+                      {/* Foto do remetente nas mensagens recebidas; as proprias
+                          ficam a direita, sem avatar, como no mensageiro. */}
+                      {!m.mine && !m.deleted_at && (
+                        <Avatar
+                          src={m.sender_avatar_url}
+                          name={outra?.name ?? ""}
+                          className="mr-1.5 mt-auto h-7 w-7 text-[0.6rem]"
+                        />
+                      )}
                       {m.deleted_at ? (
                         <div className="max-w-[80%] rounded-2xl bg-nuvem-100 px-3 py-2 text-xs italic text-stone-400">
                           mensagem excluída

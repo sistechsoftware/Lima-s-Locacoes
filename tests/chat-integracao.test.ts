@@ -31,7 +31,7 @@ import type { SessionUser } from "../src/lib/auth";
 let seq = 0;
 
 function usuario(role: "admin" | "operador" = "operador"): SessionUser & { id: number } {
-  return { id: ++seq, name: `User ${seq}`, username: `u${seq}`, role };
+  return { id: ++seq, name: `User ${seq}`, username: `u${seq}`, role, avatar_url: null };
 }
 
 async function gravarUsuario(u: SessionUser) {
@@ -267,7 +267,7 @@ describe("leitura e contadores", () => {
     const st = await stateSince(b.id, m1.conversation_id, m1.id);
     assert.equal(st.messages.length, 1);
     assert.equal(st.messages[0].id, m2.id);
-    assert.equal(st.unreadMessages, 1);
+    assert.equal(st.unread, 1);
     assert.equal(st.readCursor >= 0, true);
   });
 });
