@@ -1,5 +1,6 @@
 import "server-only";
 import { all, run } from "./db";
+import { esc, sanitizeContractHtml, type MarcaConfiavel } from "./contract-html";
 
 export type Settings = Record<string, string>;
 
@@ -166,4 +167,35 @@ export function renderTemplate(
     if (opts.vazio === "linha" && k in LARGURA_LINHA) return "_".repeat(LARGURA_LINHA[k]);
     return "";
   });
+}
+
+/**
+ * Versao para modelos em HTML (formatacao rica).
+ *
+ * Reaproveita integralmente o renderTemplate: a substituicao das variaveis e
+ * a mesma de sempre. A unica diferenca e que o valor de cada variavel entra
+ * escapado — os dados vêm do cadastro e nao podem conter marcacao — e o
+ * resultado passa pelo sanitizador, que remove qualquer coisa fora da lista
+ * branca do contrato. O modelo antigo em texto puro nunca chega aqui.
+ *
+ * Variaveis cujo valor ja vem com marcacao propria do sistema ({{itens}},
+ * montada por itensParaHtml) entram empacotadas em marcaConfiavel: escapam o
+ * conteudo, mas preservam as <li> que o proprio sistema montou.
+ */
+export function renderTemplateHtml(
+  template: string,
+  vars: Record<string, string | number | null | undefined | MarcaConfiavel>,
+  opts: { vazio?: EstrategiaVazio } = {},
+) {
+  const seguro: Record<string, string | number | null | undefined> = {};
+  for (const [k, v] of Object.entries(vars)) {
+    if (v !== null && v !== undefined && typeof v === "object" && "marca" in v) {
+      seguro[k] = v.marca;
+    } else if (temValor(v)) {
+      seguro[k] = esc(String(v));
+    } else {
+      seguro[k] = v;
+    }
+  }
+  return sanitizeContractHtml(renderTemplate(template, seguro, opts));
 }

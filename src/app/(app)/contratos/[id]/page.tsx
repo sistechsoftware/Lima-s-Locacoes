@@ -10,6 +10,7 @@ import { Alerta, Card, PageHeader, Section, StatusBadge } from "@/components/ui"
 import { SubmitButton } from "@/components/SubmitButton";
 import { assinaturasDoContrato } from "@/lib/assinatura-db";
 import LinkAssinatura from "@/components/LinkAssinatura";
+import ContratoTexto from "@/components/ContratoTexto";
 import { gerarLinkAssinatura, regenerateContract, revogarLinkAssinatura, saveContractBody, setContractStatus } from "../actions";
 import PrintButton from "./PrintButton";
 
@@ -213,7 +214,7 @@ export default async function ContratoPage({
             {dateUtcBR(c.created_at)}
           </span>
         </header>
-        <pre className="whitespace-pre-wrap font-sans text-[0.82rem] leading-relaxed text-tinta-900">{c.body}</pre>
+        <ContratoTexto texto={c.body} className="text-[0.82rem] leading-relaxed text-tinta-900" />
       </article>
     </div>
   );

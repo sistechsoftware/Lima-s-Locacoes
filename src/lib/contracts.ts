@@ -1,6 +1,7 @@
 import "server-only";
 import { insert, nextNumber, one } from "./db";
-import { getSettings, renderTemplate } from "./settings";
+import { getSettings, renderTemplate, renderTemplateHtml, type Settings } from "./settings";
+import { contractUsesHtml, itensParaHtml, marcaConfiavel } from "./contract-html";
 import { getReservation, reservationItems, reservationMoney } from "./reservations";
 import { dateBR, docBR, money, phoneBR } from "./format";
 
@@ -12,13 +13,47 @@ export async function buildContractBody(reservationId: number, contractNumber: s
   const items = await reservationItems(reservationId);
   const m = await reservationMoney(reservationId);
 
-  const itensTexto = items
-    .map((i) => `- ${i.qty} x ${i.product_name} .......... ${money(i.subtotal_cents)}`)
-    .join("\n");
+  /**
+   * Modelo antigo em texto puro segue o caminho de sempre, byte a byte. Modelo
+   * formatado (HTML) recebe as mesmas variaveis, mas com {{itens}} em lista
+   * HTML e as demais variaveis escapadas (veja renderTemplateHtml).
+   */
+  if (!contractUsesHtml(s.contract_template)) {
+    const itensTexto = items
+      .map((i) => `- ${i.qty} x ${i.product_name} .......... ${money(i.subtotal_cents)}`)
+      .join("\n");
 
-  return renderTemplate(
-    s.contract_template,
-    {
+    return renderTemplate(
+      s.contract_template,
+      {
+        ...variaveisComuns(s, r, m, contractNumber),
+        itens: itensTexto,
+      },
+      // campo sem cadastro vira linha para preencher a mao no documento impresso
+      { vazio: "linha" },
+    );
+  }
+
+  const vars = {
+    ...variaveisComuns(s, r, m, contractNumber),
+    itens: marcaConfiavel(
+      itensParaHtml(
+        items.map((i) => `${i.qty} x ${i.product_name} .......... ${money(i.subtotal_cents)}`),
+      ),
+    ),
+  };
+
+  return renderTemplateHtml(s.contract_template, vars, { vazio: "linha" });
+}
+
+/** Variaveis do contrato que nao dependem do formato do modelo. */
+function variaveisComuns(
+  s: Settings,
+  r: any,
+  m: { deposit: number },
+  contractNumber: string,
+): Record<string, string | number | null | undefined> {
+  return {
       empresa: s.company_name,
       cnpj: docBR(s.company_doc),
       endereco_empresa: s.company_address,
@@ -35,7 +70,6 @@ export async function buildContractBody(reservationId: number, contractNumber: s
       reserva: r.number,
       data_evento: dateBR(r.event_date),
       endereco_evento: [r.address, r.district, r.city].filter(Boolean).join(", "),
-      itens: itensTexto,
       data_entrega: r.delivery_at ? `${dateBR(r.delivery_at)} ${r.delivery_at.slice(11, 16)}` : "",
       data_retirada: r.pickup_at ? `${dateBR(r.pickup_at)} ${r.pickup_at.slice(11, 16)}` : "",
       valor_itens: money(r.items_cents),
@@ -47,10 +81,7 @@ export async function buildContractBody(reservationId: number, contractNumber: s
       valor_total: money(r.total_cents),
       valor_caucao: money(m.deposit),
       data_hoje: new Date().toLocaleDateString("pt-BR"),
-    },
-    // campo sem cadastro vira linha para preencher a mao no documento impresso
-    { vazio: "linha" },
-  );
+  };
 }
 
 /** Cria o contrato da reserva (ou devolve o existente). */

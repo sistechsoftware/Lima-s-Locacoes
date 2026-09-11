@@ -6,6 +6,7 @@ import { getSettings } from "@/lib/settings";
 import { dateTimeBR, docBR } from "@/lib/format";
 import { Alerta, Card, PageHeader } from "@/components/ui";
 import PrintButton from "../../[id]/PrintButton";
+import ContratoTexto from "@/components/ContratoTexto";
 
 export const dynamic = "force-dynamic";
 
@@ -55,9 +56,7 @@ export default async function DocumentoAssinadoPage({ params }: { params: Promis
           <p className="mt-1 text-sm font-semibold">{doc.contract_number}</p>
         </header>
 
-        <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-tinta-800">
-          {doc.body_snapshot}
-        </pre>
+        <ContratoTexto texto={doc.body_snapshot} className="break-words text-sm leading-relaxed text-tinta-800" />
 
         <section className="mt-8 border-t border-nuvem-200 pt-4">
           <p className="mb-2 text-xs font-semibold uppercase text-stone-500">Assinatura do Contratante</p>

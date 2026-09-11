@@ -143,7 +143,38 @@ body {
   display: none;
 }
 
-/* Impressao de contratos e orcamentos */
+/*
+ * Contrato com formatacao (modelos editados no editor de Configuracoes ->
+ * Modelos). Os tamanhos de fonte e as cores vêm do documento (style inline
+ * sanitizado); aqui fica so a base, para nao herdar o mono do antigo <pre>.
+ */
+.contrato-rico {
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  text-align: left;
+}
+.contrato-rico p,
+.contrato-rico div,
+.contrato-rico ul,
+.contrato-rico ol,
+.contrato-rico h1,
+.contrato-rico h2,
+.contrato-rico h3,
+.contrato-rico h4 {
+  margin: 0;
+}
+.contrato-rico ul,
+.contrato-rico ol {
+  padding-left: 1.6rem;
+  list-style: revert;
+}
+.contrato-rico hr {
+  border: none;
+  border-top: 1px solid var(--color-nuvem-300);
+  margin: 1rem 0;
+}
+
+/* Impressão de contratos e orcamentos */
 @media print {
   .nao-imprimir {
     display: none !important;
@@ -178,6 +209,22 @@ body {
   .imprimivel section,
   .imprimivel footer {
     break-inside: avoid;
+  }
+
+  /* o contrato formatado pode ocupar varias paginas: paragrafos e itens
+     quebram entre folhas, sem cortar o miolo de uma linha */
+  .contrato-rico p,
+  .contrato-rico div,
+  .contrato-rico li,
+  .contrato-rico h3,
+  .contrato-rico h4 {
+    break-inside: avoid;
+  }
+
+  /* marcadores de lista saem no papel */
+  .contrato-rico ul,
+  .contrato-rico ol {
+    list-style: revert;
   }
 
   /* em documento longo, o cabecalho da tabela se repete a cada pagina e
