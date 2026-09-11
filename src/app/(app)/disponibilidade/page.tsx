@@ -76,6 +76,16 @@ export default async function DisponibilidadePage({
         subtitle="Consulte antes de responder o cliente no WhatsApp"
       />
 
+      <div className="scroll-x -mx-3 abas-barra px-3 sm:mx-0 sm:px-0">
+        <span className="shrink-0 rounded-full border border-marca-600 bg-marca-600 px-3 py-1.5 text-sm font-semibold text-white">Consulta</span>
+        <Link
+          href={`/disponibilidade/timeline?${query.queryString}`}
+          className="shrink-0 rounded-full border border-nuvem-300 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-700 hover:bg-nuvem-50"
+        >
+          Timeline visual
+        </Link>
+      </div>
+
       <AvailabilityFilter query={query} minutes={options.preparationMinutes} />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
