@@ -45,6 +45,14 @@ export type Hold = {
   hold_end: string;
   /** Produto comercial que originou a ocupacao (kit ou o proprio produto). */
   via_product?: string | null;
+  /** Id do produto comercial (linha da reserva) que originou a ocupacao; nulo
+   *  quando o item foi removido. Leitura apenas, nunca usado no calculo de
+   *  estoque — evita duplicar o uso comercial do kit ao agregar por item. */
+  via_product_id?: number | null;
+  /** Id da linha comercial (reservation_items) que originou a ocupacao. */
+  via_item_id?: number | null;
+  /** Quantidade comercial da linha (quantos kits a linha contratou). */
+  via_qty?: number | null;
 };
 
 export type Availability = {
@@ -173,19 +181,19 @@ export async function holdsForProduct(
   maxReservationId?: number | null,
   options: StockOptions = {},
 ): Promise<Hold[]> {
-  return loadHolds(from, to, options, excludeReservationId, productId, maxReservationId);
+  return loadHoldsInner(from, to, options, excludeReservationId, productId, maxReservationId);
 }
 
 /** Single source of physical commitments. Normalize before comparing: SQL text
  * comparisons cannot safely compare local clocks, spaces and explicit offsets.
  * Only stock-holding statuses are loaded; historic/completed rows are excluded.
  */
-async function loadHolds(from: string, to: string, options: StockOptions = {}, excludeId?: number | null, productId?: number | null, maxId?: number | null) {
+async function loadHoldsInner(from: string, to: string, options: StockOptions = {}, excludeId?: number | null, productId?: number | null, maxId?: number | null) {
   const w = timeWindow(from, to, true);
   const config = await stockOptions(options);
   const rows = await all<Hold & { product_id: number; event_date: string; delivery_at: string; pickup_at: string; stock_override: number }>(
     `SELECT ric.product_id, r.id AS reservation_id, r.number, c.name AS customer, r.status,
-            ric.qty, prod.name AS via_product, r.event_date, r.delivery_at, r.pickup_at, r.stock_override
+            ric.qty, prod.name AS via_product, ri.product_id AS via_product_id, ri.id AS via_item_id, ri.qty AS via_qty, r.event_date, r.delivery_at, r.pickup_at, r.stock_override
        FROM reservation_item_components ric
        JOIN reservations r ON r.id = ric.reservation_id
        JOIN customers c ON c.id = r.customer_id
@@ -207,6 +215,18 @@ async function loadHolds(from: string, to: string, options: StockOptions = {}, e
     timeWindow(h.from, h.to);
     return { ...r, qty: Number(r.qty), hold_start: h.from, hold_end: addMinutes(h.to, config.preparationMinutes) };
   }).filter((h) => h.hold_end > w.from && (w.from === w.to ? h.hold_start <= w.from : h.hold_start < w.to));
+}
+
+/** Ocupacoes de uma janela, para leituras somente de consulta (timeline). */
+export async function loadHolds(
+  from: string,
+  to: string,
+  options: StockOptions = {},
+  excludeId?: number | null,
+  productId?: number | null,
+  maxId?: number | null,
+) {
+  return loadHoldsInner(from, to, options, excludeId, productId, maxId);
 }
 
 /** Pico de uso simultaneo dentro da janela (varredura de intervalos). */
@@ -389,7 +409,7 @@ export async function availabilityAll(
         WHERE p.active = 1 AND p.kind <> 'kit'
         ORDER BY c.name, p.name`,
     ),
-    loadHolds(from, to, options, excludeReservationId),
+    loadHoldsInner(from, to, options, excludeReservationId),
   ]);
   const byProduct = new Map<number, Hold[]>();
   for (const r of rows) {
@@ -665,7 +685,7 @@ export type ConflictScanRow = {
 export async function scanConflicts(fromDate: string, options: StockOptions = {}, until = "9999-12-31T23:59"): Promise<ConflictScanRow[]> {
   const from = stamp(fromDate);
   const [holds, produtos] = await Promise.all([
-    loadHolds(from, until, options),
+    loadHoldsInner(from, until, options),
     all<any>(`SELECT id, name, total_qty, maintenance_qty FROM products WHERE kind <> 'kit'`),
   ]);
   if (!holds.length) return [];
@@ -788,7 +808,7 @@ export async function timelinesByProduct(
     all<any>(
       `SELECT id, total_qty, maintenance_qty FROM products WHERE active = 1 AND kind <> 'kit'`,
     ),
-    loadHolds(from, to, options),
+    loadHoldsInner(from, to, options),
   ]);
 
   const porProduto = new Map<number, Hold[]>();
