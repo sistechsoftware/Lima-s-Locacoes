@@ -7,6 +7,7 @@ import QuoteForm from "../../QuoteForm";
 import { updateQuote } from "../../actions";
 import { sellableProducts } from "@/lib/stock";
 import { preparationMinutes } from "@/lib/availability-settings";
+import { CUSTOMER_PICK_COLUMNS } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function EditarOrcamentoPage({ params }: { params: Promise<
     discount_cents: i.discount_cents,
   }));
   const products = await sellableProducts();
-  const customers = await all<any>(`SELECT id, name, address, district, city FROM customers WHERE active = 1 ORDER BY name`);
+  const customers = await all<any>(`SELECT ${CUSTOMER_PICK_COLUMNS} FROM customers c WHERE c.active = 1 ORDER BY c.name`);
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader title={`Editar ${quote.number}`} />

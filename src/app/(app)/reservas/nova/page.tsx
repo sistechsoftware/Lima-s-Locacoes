@@ -5,6 +5,7 @@ import ReservationForm from "../ReservationForm";
 import { createReservation } from "../actions";
 import { sellableProducts } from "@/lib/stock";
 import { preparationMinutes } from "@/lib/availability-settings";
+import { CUSTOMER_PICK_COLUMNS } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function NovaReservaPage({
 
   const products = await sellableProducts();
   const customers = await all<any>(
-    `SELECT id, name, phone, address, district, city FROM customers WHERE active = 1 ORDER BY name`,
+    `SELECT ${CUSTOMER_PICK_COLUMNS} FROM customers c WHERE c.active = 1 ORDER BY c.name`,
   );
 
   return (
