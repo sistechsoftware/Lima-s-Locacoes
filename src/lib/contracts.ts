@@ -3,7 +3,7 @@ import { insert, nextNumber, one } from "./db";
 import { getSettings, renderTemplate, renderTemplateHtml, type Settings } from "./settings";
 import { contractUsesHtml, itensParaHtml, marcaConfiavel } from "./contract-html";
 import { getReservation, reservationItems, reservationMoney } from "./reservations";
-import { dateBR, docBR, money, phoneBR } from "./format";
+import { dateBR, dataPorExtensoBR, docBR, money, phoneBR, today } from "./format";
 
 /** Monta o texto do contrato a partir do modelo configurado e dos dados da reserva. */
 export async function buildContractBody(reservationId: number, contractNumber: string): Promise<string> {
@@ -46,6 +46,55 @@ export async function buildContractBody(reservationId: number, contractNumber: s
   return renderTemplateHtml(s.contract_template, vars, { vazio: "linha" });
 }
 
+/**
+ * Monta o corpo do contrato DIGITAL, a partir do modelo digital.
+ *
+ * E este corpo que o cliente le e assina no link publico: o mesmo texto que
+ * sai daqui e congelado em body_snapshot no momento da assinatura. O modelo de
+ * impressao nao participa deste caminho — e essa separacao que garante que
+ * editar um modelo nao mexe no outro.
+ */
+export async function buildContractBodyDigital(
+  reservationId: number,
+  contractNumber: string,
+): Promise<string> {
+  const s = await getSettings();
+  const r = await getReservation(reservationId);
+  if (!r) throw new Error("Reserva não encontrada");
+  const items = await reservationItems(reservationId);
+  const m = await reservationMoney(reservationId);
+
+  if (!contractUsesHtml(s.contract_template_digital)) {
+    const itensTexto = items
+      .map((i) => `- ${i.qty} x ${i.product_name} .......... ${money(i.subtotal_cents)}`)
+      .join("\n");
+
+    return renderTemplate(
+      s.contract_template_digital,
+      {
+        ...variaveisComuns(s, r, m, contractNumber),
+        // disponivel so no modelo digital: cidade + data de abertura por extenso
+        data_assinatura_digital: variavelDataAssinaturaDigital(),
+        itens: itensTexto,
+      },
+      { vazio: "linha" },
+    );
+  }
+
+  const vars = {
+    ...variaveisComuns(s, r, m, contractNumber),
+    // disponivel so no modelo digital: cidade + data de abertura por extenso
+    data_assinatura_digital: variavelDataAssinaturaDigital(),
+    itens: marcaConfiavel(
+      itensParaHtml(
+        items.map((i) => `${i.qty} x ${i.product_name} .......... ${money(i.subtotal_cents)}`),
+      ),
+    ),
+  };
+
+  return renderTemplateHtml(s.contract_template_digital, vars, { vazio: "linha" });
+}
+
 /** Variaveis do contrato que nao dependem do formato do modelo. */
 function variaveisComuns(
   s: Settings,
@@ -82,6 +131,18 @@ function variaveisComuns(
       valor_caucao: money(m.deposit),
       data_hoje: new Date().toLocaleDateString("pt-BR"),
   };
+}
+
+/**
+ * Data de abertura do contrato digital, no formato de cidade e data por
+ * extenso: "Uberlândia, 12 de setembro de 2026".
+ *
+ * Cidade fixa (Uberlândia), data do dia em que o cliente abriu o link para
+ * assinar — calculada no fuso do negocio (America/Sao_Paulo, mesma estrategia
+ * de today()). Nao e a data da reserva nem a data da assinatura.
+ */
+function variavelDataAssinaturaDigital(): string {
+  return `Uberlândia, ${dataPorExtensoBR(today())}`;
 }
 
 /** Cria o contrato da reserva (ou devolve o existente). */

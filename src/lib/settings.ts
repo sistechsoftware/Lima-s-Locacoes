@@ -65,6 +65,14 @@ export const DEFAULT_SETTINGS: Settings = {
   pix_key: "",
   bank_info: "",
   contract_template: DEFAULT_CONTRACT,
+  /*
+   * Modelo do contrato DIGITAL, usado apenas no fluxo de assinatura online
+   * (link /assinar/[token]). Nasce com o mesmo conteúdo do modelo de impressão,
+   * preservando o que já estava configurado: a partir daqui os dois modelos são
+   * editados e salvos de forma independente. Fica na tabela settings, KV como
+   * os demais ajustes — nenhuma migration nova é necessária.
+   */
+  contract_template_digital: DEFAULT_CONTRACT,
   default_deposit_cents: "0",
 
   /*
@@ -95,6 +103,16 @@ export async function getSettings(): Promise<Settings> {
   const rows = await all<{ key: string; value: string }>("SELECT key, value FROM settings");
   const out: Settings = { ...DEFAULT_SETTINGS };
   for (const r of rows) if (r.value !== null && r.value !== undefined) out[r.key] = r.value;
+  /**
+   * O modelo digital herda o modelo de impressao enquanto nao existir um
+   * salvo de forma independente. Bancos antigos, que so tem contract_template,
+   * continuam gerando o contrato digital com o texto que ja usavam — sem
+   * escrever nada no banco. Salvar o modelo digital na tela de configuracoes
+   * persiste a chave e encerra a heranca.
+   */
+  if (!rows.some((r) => r.key === "contract_template_digital")) {
+    out.contract_template_digital = out.contract_template;
+  }
   return out;
 }
 

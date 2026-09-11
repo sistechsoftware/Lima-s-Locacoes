@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { porToken } from "@/lib/assinatura-db";
+import { porToken, congelarCorpoAoAbrir } from "@/lib/assinatura-db";
 import { impedimento, MENSAGEM_IMPEDIMENTO } from "@/lib/assinatura";
 import { getSettings } from "@/lib/settings";
 import { dateBR, dateTimeBR, money, nowLocal } from "@/lib/format";
@@ -17,9 +17,17 @@ export const dynamic = "force-dynamic";
  */
 export default async function AssinarPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const registro = await porToken(token);
-  if (!registro) notFound();
+  const registroAberto = await porToken(token);
+  if (!registroAberto) notFound();
 
+  /**
+   * Primeiro acesso do cliente define o corpo do contrato digital: e aqui que
+   * o modelo digital e renderizado e congelado ({{data_assinatura_digital}}
+   * entra com a data desta abertura). Acessos seguintes e a própria assinatura
+   * leem esse texto congelado — a data não muda se o cliente voltar no dia
+   * seguinte, e editar o modelo depois não altera o que ele leu.
+   */
+  const registro = await congelarCorpoAoAbrir(registroAberto);
   const s = await getSettings();
   const bloqueio = impedimento(registro, nowLocal());
 
