@@ -1,8 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { gerarConviteAcesso } from "@/lib/portal-auth";
+import { origemDaRequisicao } from "@/lib/portal-core";
 import { logAction } from "@/lib/audit";
 import { waLink } from "@/lib/format";
 
@@ -12,6 +14,12 @@ import { waLink } from "@/lib/format";
  * Acao administrativa: quem decide quem tem portal e a equipe. O token so
  * existe legivel aqui, nesta resposta — o banco guarda o SHA-256. A tela
  * recebe o link pronto para copiar/mandar pelo WhatsApp.
+ *
+ * O endereco do portal vem da PROPRIA REQUISICAO (host/x-forwarded-host),
+ * entao o link sai completo automaticamente: se a equipe abrir o sistema pelo
+ * workers.dev, o convite aponta para o workers.dev; se abrir pelo dominio
+ * proprio, aponta para ele. PORTAL_BASE_URL, quando definida, tem prioridade
+ * para ambientes onde o proxy esconde o host real.
  */
 export async function gerarAcessoPortal(fd: FormData) {
   const user = await requireUser();
@@ -19,7 +27,11 @@ export async function gerarAcessoPortal(fd: FormData) {
   const convite = await gerarConviteAcesso(id);
   if (!convite) redirect(`/clientes/${id}?aviso=${encodeURIComponent("Cliente não encontrado ou inativo.")}`);
 
-  const origem = process.env.PORTAL_BASE_URL || "";
+  let origem = process.env.PORTAL_BASE_URL || "";
+  if (!origem) {
+    const h = await headers();
+    origem = origemDaRequisicao(h);
+  }
   const link = `${origem}/portal/primeiro-acesso?token=${convite!.token}`;
 
   await logAction(

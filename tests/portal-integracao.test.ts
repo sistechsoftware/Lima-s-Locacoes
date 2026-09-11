@@ -16,6 +16,7 @@ import {
   abrirSessaoCliente,
   clienteDaSessao,
   apagarSessao,
+  origemDaRequisicao,
 } from "../src/lib/portal-core.ts";
 import {
   financeiroDoCliente,
@@ -88,6 +89,31 @@ async function locacao(
   if (status === "finalizada" || status === "retirada") await aoConcluirLocacao(id);
   return id;
 }
+
+describe("origem do portal a partir da requisicao", () => {
+  const h = (pares: Record<string, string>) => new Headers(pares);
+
+  it("usa x-forwarded-host do proxy e o protocolo encaminhado", () => {
+    assert.equal(
+      origemDaRequisicao(h({ "x-forwarded-host": "limas-locacoes.limas-locacoes.workers.dev", "x-forwarded-proto": "https" })),
+      "https://limas-locacoes.limas-locacoes.workers.dev",
+    );
+  });
+
+  it("cai para host quando nao ha proxy, e https fora de localhost", () => {
+    assert.equal(origemDaRequisicao(h({ host: "meudominio.com.br" })), "https://meudominio.com.br");
+  });
+
+  it("localhost roda em http", () => {
+    assert.equal(origemDaRequisicao(h({ host: "localhost:3210" })), "http://localhost:3210");
+    assert.equal(origemDaRequisicao(h({ host: "127.0.0.1:8787" })), "http://127.0.0.1:8787");
+  });
+
+  it("host malformado devolve vazio: o link degrada, nao quebra", () => {
+    assert.equal(origemDaRequisicao(h({ host: "host ruim com espaco" })), "");
+    assert.equal(origemDaRequisicao(new Headers()), "");
+  });
+});
 
 describe("cpf", () => {
   it("aceita CPF valido e recusa invalido", () => {

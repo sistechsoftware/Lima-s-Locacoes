@@ -46,6 +46,33 @@ export function cpfValido(cpf: string): boolean {
 /** Digitos de um telefone cadastrado (usado na verificacao do primeiro acesso). */
 const digitosFone = (s: string | null | undefined) => onlyDigits(s).slice(-11);
 
+/* ------------------------------ origem do portal ------------------------------ */
+
+/**
+ * Origem absoluta do portal ("https://host") derivada da propria requisicao.
+ *
+ * O link do convite precisa sair completo para o cliente abrir pelo WhatsApp,
+ * e a origem certa muda conforme onde a equipe acessa: workers.dev, dominio
+ * proprio ou localhost. Em vez de exigir configuracao, lemos os cabecalhos da
+ * requisicao que clicou em "gerar convite" — o mesmo endereco na barra do
+ * navegador de quem gerou. PORTAL_BASE_URL, quando definida, segue valendo
+ * como escolha explicita por cima deste calculo.
+ *
+ * Funcao pura (recebe Headers): testavel sem servidor, como o resto da regra.
+ * Host malformado devolve "" e o link sai relativo — degrada, nao quebra.
+ */
+export function origemDaRequisicao(h: Headers): string {
+  // x-forwarded-host vem do proxy (Cloudflare) e e o host real do visitante;
+  // host e o cabecalho padrao da requisicao
+  const host = (h.get("x-forwarded-host") ?? h.get("host") ?? "").trim();
+  if (!host || !/^[\w.-]+(:\d+)?$/.test(host)) return "";
+  const proto = (h.get("x-forwarded-proto") ?? "").split(",")[0].trim().toLowerCase();
+  if (proto === "http" || proto === "https") return `${proto}://${host}`;
+  // sem cabecalho de proxy: dev local roda em http, producao em https
+  const local = /^(localhost|127\.\.?|0\.0\.0\.0|\[::1\])/i.test(host);
+  return `${local ? "http" : "https"}://${host}`;
+}
+
 /* ------------------------------ senhas ------------------------------ */
 
 /** Mesma primitiva das senhas dos usuarios internos: scrypt com salt. */
