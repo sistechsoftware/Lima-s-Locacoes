@@ -249,6 +249,19 @@ export async function getCustomer(id: number) {
   return await one<any>(`${CUSTOMER_SELECT} WHERE c.id = ?`, [id]);
 }
 
+/**
+ * Colunas de cliente para as telas de selecao com busca dinamica.
+ *
+ * Alem do nome, traz o CPF (doc) e os numeros das reservas do cliente, para a
+ * busca por digitos. O agregado e uma subconsulta correlacionada: devolve UMA
+ * linha por cliente, jamais duplica por causa de varias reservas — a dedupli-
+ * cacao final fica por conta de unicosPorId na tela, como segunda barreira.
+ */
+export const CUSTOMER_PICK_COLUMNS = `
+  c.id, c.name, c.doc, c.phone, c.address, c.district, c.city,
+  (SELECT group_concat(r2.number) FROM reservations r2
+    WHERE r2.customer_id = c.id AND r2.status <> 'cancelada') AS reserva_numeros`;
+
 /* ------------------------------- busca global -------------------------------- */
 
 export async function globalSearch(q: string) {

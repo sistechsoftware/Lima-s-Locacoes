@@ -1,8 +1,10 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { Field, Grid } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { OPERATION_KINDS, OPERATION_STATUS } from "@/lib/domain";
+import { unicosPorId, type OpcaoSelecionavel } from "@/lib/search-select-utils";
+import SearchableSelect from "@/components/SearchableSelect";
 
 type Action = (prev: string | null, fd: FormData) => Promise<string | null>;
 
@@ -22,6 +24,20 @@ export default function OperationForm({
   defaultKind?: string;
 }) {
   const [error, formAction] = useActionState(action, null);
+  const [reservationId, setReservationId] = useState(defaultReservation ? String(defaultReservation) : "");
+
+  // busca dinamica de reserva: mesmas opcoes do select, deduplicadas por id
+  // do registro; o cliente e a data aparecem na opcao para identificar
+  const opcoesReserva: OpcaoSelecionavel[] = useMemo(
+    () =>
+      unicosPorId(reservations, (r) => r.id).map((r) => ({
+        value: String(r.id),
+        label: `${r.number} - ${r.customer_name} (${r.event_date})`,
+        digitos: [r.number.replace(/\D/g, "")],
+      })),
+    [reservations],
+  );
+
   return (
     <form action={formAction} className="space-y-4">
       <Field label="Tipo de Operação">
@@ -35,7 +51,13 @@ export default function OperationForm({
       </Field>
 
       <Field label="Reserva *">
-        <select name="reservation_id" defaultValue={defaultReservation ?? ""} className="campo" required>
+        <select
+          name="reservation_id"
+          value={reservationId}
+          onChange={(e) => setReservationId(e.target.value)}
+          className="campo"
+          required
+        >
           <option value="">Selecione…</option>
           {reservations.map((r) => (
             <option key={r.id} value={r.id}>
@@ -43,6 +65,13 @@ export default function OperationForm({
             </option>
           ))}
         </select>
+        <div className="mt-2">
+          <SearchableSelect
+            options={opcoesReserva}
+            onSelect={setReservationId}
+            label="Buscar reserva por número (ou nome do cliente)"
+          />
+        </div>
       </Field>
 
       <Grid>

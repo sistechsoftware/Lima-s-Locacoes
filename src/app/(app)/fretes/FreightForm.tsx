@@ -1,9 +1,11 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import RouteEstimate from "@/components/RouteEstimate";
 import { Field, Grid } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FREIGHT_STATUS, PAYMENT_METHODS, PAYMENT_METHOD_LABEL } from "@/lib/domain";
+import { unicosPorId, type OpcaoSelecionavel } from "@/lib/search-select-utils";
+import SearchableSelect from "@/components/SearchableSelect";
 
 type Action = (prev: string | null, fd: FormData) => Promise<string | null>;
 
@@ -16,7 +18,7 @@ export default function FreightForm({
   submitLabel = "Salvar Frete",
 }: {
   action: Action;
-  customers: { id: number; name: string; phone: string }[];
+  customers: { id: number; name: string; doc?: string; phone: string }[];
   vehicles: { id: number; name: string }[];
   freight?: any;
   /** Preenche o valor quando vem da calculadora de frete. */
@@ -28,12 +30,24 @@ export default function FreightForm({
   const [origin, setOrigin] = useState(v.origin ?? "");
   const [destination, setDestination] = useState(v.destination ?? "");
   const [amount, setAmount] = useState(valorInicial ?? ((v.amount_cents ?? 0) / 100).toFixed(2));
+
+  // busca dinamica de cliente: mesmas opcoes do select, deduplicadas por id
+  const opcoesCliente: OpcaoSelecionavel[] = useMemo(
+    () =>
+      unicosPorId(customers, (c) => c.id).map((c) => ({
+        value: String(c.id),
+        label: c.name,
+        digitos: [c.doc ?? "", c.phone ?? ""],
+      })),
+    [customers],
+  );
+  const [customerId, setCustomerId] = useState(String(v.customer_id ?? ""));
   return (
     <form action={formAction} className="space-y-4">
       {freight && <input type="hidden" name="id" value={freight.id} />}
       <Grid>
         <Field label="Cliente cadastrado">
-          <select name="customer_id" defaultValue={v.customer_id ?? ""} className="campo">
+          <select name="customer_id" value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="campo">
             <option value="">Sem cliente cadastrado</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>
@@ -41,6 +55,13 @@ export default function FreightForm({
               </option>
             ))}
           </select>
+          <div className="mt-2">
+            <SearchableSelect
+              options={opcoesCliente}
+              onSelect={setCustomerId}
+              label="Buscar cliente por nome, CPF ou telefone"
+            />
+          </div>
         </Field>
         <Field label="Nome do contato">
           <input name="contact_name" defaultValue={v.contact_name ?? ""} className="campo" />

@@ -8,11 +8,13 @@ import { Field, Grid, Alerta } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { money, parseMoney } from "@/lib/format";
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABEL, RESERVATION_STATUS } from "@/lib/domain";
+import { unicosPorId, type OpcaoSelecionavel } from "@/lib/search-select-utils";
+import SearchableSelect from "@/components/SearchableSelect";
 import { checkStock } from "./actions";
 import { useStockCheck } from "@/components/useStockCheck";
 import PreparationChoice from "@/components/PreparationChoice";
 
-type Customer = { id: number; name: string; phone: string; address: string; district: string; city: string };
+type Customer = { id: number; name: string; doc?: string; phone: string; reserva_numeros?: string; address: string; district: string; city: string };
 type Action = (prev: string | null, fd: FormData) => Promise<string | null>;
 
 export default function ReservationForm({
@@ -67,6 +69,18 @@ export default function ReservationForm({
   const [considerPreparation, setConsiderPreparation] = useState(reservation?.stock_consider_preparation !== 0);
   const { conflicts, checking, error: stockError } = useStockCheck(items, deliveryAt, pickupAt, considerPreparation, reservation?.id);
   const [override, setOverride] = useState(false);
+
+  // opcoes da busca dinamica: deduplicadas por id, com CPF, telefone e numeros
+  // de reserva do cliente como campos de busca por digitos
+  const opcoesCliente: OpcaoSelecionavel[] = useMemo(
+    () =>
+      unicosPorId(customers, (c) => c.id).map((c) => ({
+        value: String(c.id),
+        label: c.name,
+        digitos: [c.doc ?? "", c.phone ?? "", ...(c.reserva_numeros ?? "").split(",")],
+      })),
+    [customers],
+  );
 
   // preenche o endereco a partir do cliente quando ainda estiver vazio
   useEffect(() => {
@@ -141,6 +155,13 @@ export default function ReservationForm({
               >
                 Novo
               </Link>
+            </div>
+            <div className="mt-2">
+              <SearchableSelect
+                options={opcoesCliente}
+                onSelect={setCustomerId}
+                label="Buscar cliente por nome, CPF ou número da reserva"
+              />
             </div>
           </Field>
 
