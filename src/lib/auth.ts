@@ -11,6 +11,8 @@ export type SessionUser = {
   name: string;
   username: string;
   role: Role;
+  /** Foto de perfil (URL /api/arquivo/<id>) ou null quando nao tem. */
+  avatar_url: string | null;
 };
 
 const COOKIE = "limas_session";
@@ -66,7 +68,7 @@ export async function currentUser(): Promise<SessionUser | null> {
   const id = jar.get(COOKIE)?.value;
   if (!id) return null;
   const row = await one<SessionUser & { expires_at: string; active: number }>(
-    `SELECT u.id, u.name, u.username, u.role, u.active, s.expires_at
+    `SELECT u.id, u.name, u.username, u.role, u.active, u.avatar_url, s.expires_at
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id = ?`,
     [id],
@@ -76,7 +78,7 @@ export async function currentUser(): Promise<SessionUser | null> {
     await run("DELETE FROM sessions WHERE id = ?", [id]);
     return null;
   }
-  return { id: row.id, name: row.name, username: row.username, role: row.role };
+  return { id: row.id, name: row.name, username: row.username, role: row.role, avatar_url: row.avatar_url };
 }
 
 /** Exige usuario logado; redireciona para /login caso contrario. */
@@ -108,7 +110,7 @@ export async function assertAdmin(): Promise<SessionUser> {
 }
 
 export async function listUsers() {
-  return await all(`SELECT id, name, username, email, phone, role, active, created_at FROM users ORDER BY name`);
+  return await all(`SELECT id, name, username, email, phone, role, active, avatar_url, created_at FROM users ORDER BY name`);
 }
 
 export async function purgeExpiredSessions() {

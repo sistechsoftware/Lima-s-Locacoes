@@ -1,38 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { holdUnreadPolling, pokeUnread, releaseUnreadPolling, useUnread } from "@/lib/chat-unread";
 
 /**
- * Sino do chat: contador de mensagens nao lidas, atualizado por polling.
- * Fica ao lado do sino de notificacoes na barra superior. Na propria tela do
- * chat o polling do ChatApp ja consume o contador, entao este componente
- * para de consultar la para nao dobrar as chamadas.
+ * Sino do chat: contador de mensagens nao lidas.
+ *
+ * Nao consulta mais nada por conta própria: le do estado compartilhado
+ * (chat-unread), que tambem alimenta o badge do menu inferior e a tela do
+ * chat — topo e menu nunca divergem. O ciclo de consultas e unico para a
+ * pagina inteira, com endpoint leve e ritmo adaptativo (rapido apos navegar,
+ * lento em tela parada, pausado em aba oculta).
  */
 export default function ChatBell() {
-  const [unread, setUnread] = useState<number | null>(null);
   const pathname = usePathname();
+  const { unread } = useUnread();
 
+  // Uma participacao por montagem; o ciclo compartilhado vive enquanto houver
+  // quem leia (sino, menu inferior ou tela do chat) e para quando a pagina sai.
   useEffect(() => {
-    if (pathname === "/chat") return;
-    let vivo = true;
-    const consultar = async () => {
-      try {
-        const res = await fetch("/api/chat", { cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const data = (await res.json().catch(() => ({}))) as { unread?: number };
-        if (vivo) setUnread(data.unread ?? 0);
-      } catch {
-        /* offline: mantem o ultimo valor */
-      }
-    };
-    void consultar();
-    const t = setInterval(consultar, 5000);
-    return () => {
-      vivo = false;
-      clearInterval(t);
-    };
+    holdUnreadPolling();
+    return () => releaseUnreadPolling();
+  }, []);
+
+  // Troca de rota: consulta imediata e ritmo rapido por um ciclo.
+  useEffect(() => {
+    pokeUnread();
   }, [pathname]);
 
   if (pathname === "/chat") return null;

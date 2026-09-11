@@ -13,6 +13,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import ImageInput from "@/components/ImageInput";
 import EditorContrato from "@/components/EditorContrato";
 import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveFreightSettings, saveTemplates, toggleUser } from "./actions";
+import AvatarForm from "./AvatarForm";
+import AvatarAdminForm from "./AvatarAdminForm";
 import { saveVehicle, deleteVehicle } from "../operacao/actions";
 import { createAccount, createSupplier } from "../compras/actions";
 import { money } from "@/lib/format";
@@ -470,6 +472,11 @@ export default async function ConfiguracoesPage({
                       </form>
                     )}
                   </div>
+                  {/* Foto de perfil: o admin troca/remove; o proprio usuario
+                      tambem pode pela aba Minha conta. */}
+                  <div className="mt-2">
+                    <AvatarAdminForm userId={u.id} userName={u.name} url={u.avatar_url} />
+                  </div>
                   <details className="mt-2">
                     <summary className="cursor-pointer text-xs font-semibold text-marca-600">Redefinir senha</summary>
                     <form action={resetPassword} className="mt-2 flex gap-2">
@@ -496,6 +503,7 @@ export default async function ConfiguracoesPage({
           <p className="mb-3 text-sm text-stone-600">
             {user.name} · perfil <b className="capitalize">{user.role}</b>
           </p>
+          <AvatarForm url={user.avatar_url} name={user.name} />
           <PasswordForm />
         </Section>
       )}
