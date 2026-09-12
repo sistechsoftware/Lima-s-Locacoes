@@ -6,8 +6,12 @@ import { mapsLink, phoneBR, timeBR, waLink } from "@/lib/format";
 
 const KIND = Object.fromEntries(OPERATION_KINDS.map((k) => [k.value, k]));
 
-/** Cartao operacional usado no dashboard, na agenda e na tela de entregas. */
-export function OperationCard({ op, showDate = false }: { op: any; showDate?: boolean }) {
+/**
+ * Cartao operacional usado no dashboard, na agenda e na tela de entregas.
+ * `isNext` apenas adiciona o rotulo "PRÓXIMA" no dia corrente; quem nao passa
+ * a flag (dashboard, agenda) recebe o cartao exatamente como antes.
+ */
+export function OperationCard({ op, showDate = false, isNext = false }: { op: any; showDate?: boolean; isNext?: boolean }) {
   const kind = KIND[op.kind] ?? OPERATION_KINDS[0];
   const endereco = [op.address, op.district, op.city].filter(Boolean).join(", ");
   const maps = mapsLink(op.address, op.district, op.city);
@@ -35,6 +39,7 @@ export function OperationCard({ op, showDate = false }: { op: any; showDate?: bo
               <Badge tone={kind.tone}>{kind.label}</Badge>
               <StatusBadge defs={OPERATION_STATUS} value={op.status} />
               {late && <Badge tone="vermelho">Atrasada</Badge>}
+              {isNext && !late && <Badge tone="terracota">⏱ PRÓXIMA</Badge>}
             </div>
             <p className="mt-1 truncate text-sm font-bold text-tinta-900">{op.customer ?? "Sem cliente"}</p>
             {op.items && <p className="truncate text-xs text-stone-600">{op.items}</p>}

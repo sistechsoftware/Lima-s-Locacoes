@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { addDays, dateBR, today } from "@/lib/format";
 import { Card, Empty, LinkButton, PageHeader } from "@/components/ui";
 import { OperationCard } from "@/components/OperationCard";
-import { Tabs } from "@/components/List";
+import { NextRow, Tabs } from "@/components/List";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +44,20 @@ export default async function OperacaoPage({
     todas: doPeriodo.length,
     atrasadas: atrasadas.length,
   };
+
+  // Destaque visual da proxima operacao do dia: a primeira ainda pendente na
+  // ordem cronologica (o SQL ja ordena por scheduled_at), so quando a lista e
+  // de um unico dia. Apenas visual: nao altera operacao, reserva ou estoque.
+  const mostrarData = dias > 0 || aba === "atrasadas";
+  const proximasPorId = new Set<number>();
+  if (!mostrarData) {
+    for (const o of ops) {
+      if (o.status !== "concluida" && o.status !== "cancelada") {
+        proximasPorId.add(o.id);
+        break;
+      }
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -86,9 +100,14 @@ export default async function OperacaoPage({
         <Empty>Nenhuma operação neste filtro.</Empty>
       ) : (
         <div className="space-y-2">
-          {ops.map((o: any) => (
-            <OperationCard key={o.id} op={o} showDate={dias > 0 || aba === "atrasadas"} />
-          ))}
+          {ops.map((o: any) => {
+            const isNext = proximasPorId.has(o.id);
+            return (
+              <NextRow key={o.id} isNext={isNext}>
+                <OperationCard op={o} showDate={mostrarData} isNext={isNext} />
+              </NextRow>
+            );
+          })}
         </div>
       )}
     </div>

@@ -41,7 +41,7 @@ export function Tabs({
   base,
   param = "aba",
 }: {
-  items: { value: string; label: string; count?: number }[];
+  items: readonly { value: string; label: string; count?: number }[];
   current: string;
   base: string;
   param?: string;
@@ -112,6 +112,16 @@ export function Pagination({
       )}
     </nav>
   );
+}
+
+/**
+ * Envoltorio do cartao da proxima reserva/operacao do dia: contorno discreto
+ * do azul da marca. Sem `isNext`, devolve o conteudo como estava — os demais
+ * cartoes ficam identicos ao de antes. Apenas visual, sem mudanca de dados.
+ */
+export function NextRow({ isNext, children }: { isNext?: boolean; children: React.ReactNode }) {
+  if (!isNext) return <>{children}</>;
+  return <div className="rounded-2xl border-2 border-marca-500 p-0.5 shadow-sm">{children}</div>;
 }
 
 /** Linha de lista clicavel, no formato de cartao (funciona bem no celular). */
