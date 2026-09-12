@@ -10,12 +10,14 @@ export type NavItem = {
 
 export const NAV: NavItem[] = [
   /* Barra inferior (mobile): no maximo 4 itens aqui — o quinto espaco e sempre
-     o botao "Mais". Ver MOBILE_NAV/EXTRA_NAV abaixo. A Agenda fica no "Mais":
-     a operacao do dia continua visivel no dashboard, e a ferramenta de campo
-     (Entregas e Retiradas) fica a um toque na barra principal. */
+     o botao "Mais". Ver MOBILE_NAV/EXTRA_NAV abaixo. Mensagens ficou de fora
+     da barra de proposito: o chat tem tela propria de altura inteira, o sino
+     do topo ja mostra o contador e o botao flutuante + ganhou o atalho
+     "Mensagens" — a barra fica com a operacao do dia (Agenda, Reservas e
+     Entregas/Retiradas) mais o Dashboard. */
   { href: "/dashboard", label: "Dashboard", icon: "dashboard", mobile: true },
-  { href: "/chat", label: "Mensagens", icon: "chat", mobile: true },
-  { href: "/agenda", label: "Agenda", icon: "agenda" },
+  { href: "/chat", label: "Mensagens", icon: "chat" },
+  { href: "/agenda", label: "Agenda", icon: "agenda", mobile: true },
   { href: "/reservas", label: "Reservas", icon: "reservas", mobile: true },
   { href: "/operacao", label: "Entregas e Retiradas", icon: "operacao", mobile: true },
   { href: "/orcamentos", label: "Orçamentos", icon: "orcamento" },
@@ -35,12 +37,10 @@ export const NAV: NavItem[] = [
 ];
 
 /** Itens diretos da barra inferior. INVARIANTE: 4 itens + botao "Mais" = 5,
- *  exatamente uma linha em qualquer largura de celular (grid-cols-5 no Shell). */
+ *  exatamente uma linha em qualquer largura de celular (grid-cols-5 no Shell).
+ *  Ordem pensada para o polegar: Dashboard, Agenda, Reservas, Entregas. */
 export const MOBILE_NAV = NAV.filter((n) => n.mobile);
 
-/** Menu "Mais" da barra inferior: a Agenda vem primeiro (uso diario) e depois
- *  todo o restante, na ordem original do menu lateral — sem duplicar entradas. */
-export const EXTRA_NAV = [
-  ...NAV.filter((n) => n.href === "/agenda"),
-  ...NAV.filter((n) => !n.mobile && n.href !== "/agenda"),
-];
+/** Menu "Mais" da barra inferior: tudo que nao cabe na barra, na ordem
+ *  original do menu lateral (Mensagens primeiro) — sem duplicar entradas. */
+export const EXTRA_NAV = NAV.filter((n) => !n.mobile);
