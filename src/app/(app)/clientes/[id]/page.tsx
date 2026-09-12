@@ -15,6 +15,8 @@ import { documentosDoCliente } from "@/lib/assinatura-db";
 import { painelDoCliente, historicoDe, mensagensDoCliente } from "@/lib/fidelidade-db";
 import { today } from "@/lib/format";
 import { deleteCustomer, toggleCustomer } from "../actions";
+import { gerarAcessoPortal } from "../portal-actions";
+import { acessoPortalDe } from "@/lib/portal-auth";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +26,14 @@ export default async function ClientePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ aviso?: string }>;
+  searchParams: Promise<{ aviso?: string; portal_link?: string; portal_wa?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
-  const { aviso } = await searchParams;
+  const { aviso, portal_link, portal_wa } = await searchParams;
   const c = await getCustomer(Number(id));
   if (!c) notFound();
+  const acessoPortal = await acessoPortalDe(c.id);
 
   const reservas = await all<any>(
     `SELECT r.*, (SELECT COALESCE(SUM(amount_cents),0) FROM payments p WHERE p.reservation_id = r.id) AS paid
@@ -76,6 +79,30 @@ export default async function ClientePage({
         </Alerta>
       )}
       {!c.active && <Alerta tone="ambar">Este cliente está inativo.</Alerta>}
+
+      {portal_link && (
+        <div className="cartao border-emerald-300 bg-emerald-50 p-4">
+          <p className="text-sm font-bold text-emerald-800">🔗 Link de acesso ao Portal do Cliente gerado</p>
+          <p className="mt-1 text-xs text-emerald-800">
+            Válido por 7 dias. Envie para o cliente pelo WhatsApp — após o primeiro uso, o link expira.
+          </p>
+          <p className="mt-2 break-all rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs text-tinta-800">
+            {portal_link}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {portal_wa && (
+              <a
+                href={`${portal_wa}?text=${encodeURIComponent(`Olá! Este é seu acesso ao Portal do Cliente ${"Lima's"}: ${portal_link}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+              >
+                <Icon name="whatsapp" className="h-4 w-4" /> Enviar no WhatsApp
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Stat label="Locações" value={c.locacoes} />
@@ -219,6 +246,25 @@ export default async function ClientePage({
           </ul>
         </Section>
       )}
+
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-tinta-900">Portal do Cliente</p>
+          <p className="text-xs text-stone-500">
+            {acessoPortal?.portal_password_hash
+              ? "Cliente com acesso ativo ao portal (CPF + senha)."
+              : acessoPortal?.portal_setup_token_hash
+                ? "Convite gerado e aguardando o cliente criar a senha."
+                : "Cliente sem acesso ao portal. Gere um convite para liberar."}
+          </p>
+        </div>
+        <form action={gerarAcessoPortal}>
+          <input type="hidden" name="id" value={c.id} />
+          <SubmitButton variant="secundario">
+            {acessoPortal?.portal_password_hash ? "Redefinir acesso" : "Gerar convite de acesso"}
+          </SubmitButton>
+        </form>
+      </Card>
 
       {user.role === "admin" && (
         <Card className="flex flex-wrap items-center justify-between gap-3">

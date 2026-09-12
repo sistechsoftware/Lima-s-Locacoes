@@ -1,28 +1,13 @@
 import { currentUser } from "./auth";
-import { run, one } from "./db";
 
+/**
+ * Reexportado de rate-limit.ts, onde as funcoes vivem agora: o conteudo e o
+ * mesmo, e as importacoes existentes de api-security continuam funcionando.
+ */
+export { rateLimit, smallJson } from "./rate-limit";
+
+/** Usuario interno logado; para mutacoes exige mesma origem (CSRF). */
 export async function apiUser(request: Request, mutate = false) {
   if (mutate && request.headers.get("origin") !== new URL(request.url).origin) return null;
   return currentUser();
-}
-export async function rateLimit(bucket: string, limit: number, seconds = 60) {
-  const now = Math.floor(Date.now() / 1000);
-  const slot = `${bucket}:${Math.floor(now / seconds)}`;
-  await run(`INSERT INTO api_rate_limits(bucket,count,expires_at) VALUES (?,1,?)
-    ON CONFLICT(bucket) DO UPDATE SET count=count+1`, [slot, now + seconds * 2]);
-  return (await one<{ count: number }>("SELECT count FROM api_rate_limits WHERE bucket=?", [slot]))!.count <= limit;
-}
-export async function smallJson(request: Request, max = 8192) {
-  const reader = request.body?.getReader();
-  if (!reader) throw new Error("Corpo vazio.");
-  let size = 0, text = "";
-  const decoder = new TextDecoder();
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    size += value.length;
-    if (size > max) { await reader.cancel(); throw new Error("Requisição muito grande."); }
-    text += decoder.decode(value, { stream: true });
-  }
-  return JSON.parse(text + decoder.decode());
 }
