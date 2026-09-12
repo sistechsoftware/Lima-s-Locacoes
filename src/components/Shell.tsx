@@ -157,14 +157,21 @@ export function BottomNav() {
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
   // Mesmo estado do sino do topo: uma unica fonte de verdade para o badge.
+  // Mensagens saiu da barra, mas o contador continua visivel: o sino do topo,
+  // o botao "Mais" (onde o chat agora vive) e o atalho no botao + leem tudo
+  // daqui, entao nunca divergem.
   const { unread } = useUnread();
 
   useEffect(() => setSheet(false), [pathname]);
 
+  const noMais = EXTRA_NAV.some((n) => active(pathname, n.href));
+
   return (
     <>
+      {/* z-50: acima do botao flutuante + (z-40) — sem ele o + ficava
+          desenhado por cima dos ladrilhos e roubava os toques. */}
       {sheet && (
-        <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSheet(false)}>
+        <div className="fixed inset-0 z-50 md:hidden" onClick={() => setSheet(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <div
             className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
@@ -176,7 +183,11 @@ export function BottomNav() {
                 <Link
                   key={n.href}
                   href={n.href}
-                  className="flex flex-col items-center gap-1.5 rounded-xl border border-nuvem-200 px-2 py-3 text-center text-[0.7rem] font-semibold text-tinta-700"
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center text-[0.7rem] font-semibold ${
+                    active(pathname, n.href)
+                      ? "border-marca-200 bg-marca-50 text-marca-700"
+                      : "border-nuvem-200 text-tinta-700"
+                  }`}
                 >
                   <Icon name={n.icon} className="h-5 w-5 text-marca-600" />
                   <span className="leading-tight">{n.label}</span>
@@ -187,38 +198,64 @@ export function BottomNav() {
         </div>
       )}
 
-      {/* Uma unica linha garantida: grid-cols-5 fixo (4 itens + "Mais"),
-          nunca quebra mesmo se MOBILE_NAV crescer — o slice protege o invariante. */}
-      <nav className="nao-imprimir fixed inset-x-0 bottom-0 z-30 border-t border-nuvem-300 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="grid grid-cols-5">
-          {MOBILE_NAV.slice(0, 4).map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={`relative flex flex-col items-center gap-0.5 py-2 text-[0.63rem] font-semibold ${
-                active(pathname, n.href) ? "text-marca-600" : "text-stone-500"
-              }`}
-            >
-              <span className="relative mt-1 inline-flex">
-                <Icon name={n.icon} className="h-[22px] w-[22px]" />
-                {/* Badge de nao lidas so no item Mensagem/Chat; nada muda nos demais. */}
-                {n.href === "/chat" && unread > 0 && (
-                  <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[0.58rem] font-bold leading-none text-white ring-2 ring-white">
-                    {unread > 99 ? "99+" : unread}
-                  </span>
-                )}
-              </span>
-              <span className="leading-none">{n.label.split(" ")[0]}</span>
-            </Link>
-          ))}
+      {/* Barra flutuante elevada: o nav cobre a base inteira com fundo opaco e
+          respeita a area segura (env), e o cartao branco fica suspenso sempre
+          ACIMA da Home Bar do iPhone — os glifos nunca caem na zona de gesto do
+          iOS. Sem px fixo por aparelho: onde nao ha Home Bar o env() vale 0 e o
+          cartao fica colado na base, como sempre foi no Android. */}
+      <nav className="nao-imprimir fixed inset-x-0 bottom-0 z-30 bg-nuvem-100 pb-[env(safe-area-inset-bottom)] md:hidden">
+        {/* Uma unica linha garantida: 4 itens + "Mais", cada um com 1/5 da
+            largura — nunca quebra mesmo se MOBILE_NAV crescer (o slice
+            protege o invariante). */}
+        <div className="mx-2 mb-2 flex items-stretch rounded-2xl border border-nuvem-300 bg-white shadow-lg shadow-tinta-900/5">
+          {MOBILE_NAV.slice(0, 4).map((n) => {
+            const isActive = active(pathname, n.href);
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                aria-current={isActive ? "page" : undefined}
+                className="flex min-w-0 flex-1 flex-col items-center gap-1 py-2 text-[0.63rem] font-semibold outline-none"
+              >
+                {/* Capsula grande: junto do py-2 garante alvo de toque >= 48px
+                    (minimo Apple/Google), com feedback imediato ao pressionar. */}
+                <span
+                  className={`flex h-8 w-full max-w-14 items-center justify-center rounded-full transition-colors ${
+                    isActive ? "bg-marca-100 text-marca-600" : "text-stone-500 active:bg-nuvem-100"
+                  }`}
+                >
+                  <Icon name={n.icon} className="h-[22px] w-[22px]" />
+                </span>
+                <span className={`leading-none transition-colors ${isActive ? "text-marca-700" : "text-stone-500"}`}>
+                  {n.label.split(" ")[0]}
+                </span>
+              </Link>
+            );
+          })}
           <button
             onClick={() => setSheet(true)}
-            className={`flex flex-col items-center gap-0.5 py-2 text-[0.63rem] font-semibold ${
-              sheet || EXTRA_NAV.some((n) => active(pathname, n.href)) ? "text-marca-600" : "text-stone-500"
-            }`}
+            aria-expanded={sheet}
+            className="flex min-w-0 flex-1 flex-col items-center gap-1 py-2 text-[0.63rem] font-semibold outline-none"
           >
-            <Icon name="menu" className="mt-1 h-[22px] w-[22px]" />
-            <span className="leading-none">Mais</span>
+            <span
+              className={`relative flex h-8 w-full max-w-14 items-center justify-center rounded-full transition-colors ${
+                sheet || noMais ? "bg-marca-100 text-marca-600" : "text-stone-500 active:bg-nuvem-100"
+              }`}
+            >
+              <Icon name="menu" className="h-[22px] w-[22px]" />
+              {/* Mensagens mora no "Mais" agora: o contador de nao lidas
+                  acompanhou, no mesmo padrao de antes da barra. */}
+              {unread > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[0.58rem] font-bold leading-none text-white ring-2 ring-white">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+            </span>
+            <span
+              className={`leading-none transition-colors ${sheet || noMais ? "text-marca-700" : "text-stone-500"}`}
+            >
+              Mais
+            </span>
           </button>
         </div>
       </nav>
@@ -229,6 +266,7 @@ export function BottomNav() {
 /* ------------------------------ botao flutuante ------------------------------- */
 
 const ACOES = [
+  { href: "/chat", label: "Mensagens", icon: "chat" },
   { href: "/reservas/nova", label: "Nova Reserva", icon: "reservas" },
   { href: "/orcamentos/novo", label: "Novo Orçamento", icon: "orcamento" },
   { href: "/clientes/novo", label: "Novo Cliente", icon: "clientes" },
@@ -241,34 +279,47 @@ const ACOES = [
 export function FloatingAction() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  // Mesmo estado do sino do topo: badge de nao lidas do atalho Mensagens.
+  const { unread } = useUnread();
   useEffect(() => setOpen(false), [pathname]);
 
   /* No chat a tela usa a altura inteira e o composer (anexo/mic/enviar) ocupa a
      base: o botao flutuante cobria o microfone e roubava toques. Fora do chat
-     ele continua igual, com as mesmas acoes. */
+     ele continua igual, com as mesmas acoes de sempre — agora incluindo
+     Mensagens, que saiu da barra inferior e trocou de lugar com a Agenda. */
   if (pathname === "/chat") return null;
 
   return (
     <>
       {open && <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setOpen(false)} />}
-      <div className="nao-imprimir fixed bottom-20 right-4 z-40 flex flex-col items-end gap-2 md:bottom-6">
+      {/* Acima da barra inferior (cartao + margem), em qualquer aparelho. */}
+      <div className="nao-imprimir fixed bottom-28 right-4 z-40 flex flex-col items-end gap-2 md:bottom-6">
         {open &&
           ACOES.map((a) => (
             <Link
               key={a.href}
               href={a.href}
-              className="flex items-center gap-2 rounded-full bg-white py-2.5 pl-3 pr-4 text-sm font-semibold text-tinta-900 shadow-lg"
+              className="relative flex items-center gap-2 rounded-full bg-white py-2.5 pl-3 pr-4 text-sm font-semibold text-tinta-900 shadow-lg"
             >
               <Icon name={a.icon} className="h-4 w-4 text-marca-600" />
               {a.label}
+              {a.href === "/chat" && unread > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[0.6rem] font-bold leading-none text-white">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
             </Link>
           ))}
         <button
           onClick={() => setOpen((v) => !v)}
           aria-label="Ações rápidas"
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-marca-600 text-white shadow-xl transition active:scale-95"
+          className="relative flex h-14 w-14 items-center justify-center rounded-full bg-marca-600 text-white shadow-xl transition active:scale-95"
         >
           <Icon name={open ? "fechar" : "mais"} className="h-7 w-7" />
+          {/* Ponto discreto de nao lidas: da pra saber sem abrir o menu. */}
+          {!open && unread > 0 && (
+            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+          )}
         </button>
       </div>
     </>

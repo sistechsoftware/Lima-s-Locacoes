@@ -253,14 +253,18 @@ body {
 }
 
 @media (max-width: 767px) {
-  /* espaco para a barra inferior de navegacao */
+  /* Espaco para a barra inferior elevada: os glifos ficam sempre ACIMA da
+     area segura (a barra em si cobre a base com fundo opaco), e o conteudo
+     rola por baixo sem nunca ficar escondido atras dela. O env() vale 0 onde
+     nao ha Home Bar (Android com barra de gestos embutida), entao o espaco
+     acompanha cada aparelho — sem px fixo. */
   .com-barra-inferior {
-    padding-bottom: 5.5rem;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
   }
 
   /* A tela de chat usa altura cheia entre a barra superior e a barra inferior.
      dvh acompanha a barra de endereco dos navegadores mobile. */
   .com-barra-inferior:has(.chat-tela) {
-    padding-bottom: 5.5rem;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 5rem);
   }
 }

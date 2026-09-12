@@ -25,6 +25,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // Desenha ate as bordas do aparelho. Sem isso o Safari/PWA reporta
+  // env(safe-area-inset-bottom) = 0 e a barra inferior encosta na Home Bar do
+  // iPhone — toques na borda caem na area reservada aos gestos do iOS.
+  viewportFit: "cover",
   themeColor: "#051094",
 };
 
