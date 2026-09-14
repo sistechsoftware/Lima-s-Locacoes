@@ -627,6 +627,9 @@ CREATE TABLE IF NOT EXISTS financial_entries (
   description        TEXT,
   amount_cents       INTEGER NOT NULL,
   due_date           TEXT NOT NULL,
+  -- data da compra/competencia (lancamento manual); parcelas de compra leem a
+  -- data pela tabela purchases, via purchase_id
+  purchase_date      TEXT,
   installment        INTEGER NOT NULL DEFAULT 1,
   installments_total INTEGER NOT NULL DEFAULT 1,
   account_id         INTEGER REFERENCES financial_accounts(id) ON DELETE SET NULL,
@@ -641,6 +644,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_direction ON financial_entries(direction,
 CREATE INDEX IF NOT EXISTS idx_entries_due ON financial_entries(due_date);
 CREATE INDEX IF NOT EXISTS idx_entries_purchase ON financial_entries(purchase_id);
 CREATE INDEX IF NOT EXISTS idx_entries_reservation ON financial_entries(reservation_id);
+CREATE INDEX IF NOT EXISTS idx_entries_purchase_date ON financial_entries(purchase_date);
 
 
 `;

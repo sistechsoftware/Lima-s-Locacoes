@@ -11,6 +11,8 @@ import { receberParcela } from "./receber-actions";
 import { payEntry } from "../compras/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addExpense, createPurpose, deleteExpense, finalidadesDisponiveis } from "./actions";
+import { cancelarPagarManual, criarPagarManual } from "./pagar-actions";
+import NovoPagarForm from "./NovoPagarForm";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +76,9 @@ export default async function FinanceiroPage({
     totaisEntries("pagar"),
     all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`),
   ]);
+
+  // dados do lancamento manual: fornecedores e finalidades seguem o que ja existe
+  const fornecedores = await all<any>(`SELECT id, name FROM suppliers WHERE active = 1 ORDER BY name`);
 
   const totalEntradas = entradas.reduce((s, e) => s + e.amount_cents, 0);
   const totalSaidas = saidas.reduce((s, e) => s + e.amount_cents, 0);
@@ -327,6 +332,9 @@ export default async function FinanceiroPage({
           parcelas={aba === "receber" ? parcelasReceber : parcelasPagar}
           totais={aba === "receber" ? totReceber : totPagar}
           contas={contasAtivas}
+          fornecedores={fornecedores}
+          finalidades={finalidades}
+          hoje={today()}
         />
       )}
 
@@ -347,17 +355,27 @@ const TOM: Record<string, "verde" | "ambar" | "vermelho" | "cinza"> = {
  *
  * Previsto e realizado ficam lado a lado de proposito: o total contratado nao
  * e dinheiro em caixa, e a tela precisa deixar isso obvio.
+ *
+ * Na direcao 'pagar' o usuario tambem pode lancar uma conta manualmente, pelo
+ * mesmo livro financial_entries que as parcelas de compra usam. O formulario
+ * fica fechado por padrao, atras do botao "+ Novo Contas a Pagar".
  */
 function ListaParcelas({
   direcao,
   parcelas,
   totais,
   contas,
+  fornecedores,
+  finalidades,
+  hoje,
 }: {
   direcao: "receber" | "pagar";
   parcelas: any[];
   totais: { previsto: number; liquidado: number; saldo: number; atrasado: number };
   contas: { id: number; name: string }[];
+  fornecedores: { id: number; name: string }[];
+  finalidades: string[];
+  hoje: string;
 }) {
   const receber = direcao === "receber";
   const abertas = parcelas.filter((p) => p.situacao !== "quitada" && p.situacao !== "cancelada");
@@ -376,12 +394,23 @@ function ListaParcelas({
         <Stat label="Vencido" value={money(totais.atrasado)} tone={totais.atrasado > 0 ? "vermelho" : undefined} />
       </div>
 
+      {!receber && (
+        <details className="cartao p-4">
+          <summary className="cursor-pointer text-sm font-bold text-marca-600 select-none">
+            + Novo Contas a Pagar
+          </summary>
+          <div className="mt-3">
+            <NovoPagarForm action={criarPagarManual} finalidades={finalidades} fornecedores={fornecedores} contas={contas} hoje={hoje} />
+          </div>
+        </details>
+      )}
+
       <Section title={`${receber ? "Contas a receber" : "Contas a pagar"} (${abertas.length} em aberto)`}>
         {abertas.length === 0 ? (
           <Empty>
             {receber
               ? "Nenhuma parcela a receber. Gere o parcelamento na tela da reserva ou do frete."
-              : "Nenhuma parcela a pagar. As parcelas aparecem aqui quando você registra uma compra."}
+              : "Nenhuma parcela a pagar. As parcelas aparecem aqui quando você registra uma compra ou lança uma conta manualmente no botão acima."}
           </Empty>
         ) : (
           <ul className="space-y-2">
@@ -391,7 +420,7 @@ function ListaParcelas({
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-tinta-900">{p.description}</span>
                     <span className="block text-xs text-stone-500">
-                      {p.number} · vence em {dateBR(p.due_date)}
+                      {p.number} · {p.purchase_date ? `compra em ${dateBR(p.purchase_date)} · ` : ""}vence em {dateBR(p.due_date)}
                       {p.installments_total > 1 ? ` · ${p.installment}/${p.installments_total}` : ""}
                       {p.customer_name ? ` · ${p.customer_name}` : ""}
                       {p.supplier_name ? ` · ${p.supplier_name}` : ""}
@@ -433,10 +462,15 @@ function ListaParcelas({
                       </option>
                     ))}
                   </select>
-                  <div className="col-span-2">
+                  <div className={p.origin === "despesa" ? "grid grid-cols-[1fr_auto] gap-2 col-span-2" : "col-span-2"}>
                     <SubmitButton className="w-full">
                       {receber ? "Registrar recebimento" : "Registrar pagamento"}
                     </SubmitButton>
+                    {!receber && p.origin === "despesa" && (
+                      <SubmitButton variant="perigo" confirm="Cancelar esta conta a pagar?" name="id" value={String(p.id)} formAction={cancelarPagarManual} className="px-3">
+                        Cancelar
+                      </SubmitButton>
+                    )}
                   </div>
                 </form>
               </li>
