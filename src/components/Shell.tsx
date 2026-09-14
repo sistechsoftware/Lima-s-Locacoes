@@ -18,8 +18,11 @@ const active = (pathname: string, href: string) =>
 
 export function Sidebar({ company, logo }: { company: string; logo?: string }) {
   const pathname = usePathname();
+  // No desktop a lateral fica fixa (sticky) com a altura da viewport: quando os
+  // itens nao cabem, somente a area de navegacao rola, sem arrastar a pagina
+  // inteira. Abaixo de md nada muda — a barra segue oculta no celular.
   return (
-    <aside className="nao-imprimir hidden w-60 shrink-0 flex-col border-r border-nuvem-300 bg-white md:flex">
+    <aside className="nao-imprimir hidden w-60 shrink-0 flex-col border-r border-nuvem-300 bg-white md:flex md:h-screen md:sticky md:top-0">
       <Link href="/dashboard" className="flex items-center gap-2.5 border-b border-nuvem-200 px-4 py-4">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -34,7 +37,9 @@ export function Sidebar({ company, logo }: { company: string; logo?: string }) {
           <span className="block text-[0.68rem] uppercase tracking-wide text-stone-400">Gestão de Locações</span>
         </span>
       </Link>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+      {/* min-h-0: dentro do flex, permite a navegacao encolher ate a altura
+          disponivel — sem isso o overflow-y-auto nunca ativa. */}
+      <nav className="navegacao-lateral min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
         {NAV.map((n) => (
           <Link
             key={n.href}
