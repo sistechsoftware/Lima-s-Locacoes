@@ -63,6 +63,10 @@ export default async function FinanceiroPage({
     ),
   ]);
 
+  // o cadastro manda no que aparece, mas uma conta desativada que ja tem
+  // lancamento continua sendo mostrada pelo nome, sem virar "—"
+  const nomesContas = new Map((await all<any>(`SELECT id, name FROM financial_accounts`)).map((c) => [c.id, c.name]));
+
   const [parcelasReceber, parcelasPagar, totReceber, totPagar, contasAtivas] = await Promise.all([
     listarEntries({ direction: "receber", situacao: "todas" }),
     listarEntries({ direction: "pagar", situacao: "todas" }),
@@ -193,6 +197,7 @@ export default async function FinanceiroPage({
                         </Link>
                       )}
                       {e.freight_number ? ` · ${e.freight_number}` : ""}
+                      {e.account_id ? ` · ${nomesContas.get(e.account_id) ?? "conta removida"}` : " · sem conta"}
                     </p>
                   </div>
                   <span className="shrink-0 font-bold text-emerald-600">{money(e.amount_cents)}</span>
@@ -236,6 +241,17 @@ export default async function FinanceiroPage({
                   </option>
                 ))}
               </select>
+              <label className="col-span-2 block">
+                <span className="rotulo">Conta Corrente</span>
+                <select name="account_id" defaultValue={contasAtivas.length === 1 ? String(contasAtivas[0].id) : ""} className="campo">
+                  <option value="">Sem conta (dinheiro fora das contas cadastradas)</option>
+                  {contasAtivas.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="col-span-2">
                 <SubmitButton className="w-full">Lançar Saída</SubmitButton>
               </div>
@@ -283,6 +299,7 @@ export default async function FinanceiroPage({
                       <p className="text-xs text-stone-500">
                         {dateBR(e.date)} · {PAYMENT_METHOD_LABEL[e.method] ?? e.method}
                         {e.reservation_number ? ` · ${e.reservation_number}` : ""}
+                        {e.account_id ? ` · ${nomesContas.get(e.account_id) ?? "conta removida"}` : " · sem conta"}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

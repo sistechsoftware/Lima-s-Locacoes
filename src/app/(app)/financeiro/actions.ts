@@ -41,8 +41,8 @@ export async function addExpense(fd: FormData) {
   const finalidade = String(fd.get("category") ?? "").trim() || "Outros";
 
   const id = await insert(
-    `INSERT INTO expenses (date, category, description, amount_cents, method, reservation_id, status, created_by)
-     VALUES (?,?,?,?,?,?,?,?)`,
+    `INSERT INTO expenses (date, category, description, amount_cents, method, reservation_id, status, account_id, created_by)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
     [
       data,
       finalidade,
@@ -51,6 +51,7 @@ export async function addExpense(fd: FormData) {
       String(fd.get("method") ?? "pix"),
       Number(fd.get("reservation_id")) || null,
       String(fd.get("status") ?? "pago"),
+      Number(fd.get("account_id")) || null,
       user.id,
     ],
   );
@@ -104,8 +105,8 @@ export async function addIncome(fd: FormData) {
 
   const data = String(fd.get("paid_at") ?? "") || today();
   const id = await insert(
-    `INSERT INTO payments (reservation_id, freight_id, amount_cents, method, paid_at, notes, created_by)
-     VALUES (?,?,?,?,?,?,?)`,
+    `INSERT INTO payments (reservation_id, freight_id, amount_cents, method, paid_at, notes, account_id, created_by)
+     VALUES (?,?,?,?,?,?,?,?)`,
     [
       Number(fd.get("reservation_id")) || null,
       null,
@@ -113,6 +114,7 @@ export async function addIncome(fd: FormData) {
       String(fd.get("method") ?? "pix"),
       data,
       String(fd.get("notes") ?? "").trim(),
+      Number(fd.get("account_id")) || null,
       user.id,
     ],
   );

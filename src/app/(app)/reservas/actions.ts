@@ -111,6 +111,7 @@ export async function createReservation(_prev: string | null, fd: FormData): Pro
       imediato: String(fd.get("advance_type") ?? "agendado") === "agora",
       dataPrevista: String(fd.get("advance_date") ?? "") || today(),
       method: String(fd.get("advance_method") ?? "pix"),
+      accountId: Number(fd.get("advance_account_id")) || null,
       userId: user.id,
     });
   }
@@ -214,14 +215,17 @@ export async function addPayment(fd: FormData) {
   if (amount <= 0) redirect(`/reservas/${id}?erro=${encodeURIComponent("Informe um valor válido.")}`);
 
   const r = await one<any>(`SELECT number FROM reservations WHERE id = ?`, [id]);
+  // a conta corrente acompanha o dinheiro na origem: sem ela o lancamento entra
+  // no caixa de ninguem e o saldo da conta nao fecha com o extrato
   await insert(
-    `INSERT INTO payments (reservation_id, amount_cents, method, paid_at, notes, created_by) VALUES (?,?,?,?,?,?)`,
+    `INSERT INTO payments (reservation_id, amount_cents, method, paid_at, notes, account_id, created_by) VALUES (?,?,?,?,?,?,?)`,
     [
       id,
       amount,
       String(fd.get("method") ?? "pix"),
       String(fd.get("paid_at") ?? "") || today(),
       String(fd.get("notes") ?? ""),
+      Number(fd.get("account_id")) || null,
       user.id,
     ],
   );
