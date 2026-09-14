@@ -75,6 +75,16 @@
     display: flex;
     gap: 0.375rem;
   }
+
+  /* Desktop (>=768px): as abas deixam de rolar e passam a quebrar em quantas
+     linhas forem necessarias — nenhuma opcao fica cortada ou escondida. No
+     celular a regra original (uma linha com rolagem horizontal) continua
+     valendo, sem nenhuma mudanca visual. */
+  @media (min-width: 768px) {
+    .abas-barra {
+      flex-wrap: wrap;
+    }
+  }
 }
 
 @theme {
@@ -141,6 +151,30 @@ body {
 }
 .scroll-x::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * Menu lateral no desktop (>=768px): a navegacao rola internamente quando os
+ * itens ultrapassam a altura da tela. Scrollbar fina e discreta, que so
+ * aparece de fato quando ha conteudo a rolar (overflow: overlay/auto no
+ * WebKit mantem a trilha fora da area util). Abaixo de 768px a barra nem
+ * existe, entao nada muda no celular.
+ */
+@media (min-width: 768px) {
+  .navegacao-lateral {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-nuvem-400) transparent;
+  }
+  .navegacao-lateral::-webkit-scrollbar {
+    width: 6px;
+  }
+  .navegacao-lateral::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .navegacao-lateral::-webkit-scrollbar-thumb {
+    background-color: var(--color-nuvem-400);
+    border-radius: 9999px;
+  }
 }
 
 /*
