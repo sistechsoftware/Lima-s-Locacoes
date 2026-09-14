@@ -28,6 +28,7 @@ export default function ReservationForm({
   freteInicial,
   submitLabel = "Salvar Reserva",
   preparationMinutes = 0,
+  contas = [],
 }: {
   action: Action;
   products: Product[];
@@ -40,6 +41,8 @@ export default function ReservationForm({
   freteInicial?: string;
   submitLabel?: string;
   preparationMinutes?: number;
+  /** Contas financeiras ativas, para o adiantamento registrar onde o dinheiro entrou. */
+  contas?: { id: number; name: string }[];
 }) {
   const [error, formAction] = useActionState(action, null);
   const [items, setItems] = useState<ItemRow[]>(initialItems);
@@ -408,6 +411,21 @@ export default function ReservationForm({
                   />
                 </Field>
               )}
+
+              <Field label="Conta Corrente">
+                <select
+                  name="advance_account_id"
+                  defaultValue={contas.length === 1 ? String(contas[0].id) : ""}
+                  className="campo max-w-56"
+                >
+                  <option value="">Sem conta</option>
+                  {contas.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
               <div className="rounded-xl bg-nuvem-100 p-3 text-sm">
                 {advanceType === "agora" ? (

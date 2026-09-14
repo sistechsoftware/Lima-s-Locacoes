@@ -309,10 +309,21 @@ export async function criarAdiantamento(opts: EntradaAdiantamento): Promise<stri
   if (erroValor) return erroValor;
 
   if (opts.imediato) {
+    // a conta acompanha o dinheiro: o adiantamento recebido aqui ja e caixa,
+    // entao o account_id tem que sobreviver ate o payments, igual acontece na
+    // confirmacao de um adiantamento agendado (confirmarAdiantamento)
     await insert(
-      `INSERT INTO payments (reservation_id, amount_cents, method, paid_at, notes, created_by)
-       VALUES (?,?,?,?,?,?)`,
-      [opts.reservationId, opts.amountCents, opts.method, opts.dataPrevista || today(), "Adiantamento", opts.userId],
+      `INSERT INTO payments (reservation_id, amount_cents, method, paid_at, notes, account_id, created_by)
+       VALUES (?,?,?,?,?,?,?)`,
+      [
+        opts.reservationId,
+        opts.amountCents,
+        opts.method,
+        opts.dataPrevista || today(),
+        "Adiantamento",
+        opts.accountId ?? null,
+        opts.userId,
+      ],
     );
     return null;
   }

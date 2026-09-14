@@ -67,6 +67,9 @@ export default async function ReservaPage({
   const m = await reservationMoney(r.id);
   const ops = await reservationOperations(r.id);
   const payments = await all<any>(`SELECT * FROM payments WHERE reservation_id = ? ORDER BY paid_at DESC, id DESC`, [r.id]);
+  // contas ativas para os lancamentos de caixa desta tela: pagamento direto,
+  // adiantamento (criacao e confirmacao) e recebimento de parcela
+  const contas = await all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`);
   const contracts = await all<any>(`SELECT * FROM contracts WHERE reservation_id = ? ORDER BY id DESC`, [r.id]);
   const damages = await all<any>(
     `SELECT d.*, p.name AS product_name FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
@@ -394,7 +397,7 @@ export default async function ReservaPage({
 
       <Section title="Adiantamento">
         {adiantamentoAberto ? (
-          <AdiantamentoAberto entry={adiantamentoAberto} reservationId={r.id} hoje={today()} />
+          <AdiantamentoAberto entry={adiantamentoAberto} reservationId={r.id} hoje={today()} contas={contas} />
         ) : r.status !== "cancelada" ? (
           <>
             <p className="mb-2 text-sm text-stone-600">
@@ -431,6 +434,17 @@ export default async function ReservaPage({
               <label className="block max-w-56">
                 <span className="rotulo">Data do pagamento (ou prevista, se agendado)</span>
                 <input name="date" type="date" defaultValue={today()} className="campo" />
+              </label>
+              <label className="block max-w-56">
+                <span className="rotulo">Conta Corrente</span>
+                <select name="account_id" defaultValue={contas.length === 1 ? String(contas[0].id) : ""} className="campo">
+                  <option value="">Sem conta</option>
+                  {contas.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <SubmitButton>Registrar adiantamento</SubmitButton>
             </form>
@@ -485,6 +499,17 @@ export default async function ReservaPage({
                 <span className="rotulo">1º vencimento</span>
                 <input name="primeiro_vencimento" type="date" defaultValue={r.event_date} className="campo" />
               </label>
+              <label className="block">
+                <span className="rotulo">Conta Corrente</span>
+                <select name="account_id" defaultValue={contas.length === 1 ? String(contas[0].id) : ""} className="campo">
+                  <option value="">Sem conta</option>
+                  {contas.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="flex items-end">
                 <SubmitButton className="w-full">Gerar parcelas</SubmitButton>
               </div>
@@ -528,6 +553,21 @@ export default async function ReservaPage({
                           </option>
                         ))}
                       </select>
+                      <label className="col-span-2 block">
+                        <span className="rotulo">Conta Corrente</span>
+                        <select
+                          name="account_id"
+                          defaultValue={p.account_id ?? (contas.length === 1 ? String(contas[0].id) : "")}
+                          className="campo"
+                        >
+                          <option value="">Sem conta</option>
+                          {contas.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <div className="col-span-2">
                         <SubmitButton className="w-full">Registrar recebimento</SubmitButton>
                       </div>
@@ -555,6 +595,17 @@ export default async function ReservaPage({
               ))}
             </select>
             <input name="notes" placeholder="Observação" className="campo" />
+            <label className="col-span-2 block">
+              <span className="rotulo">Conta Corrente</span>
+              <select name="account_id" defaultValue={contas.length === 1 ? String(contas[0].id) : ""} className="campo">
+                <option value="">Sem conta (dinheiro fora das contas cadastradas)</option>
+                {contas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="col-span-2">
               <SubmitButton className="w-full">Registrar pagamento</SubmitButton>
             </div>
@@ -755,7 +806,17 @@ export default async function ReservaPage({
  * O adiantamento agendado (aberta) desta reserva, com edicao, confirmacao e
  * cancelamento. So existe um por vez, entao a tela tem um lugar so para isso.
  */
-function AdiantamentoAberto({ entry, reservationId, hoje }: { entry: any; reservationId: number; hoje: string }) {
+function AdiantamentoAberto({
+  entry,
+  reservationId,
+  hoje,
+  contas,
+}: {
+  entry: any;
+  reservationId: number;
+  hoje: string;
+  contas: { id: number; name: string }[];
+}) {
   const sit = situacaoAdiantamento(entry, entry.recebido_cents, hoje);
   return (
     <div className="space-y-3">
@@ -786,6 +847,17 @@ function AdiantamentoAberto({ entry, reservationId, hoje }: { entry: any; reserv
         <label className="block">
           <span className="rotulo">Data do recebimento</span>
           <input name="paid_at" type="date" defaultValue={hoje} className="campo" />
+        </label>
+        <label className="col-span-2 block">
+          <span className="rotulo">Conta Corrente</span>
+          <select name="account_id" defaultValue={entry.account_id ?? (contas.length === 1 ? String(contas[0].id) : "")} className="campo">
+            <option value="">Sem conta</option>
+            {contas.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </label>
         <div className="col-span-2">
           <SubmitButton className="w-full">Confirmar recebimento</SubmitButton>

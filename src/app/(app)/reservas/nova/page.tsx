@@ -6,6 +6,7 @@ import { createReservation } from "../actions";
 import { sellableProducts } from "@/lib/stock";
 import { preparationMinutes } from "@/lib/availability-settings";
 import { CUSTOMER_PICK_COLUMNS } from "@/lib/queries";
+import { activeAccounts } from "@/lib/compras";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function NovaReservaPage({
   const { cliente, frete } = await searchParams;
 
   const products = await sellableProducts();
+  const contas = await activeAccounts();
   const customers = await all<any>(
     `SELECT ${CUSTOMER_PICK_COLUMNS} FROM customers c WHERE c.active = 1 ORDER BY c.name`,
   );
@@ -34,6 +36,7 @@ export default async function NovaReservaPage({
         defaultCustomerId={cliente ? Number(cliente) : undefined}
         freteInicial={frete}
         submitLabel="Criar reserva"
+        contas={contas}
       />
     </div>
   );
