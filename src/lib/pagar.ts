@@ -100,9 +100,10 @@ export async function criarContaPagarManual(i: NovoPagarInput): Promise<{ id: nu
   const multiplas = parcelas.length > 1;
   // nextNumber le o banco ANTES do batch rodar: chamada por parcela daria o
   // mesmo numero a todas e o lote morreria no UNIQUE. O sequencial e reservado
-  // uma vez e incrementado em memoria, no mesmo formato PAG-XXX.
-  const baseNumero = await nextNumber("financial_entries", "PAG");
-  const baseSeq = parseInt(baseNumero.split("-").pop() ?? "0", 10) || 0;
+  // uma vez e incrementado em memoria, no mesmo formato PAG-XXX. nextNumber
+  // ja devolve o PROXIMO numero livre (ultimo + 1), entao a primeira parcela
+  // usa o valor como veio — somar 1 de novo pulava um numero.
+  const baseSeq = parseInt((await nextNumber("financial_entries", "PAG")).split("-").pop() ?? "0", 10) || 0;
   const statements: { sql: string; params: any[] }[] = parcelas.map((p, idx) => ({
     sql: `INSERT INTO financial_entries
             (number, direction, origin, supplier_id, category, description,
@@ -110,7 +111,7 @@ export async function criarContaPagarManual(i: NovoPagarInput): Promise<{ id: nu
              account_id, notes, created_by)
           VALUES (?,'pagar',?,?,?,?,?,?,?,?,?,?,?,?)`,
     params: [
-      `PAG-${String(baseSeq + idx + 1).padStart(3, "0")}`,
+      `PAG-${String(baseSeq + idx).padStart(3, "0")}`,
       ORIGEM_MANUAL,
       i.supplierId ?? null,
       i.categoria?.trim() || CATEGORIA_PADRAO,
@@ -130,11 +131,18 @@ export async function criarContaPagarManual(i: NovoPagarInput): Promise<{ id: nu
     const results = await batch(statements);
     const firstId = Number(results[0]?.meta?.last_row_id ?? 0);
     return { id: firstId > 0 ? firstId : null, erro: null };
-  } catch {
-    // o batch e atomico: se alguma parcela falhou, nada entrou. A mensagem
-    // volta para a tela em vez de derrubar a pagina com um erro bruto.
-    return { id: null, erro: "Não foi possível gravar a conta. Nada foi lançado; verifique os dados e tente novamente." };
+  } catch (e) {
+    // o batch e atomico: se alguma parcela falhou, nada entrou. A causa real
+    // volta para a tela (ex.: "no such column", FK de fornecedor inexistente)
+    // em vez de uma mensagem generica que esconde o problema de verdade.
+    return { id: null, erro: `Não foi possível gravar a conta. Nada foi lançado. Erro do banco: ${descricaoDoErro(e)}` };
   }
+}
+
+/** Mensagem legivel de um erro lancado pelo D1/SQLite, sem perder a causa. */
+function descricaoDoErro(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  return String(e);
 }
 
 /** Mesma convencao das parcelas de compra: "Descricao 2/3" so quando houver mais de uma. */
@@ -151,7 +159,7 @@ function descricaoComParcela(descricao: string, parcela: number, total: number, 
  */
 export async function cancelarContaPagarManual(entryId: number): Promise<string | null> {
   const entry = await one<any>(`SELECT id, direction, origin, status, number FROM financial_entries WHERE id = ?`, [entryId]);
-  if (!entry) return "Conta não encontrada.";
+  if (!entry) return `Conta #${entryId || "?"} não encontrada.`;
   if (entry.direction !== "pagar" || entry.origin !== ORIGEM_MANUAL) {
     return "Somente contas lançadas manualmente podem ser canceladas aqui.";
   }

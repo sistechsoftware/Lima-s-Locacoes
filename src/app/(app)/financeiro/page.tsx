@@ -467,7 +467,7 @@ function ListaParcelas({
                       {receber ? "Registrar recebimento" : "Registrar pagamento"}
                     </SubmitButton>
                     {!receber && p.origin === "despesa" && (
-                      <SubmitButton variant="perigo" confirm="Cancelar esta conta a pagar?" name="id" value={String(p.id)} formAction={cancelarPagarManual} className="px-3">
+                      <SubmitButton variant="perigo" confirm="Cancelar esta conta a pagar?" value={String(p.id)} formAction={cancelarPagarManual} className="px-3">
                         Cancelar
                       </SubmitButton>
                     )}
