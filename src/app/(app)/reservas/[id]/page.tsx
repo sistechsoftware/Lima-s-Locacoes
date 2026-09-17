@@ -32,7 +32,9 @@ import { dateBR, dateTimeBR, dateUtcBR, mapsLink, money, phoneBR, timeBR, today,
 import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, Stat, StatusBadge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
+import { RESOLUTION_LABEL } from "@/lib/danos";
 import { addPayment, changeStatus, deletePayment, deleteReservation, refreshComposition, saveDeposit } from "../actions";
+import { consertarDano, estornarBaixaDano, resolverDano } from "../../operacao/actions";
 import { generateContract } from "../../contratos/actions";
 import { parcelarReserva, receberParcela } from "../../financeiro/receber-actions";
 import { adiantamentosDaReserva, recebiveisDe } from "@/lib/receber";
@@ -87,7 +89,7 @@ export default async function ReservaPage({
   const contas = await all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`);
   const contracts = await all<any>(`SELECT * FROM contracts WHERE reservation_id = ? ORDER BY id DESC`, [r.id]);
   const damages = await all<any>(
-    `SELECT d.*, p.name AS product_name FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
+    `SELECT d.*, p.name AS product_name, p.kind AS product_kind FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
       WHERE d.reservation_id = ? ORDER BY d.id DESC`,
     [r.id],
   );
@@ -780,14 +782,73 @@ export default async function ReservaPage({
           {damages.length > 0 && (
             <div className="mt-3">
               <h3 className="mb-1.5 text-xs font-bold uppercase text-stone-500">Danos registrados</h3>
-              <ul className="space-y-1 text-sm">
-                {damages.map((d) => (
-                  <li key={d.id} className="rounded-lg bg-red-50 px-3 py-2 text-red-800">
-                    {d.qty}x {d.product_name} · {d.damage_type ?? "dano"} · estimado {money(d.estimated_cents)}
-                    {d.charged_cents > 0 ? `, descontado ${money(d.charged_cents)}` : ""}
-                    {d.description ? <span className="block text-xs opacity-80">{d.description}</span> : null}
-                  </li>
-                ))}
+              <ul className="space-y-2 text-sm">
+                {damages.map((d) => {
+                  const pendente = d.resolution_status === "registrada" || d.resolution_status === "estornada" || d.resolution_status === "consertada";
+                  const ehKit = d.product_kind === "kit";
+                  return (
+                    <li key={d.id} className="rounded-lg bg-red-50 px-3 py-2 text-red-800">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold">
+                          {d.qty}x {d.product_name ?? "equipamento"} · {d.damage_type ?? "dano"}
+                        </span>
+                        <Badge tone={d.resolution_status === "baixada" ? "cinza" : d.resolution_status === "em_manutencao" ? "roxo" : d.resolution_status === "estornada" ? "ambar" : "vermelho"}>
+                          {RESOLUTION_LABEL[d.resolution_status] ?? "Registrada"}
+                        </Badge>
+                        <span>· estimado {money(d.estimated_cents)}</span>
+                        {d.charged_cents > 0 && <span>· descontado {money(d.charged_cents)}</span>}
+                      </div>
+                      {d.description ? <span className="block text-xs opacity-80">{d.description}</span> : null}                      {pendente && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <form action={resolverDano} className="flex items-center gap-1">
+                            <input type="hidden" name="damage_id" value={d.id} />
+                            <input type="hidden" name="reservation_id" value={r.id} />
+                            <input type="hidden" name="action" value="baixa" />
+                            <SubmitButton variant="perigo" confirm={ehKit ? `Baixar ${d.qty}x ${d.product_name ?? "kit"} do estoque? A baixa será expandida nos componentes físicos do kit.` : `Baixar definitivamente ${d.qty} un. de ${d.product_name ?? "do estoque"}? O disponível será reduzido.`} className="px-2 py-1 text-xs">
+                              Baixar do estoque
+                            </SubmitButton>
+                          </form>
+                          {!ehKit && (
+                            <form action={resolverDano} className="flex items-center gap-1">
+                              <input type="hidden" name="damage_id" value={d.id} />
+                              <input type="hidden" name="reservation_id" value={r.id} />
+                              <input type="hidden" name="action" value="manutencao" />
+                              <SubmitButton variant="secundario" className="px-2 py-1 text-xs">
+                                Enviar p/ manutenção
+                              </SubmitButton>
+                            </form>
+                          )}
+                        </div>
+                      )}
+                      {ehKit && pendente && (
+                        <p className="mt-1 text-xs opacity-80">
+                          A baixa de um kit é expandida nos componentes físicos (ex.: 1 kit = 1 mesa + 4 cadeiras). Manutenção deve ser registrada no componente avulso.
+                        </p>
+                      )}
+
+                      {d.resolution_status === "baixada" && (
+                        <form action={estornarBaixaDano} className="mt-2 flex items-center gap-1">
+                          <input type="hidden" name="damage_id" value={d.id} />
+                          <input type="hidden" name="reservation_id" value={r.id} />
+                          <input name="motivo" placeholder="Motivo do estorno" className="rounded-lg border border-red-200 px-2 py-1 text-xs" />
+                          <SubmitButton variant="secundario" className="px-2 py-1 text-xs">
+                            Estornar baixa
+                          </SubmitButton>
+                        </form>
+                      )}
+
+                      {d.resolution_status === "em_manutencao" && (
+                        <form action={consertarDano} className="mt-2">
+                          <input type="hidden" name="damage_id" value={d.id} />
+                          <input type="hidden" name="reservation_id" value={r.id} />
+                          <SubmitButton variant="sucesso" className="px-2 py-1 text-xs">
+                            Consertado: devolver ao disponível
+                          </SubmitButton>
+                        </form>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
