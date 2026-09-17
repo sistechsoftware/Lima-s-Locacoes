@@ -3,16 +3,8 @@ import { all, getDb, insert, one, run } from "./db";
 import { getSettings } from "./settings";
 import { nowLocal, today } from "./format";
 import { buildContractBodyDigital } from "./contracts";
-import {
-  bytesDaAssinatura,
-  gerarToken,
-  hashDocumento,
-  impedimento,
-  sha256,
-  TOKEN_VALIDO,
-  validarEntrada,
-  type EntradaAssinatura,
-} from "./assinatura";
+import { bytesDaAssinatura, gerarToken, hashDocumento, impedimento, sha256, TOKEN_VALIDO, validarEntrada, type EntradaAssinatura } from "./assinatura";
+import { getCompanySignature } from "./assinatura-empresa";
 
 /**
  * Assinatura virtual: emissao do link, leitura publica e registro da assinatura.
@@ -182,10 +174,13 @@ export async function assinar(
   });
 
   // so grava se ainda estiver pendente: e isso que impede a assinatura dupla
+  // A assinatura da empresa acompanha o documento se ja estava cadastrada no
+  // momento em que o cliente assinou (veja company_signature_included).
+  const temAssinaturaEmpresa = (await getCompanySignature()) !== null;
   const marcou = await run(
     `UPDATE contract_signatures
         SET status='assinado', body_snapshot=?, signer_name=?, signature_file_id=?, document_hash=?,
-            accepted_at=?, signed_at=?, ip_address=?, user_agent=?
+            accepted_at=?, signed_at=?, ip_address=?, user_agent=?, company_signature_included=?
       WHERE id=? AND status='pendente'`,
     [
       registro.body,
@@ -196,6 +191,7 @@ export async function assinar(
       agora,
       (contexto.ip ?? "").slice(0, 45) || null,
       (contexto.userAgent ?? "").slice(0, 300) || null,
+      temAssinaturaEmpresa ? 1 : 0,
       registro.id,
     ],
   );

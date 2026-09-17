@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { documentoAssinado } from "@/lib/assinatura-db";
+import { getCompanySignature } from "@/lib/assinatura-empresa";
 import { getSettings } from "@/lib/settings";
 import { dateTimeBR, docBR } from "@/lib/format";
 import { Alerta, Card, PageHeader } from "@/components/ui";
@@ -24,6 +25,7 @@ export default async function DocumentoAssinadoPage({ params }: { params: Promis
   const doc = await documentoAssinado(Number(id));
   if (!doc) notFound();
   const s = await getSettings();
+  const assinaturaEmpresa = doc.company_signature_included === 1 ? await getCompanySignature() : null;
 
   return (
     <div className="space-y-4">
@@ -58,19 +60,61 @@ export default async function DocumentoAssinadoPage({ params }: { params: Promis
 
         <ContratoTexto texto={doc.body_snapshot} className="break-words text-sm leading-relaxed text-tinta-800" />
 
-        <section className="mt-8 border-t border-nuvem-200 pt-4">
-          <p className="mb-2 text-xs font-semibold uppercase text-stone-500">Assinatura do Contratante</p>
-          {doc.signature_file_id && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={`/api/arquivo/${doc.signature_file_id}`}
-              alt={`Assinatura de ${doc.signer_name}`}
-              className="h-28 max-w-full object-contain"
-            />
-          )}
-          <p className="mt-1 border-t border-tinta-900 pt-1 text-sm font-semibold text-tinta-900">{doc.signer_name}</p>
-          {doc.customer_doc && <p className="text-xs text-stone-500">{docBR(doc.customer_doc)}</p>}
-        </section>
+        {/*
+         * Assinaturas: a do cliente e a imagem capturada no ato; a da empresa
+         * entra somente quando ela ja estava cadastrada NO MOMENTO DA
+         * ASSINATURA (flag company_signature_included, gravada em assinar()).
+         * Documentos assinados antes do cadastro ou sem assinatura cadastrada
+         * continuam saindo exatamente como sempre sairam.
+         */}
+        {doc.company_signature_included === 1 ? (
+          <section className="mt-8 border-t border-nuvem-200 pt-4">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div className="text-center">
+                <p className="mb-2 text-xs font-semibold uppercase text-stone-500">Assinatura do Contratante</p>
+                {doc.signature_file_id && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/api/arquivo/${doc.signature_file_id}`}
+                    alt={`Assinatura de ${doc.signer_name}`}
+                    className="h-28 max-w-[240px] object-contain"
+                  />
+                )}
+                <p className="mt-1 border-t border-tinta-900 pt-1 text-sm font-semibold text-tinta-900">{doc.signer_name}</p>
+                {doc.customer_doc && <p className="text-xs text-stone-500">{docBR(doc.customer_doc)}</p>}
+              </div>
+              <div className="text-center">
+                <p className="mb-2 text-xs font-semibold uppercase text-stone-500">Assinatura da Locadora</p>
+                {assinaturaEmpresa ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={assinaturaEmpresa.url}
+                    alt="Assinatura da empresa"
+                    className="h-28 max-w-[240px] object-contain"
+                  />
+                ) : (
+                  <div className="h-28 w-[240px]" />
+                )}
+                <p className="mt-1 border-t border-tinta-900 pt-1 text-sm font-semibold text-tinta-900">{s.company_name}</p>
+                <p className="text-xs text-stone-500">assinatura digital</p>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="mt-8 border-t border-nuvem-200 pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase text-stone-500">Assinatura do Contratante</p>
+            {doc.signature_file_id && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={`/api/arquivo/${doc.signature_file_id}`}
+                alt={`Assinatura de ${doc.signer_name}`}
+                className="h-28 max-w-full object-contain"
+              />
+            )}
+            <p className="mt-1 border-t border-tinta-900 pt-1 text-sm font-semibold text-tinta-900">{doc.signer_name}</p>
+            {doc.customer_doc && <p className="text-xs text-stone-500">{docBR(doc.customer_doc)}</p>}
+          </section>
+        )}
 
         <section className="mt-6 rounded-xl bg-nuvem-100 p-3 text-[0.7rem] leading-relaxed text-stone-600 print:bg-transparent print:p-0">
           <p className="font-semibold uppercase text-stone-500">Registro da Assinatura</p>

@@ -13,6 +13,7 @@ import { insert, one, run } from "../src/lib/db.ts";
 import { salvarAssinaturaEmpresa, removerAssinaturaEmpresa, getCompanySignature } from "../src/lib/assinatura-empresa.ts";
 import { ensureContract } from "../src/lib/contracts.ts";
 import { emitirRecibo } from "../src/lib/recibos.ts";
+import { gerarLink, assinar, documentoAssinado } from "../src/lib/assinatura-db.ts";
 
 const PNG_VALIDO =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
@@ -205,6 +206,95 @@ describe("assinatura da empresa em recibos", () => {
     await removerAssinaturaEmpresa(ADMIN);
     const rec = await one<{ company_signature_included: number | null }>(`SELECT company_signature_included FROM receipts WHERE id = ?`, [r.receiptId]);
     assert.equal(rec?.company_signature_included, 1, "documento gerado com assinatura mantem o bloco");
+  });
+});
+
+describe("assinatura da empresa no contrato assinado virtualmente", () => {
+  beforeEach(() => {
+    resetTestDb();
+    createTestDb();
+  });
+
+  /** Cenario direto (mesmo espirito de assinatura-integracao): contrato com
+   *  corpo gravado, link gerado e o cliente assinando. */
+  async function cenario() {
+    const settings = (await import("../src/lib/settings.ts")).DEFAULT_SETTINGS;
+    for (const [k, v] of Object.entries(settings)) {
+      await run(`INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)`, [k, String(v)]);
+    }
+    await insert(`INSERT INTO users (id, name, username, password_hash, role) VALUES (1,'Dono','dono','x','admin')`);
+    const cliente = await insert(`INSERT INTO customers (name, phone) VALUES ('Joao Ribeiro','11999990000')`);
+    const reserva = await insert(
+      `INSERT INTO reservations (number, customer_id, status, event_date, total_cents) VALUES ('LIMA-001', ?, 'confirmada', '2026-10-10', 50000)`,
+      [cliente],
+    );
+    const contrato = await insert(
+      `INSERT INTO contracts (number, reservation_id, status, body) VALUES ('CTR-001', ?, 'pendente', 'Texto do contrato.')`,
+      [reserva],
+    );
+    return { cliente, reserva, contrato };
+  }
+
+  const ENTRADA = { nome: "Joao Ribeiro", aceite: true, imagem: PNG_VALIDO };
+  const CONTEXTO = { ip: "203.0.113.10", userAgent: "Mozilla/5.0 (iPhone)" };
+
+  it("cliente assina SEM assinatura da empresa cadastrada: flag 0", async () => {
+    const { contrato } = await cenario();
+    const link = (await gerarLink(contrato, 1))!;
+    const r = await assinar(link.token, ENTRADA, CONTEXTO);
+    assert.equal(r.erro, undefined);
+    const a = await one<{ company_signature_included: number | null }>(
+      `SELECT company_signature_included FROM contract_signatures WHERE id = ?`,
+      [link.id],
+    );
+    assert.equal(a?.company_signature_included, 0);
+  });
+
+  it("cliente assina COM a assinatura ja cadastrada: flag 1", async () => {
+    const { contrato } = await cenario();
+    await salvarAssinaturaEmpresa(PNG_VALIDO, ADMIN);
+    const link = (await gerarLink(contrato, 1))!;
+    const r = await assinar(link.token, ENTRADA, CONTEXTO);
+    assert.equal(r.erro, undefined);
+    const a = await one<{ company_signature_included: number | null }>(
+      `SELECT company_signature_included FROM contract_signatures WHERE id = ?`,
+      [link.id],
+    );
+    assert.equal(a?.company_signature_included, 1);
+  });
+
+  it("contrato gerado antes, assinado depois do cadastro: flag 1 (vale o momento da assinatura)", async () => {
+    const { contrato } = await cenario();
+    const link = (await gerarLink(contrato, 1))!;
+    await salvarAssinaturaEmpresa(PNG_VALIDO, ADMIN);
+    const r = await assinar(link.token, ENTRADA, CONTEXTO);
+    assert.equal(r.erro, undefined);
+    const a = await one<{ company_signature_included: number | null }>(
+      `SELECT company_signature_included FROM contract_signatures WHERE id = ?`,
+      [link.id],
+    );
+    assert.equal(a?.company_signature_included, 1);
+  });
+
+  it("documentoAssinado devolve a flag para a pagina renderizar o bloco", async () => {
+    const { contrato } = await cenario();
+    await salvarAssinaturaEmpresa(PNG_VALIDO, ADMIN);
+    const link = (await gerarLink(contrato, 1))!;
+    await assinar(link.token, ENTRADA, CONTEXTO);
+    const doc = (await documentoAssinado(link.id))!;
+    assert.equal(doc.company_signature_included, 1);
+    assert.ok(doc.signature_file_id, "assinatura do cliente segue presente");
+  });
+
+  it("assinado antes do cadastro nao ganha o bloco retroativamente", async () => {
+    const { contrato } = await cenario();
+    const link = (await gerarLink(contrato, 1))!;
+    await assinar(link.token, ENTRADA, CONTEXTO);
+    await salvarAssinaturaEmpresa(PNG_VALIDO, ADMIN);
+    const doc = (await documentoAssinado(link.id))!;
+    // flag 0: assinou quando a assinatura da empresa ainda nao existia —
+    // cadastrar depois nao reescreve o passado
+    assert.equal(doc.company_signature_included, 0, "documento historico permanece como era");
   });
 });
 
