@@ -9,6 +9,7 @@ import { dateBR, dateTimeBR, dateUtcBR, utcParaLocal } from "@/lib/format";
 import { Alerta, Card, PageHeader, Section, StatusBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { assinaturasDoContrato } from "@/lib/assinatura-db";
+import { getCompanySignature } from "@/lib/assinatura-empresa";
 import LinkAssinatura from "@/components/LinkAssinatura";
 import ContratoTexto from "@/components/ContratoTexto";
 import { gerarLinkAssinatura, regenerateContract, revogarLinkAssinatura, saveContractBody, setContractStatus } from "../actions";
@@ -35,6 +36,14 @@ export default async function ContratoPage({
   if (!c) notFound();
   const s = await getSettings();
   const assinaturas = await assinaturasDoContrato(c.id);
+  /**
+   * Bloco da empresa no rodape do documento: so entra quando a assinatura ja
+   * estava cadastrada NO MOMENTO DA GERACAO (flag company_signature_included,
+   * gravada em ensureContract/regenerateContract). Contratos anteriores ficam
+   * com NULL e o bloco continua fora — documento pronto nao muda.
+   */
+  const mostraAssinaturaEmpresa = c.company_signature_included === 1;
+  const assinaturaEmpresa = mostraAssinaturaEmpresa ? await getCompanySignature() : null;
   const pendente = assinaturas.find((a: any) => a.status === "pendente");
   const assinada = assinaturas.find((a: any) => a.status === "assinado");
   const cliente = await one<any>(
@@ -215,6 +224,38 @@ export default async function ContratoPage({
           </span>
         </header>
         <ContratoTexto texto={c.body} className="text-[0.82rem] leading-relaxed text-tinta-900" />
+
+        {mostraAssinaturaEmpresa && (
+          <section className="mt-10 border-t border-nuvem-200 pt-4">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div className="text-center">
+                {assinaturaEmpresa ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={assinaturaEmpresa.url}
+                    alt="Assinatura da empresa"
+                    className="h-24 max-w-[220px] object-contain"
+                  />
+                ) : (
+                  /* sem assinatura cadastrada hoje: a area segue em branco,
+                     mas o contrato continua valendo como sempre valeu */
+                  <div className="h-24 w-[220px]" />
+                )}
+                <p className="mt-1 border-t border-tinta-900 pt-1 text-sm font-semibold text-tinta-900">
+                  {s.company_name}
+                </p>
+                <p className="text-xs text-stone-500">LOCADORA · assinatura digital</p>
+              </div>
+              <div className="text-center">
+                <div className="h-24 w-[220px]" />
+                <p className="mt-1 border-t border-tinta-900 pt-1 text-sm font-semibold text-tinta-900">
+                  {c.customer_name}
+                </p>
+                <p className="text-xs text-stone-500">LOCATÁRIO</p>
+              </div>
+            </div>
+          </section>
+        )}
       </article>
     </div>
   );

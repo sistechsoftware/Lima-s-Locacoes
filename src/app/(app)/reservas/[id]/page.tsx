@@ -36,6 +36,8 @@ import { addPayment, changeStatus, deletePayment, deleteReservation, refreshComp
 import { generateContract } from "../../contratos/actions";
 import { parcelarReserva, receberParcela } from "../../financeiro/receber-actions";
 import { adiantamentosDaReserva, recebiveisDe } from "@/lib/receber";
+import { recibosDaReserva } from "@/lib/recibos";
+import { gerarReciboDeposit, gerarReciboPayment } from "../../recibos/actions";
 import { recompensasDisponiveis, simularUso } from "@/lib/fidelidade-db";
 import { aplicarRecompensa } from "../fidelidade-actions";
 import { situacaoParcela } from "@/lib/financeiro";
@@ -67,6 +69,19 @@ export default async function ReservaPage({
   const m = await reservationMoney(r.id);
   const ops = await reservationOperations(r.id);
   const payments = await all<any>(`SELECT * FROM payments WHERE reservation_id = ? ORDER BY paid_at DESC, id DESC`, [r.id]);
+  // Recibos ja emitidos para os lancamentos desta reserva (pagamentos,
+  // adiantamentos recebidos e caucao): uma consulta so, sem N+1. Nada aqui
+  // altera lancamento — a leitura existe so para decidir entre "Gerar recibo"
+  // e o link do recibo que ja existe.
+  const recibos = await recibosDaReserva(r.id);
+  const deposito = await one<any>(
+    `SELECT id, status, received_at FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`,
+    [r.id],
+  );
+  const reciboDeposit = deposito ? recibos.find((rc: any) => rc.deposit_id === deposito.id) : null;
+  const reciboPorPagamento = new Map<number, any>(
+    recibos.filter((rc: any) => rc.payment_id).map((rc: any) => [rc.payment_id, rc]),
+  );
   // contas ativas para os lancamentos de caixa desta tela: pagamento direto,
   // adiantamento (criacao e confirmacao) e recebimento de parcela
   const contas = await all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`);
@@ -462,6 +477,7 @@ export default async function ReservaPage({
               {historicoAdiantamentos.map((a: any) => {
                 const sit = situacaoAdiantamento(a, a.recebido_cents, today());
                 const pagamento = payments.find((p: any) => p.entry_id === a.id);
+                const reciboAdiantamento = pagamento ? reciboPorPagamento.get(pagamento.id) : null;
                 return (
                   <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-nuvem-200 p-2.5 text-sm">
                     <span>
@@ -470,7 +486,29 @@ export default async function ReservaPage({
                         {sit === "recebido" ? `recebido em ${dateBR(pagamento?.paid_at ?? a.due_date)}` : `previsto para ${dateBR(a.due_date)}`}
                       </span>
                     </span>
-                    <Badge tone={sit === "recebido" ? "verde" : sit === "cancelado" ? "cinza" : "vermelho"}>{sit}</Badge>
+                    <span className="flex items-center gap-1.5">
+                      {/* O adiantamento recebido virou pagamento em payments; o recibo
+                          aponta para ele e identifica o lançamento como adiantamento
+                          pelas observacoes do pagamento. Nada aqui altera a entry. */}
+                      {sit === "recebido" && pagamento &&
+                        (reciboAdiantamento ? (
+                          <Link
+                            href={`/recibos/${reciboAdiantamento.id}`}
+                            className="rounded-xl border border-nuvem-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-marca-600 hover:bg-nuvem-50"
+                          >
+                            Recibo {reciboAdiantamento.number}
+                          </Link>
+                        ) : (
+                          <form action={gerarReciboPayment}>
+                            <input type="hidden" name="payment_id" value={pagamento.id} />
+                            <input type="hidden" name="voltar" value={`/reservas/${r.id}`} />
+                            <SubmitButton variant="secundario" className="px-2.5 py-1.5 text-xs">
+                              Gerar recibo
+                            </SubmitButton>
+                          </form>
+                        ))}
+                      <Badge tone={sit === "recebido" ? "verde" : sit === "cancelado" ? "cinza" : "vermelho"}>{sit}</Badge>
+                    </span>
                   </li>
                 );
               })}
@@ -625,14 +663,35 @@ export default async function ReservaPage({
                         {p.notes ? ` - ${p.notes}` : ""}
                       </span>
                     </span>
-                    {user.role === "admin" && (
-                      <form action={deletePayment}>
-                        <input type="hidden" name="payment_id" value={p.id} />
-                        <SubmitButton variant="perigo" confirm="Remover este pagamento?" className="px-2.5 py-1.5 text-xs">
-                          Remover
-                        </SubmitButton>
-                      </form>
-                    )}
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {/* Recibo do lancamento: se ja existe, abre direto; senao gera agora.
+                          Nao muda o pagamento: so le o id dele. */}
+                      {p.amount_cents > 0 &&
+                        (reciboPorPagamento.get(p.id) ? (
+                          <Link
+                            href={`/recibos/${reciboPorPagamento.get(p.id).id}`}
+                            className="rounded-xl border border-nuvem-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-marca-600 hover:bg-nuvem-50"
+                          >
+                            Recibo {reciboPorPagamento.get(p.id).number}
+                          </Link>
+                        ) : (
+                          <form action={gerarReciboPayment}>
+                            <input type="hidden" name="payment_id" value={p.id} />
+                            <input type="hidden" name="voltar" value={`/reservas/${r.id}`} />
+                            <SubmitButton variant="secundario" className="px-2.5 py-1.5 text-xs">
+                              Gerar recibo
+                            </SubmitButton>
+                          </form>
+                        ))}
+                      {user.role === "admin" && (
+                        <form action={deletePayment}>
+                          <input type="hidden" name="payment_id" value={p.id} />
+                          <SubmitButton variant="perigo" confirm="Remover este pagamento?" className="px-2.5 py-1.5 text-xs">
+                            Remover
+                          </SubmitButton>
+                        </form>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -691,6 +750,32 @@ export default async function ReservaPage({
               <SubmitButton className="w-full">Salvar caução</SubmitButton>
             </div>
           </form>
+
+          {/* Recibo da caucao: so para caucao recebida, que tem valor a comprovar.
+              Leitura pura do deposito — a acao nao altera o registro dela. */}
+          {deposito && deposito.status !== "nao_recebida" && deposito.received_at && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-nuvem-50 px-3 py-2.5">
+              <span className="text-xs text-stone-500">
+                Recibo da caução recebida em {dateBR(deposito.received_at)}
+              </span>
+              {reciboDeposit ? (
+                <Link
+                  href={`/recibos/${reciboDeposit.id}`}
+                  className="rounded-xl border border-nuvem-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-marca-600 hover:bg-nuvem-50"
+                >
+                  Recibo {reciboDeposit.number}
+                </Link>
+              ) : (
+                <form action={gerarReciboDeposit}>
+                  <input type="hidden" name="deposit_id" value={deposito.id} />
+                  <input type="hidden" name="voltar" value={`/reservas/${r.id}`} />
+                  <SubmitButton variant="secundario" className="px-2.5 py-1.5 text-xs">
+                    Gerar recibo
+                  </SubmitButton>
+                </form>
+              )}
+            </div>
+          )}
 
           {damages.length > 0 && (
             <div className="mt-3">

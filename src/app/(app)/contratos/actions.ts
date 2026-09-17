@@ -5,6 +5,7 @@ import { one, run } from "@/lib/db";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { buildContractBody, buildContractBodyDigital, ensureContract } from "@/lib/contracts";
+import { getCompanySignature } from "@/lib/assinatura-empresa";
 import { nowLocal, today } from "@/lib/format";
 import { assinaturasDoContrato, gerarLink, revogarLink } from "@/lib/assinatura-db";
 
@@ -39,7 +40,18 @@ export async function regenerateContract(fd: FormData) {
   const body = temLinkAberto
     ? await buildContractBodyDigital(c.reservation_id, c.number)
     : await buildContractBody(c.reservation_id, c.number);
-  await run(`UPDATE contracts SET body = ? WHERE id = ?`, [body, id]);
+  /**
+   * Regerar e uma acao explicita sobre este contrato: a flag passa a refletir
+   * o momento do reprocessamento (se a assinatura da empresa existe agora,
+   * o bloco entra na impressao deste contrato). Contratos nao regerados nao
+   * sao tocados — seus NULLs permanecem.
+   */
+  const temAssinaturaEmpresa = (await getCompanySignature()) !== null;
+  await run(`UPDATE contracts SET body = ?, company_signature_included = ? WHERE id = ?`, [
+    body,
+    temAssinaturaEmpresa ? 1 : 0,
+    id,
+  ]);
   await logAction(user, "editar", "contrato", id, `${user.name} regerou o contrato ${c.number}`);
   revalidatePath(`/contratos/${id}`);
 }
