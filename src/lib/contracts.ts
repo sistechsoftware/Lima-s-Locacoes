@@ -1,6 +1,7 @@
 import "server-only";
 import { insert, nextNumber, one } from "./db";
 import { getSettings, renderTemplate, renderTemplateHtml, type Settings } from "./settings";
+import { getCompanySignature } from "./assinatura-empresa";
 import { contractUsesHtml, itensParaHtml, marcaConfiavel } from "./contract-html";
 import { getReservation, reservationItems, reservationMoney } from "./reservations";
 import { dateBR, dataPorExtensoBR, docBR, money, phoneBR, today } from "./format";
@@ -145,7 +146,14 @@ function variavelDataAssinaturaDigital(): string {
   return `Uberlândia, ${dataPorExtensoBR(today())}`;
 }
 
-/** Cria o contrato da reserva (ou devolve o existente). */
+/**
+ * Cria o contrato da reserva (ou devolve o existente).
+ *
+ * company_signature_included registra se a assinatura da empresa ja estava
+ * cadastrada no momento da geracao: so contratos criados a partir de agora
+ * recebem o bloco dela na impressao. Contratos anteriores ficam com NULL e
+ * continuam saindo exatamente como sempre sairam.
+ */
 export async function ensureContract(reservationId: number, userId?: number): Promise<number> {
   const existing = await one<any>(
     `SELECT id FROM contracts WHERE reservation_id = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 1`,
@@ -154,8 +162,9 @@ export async function ensureContract(reservationId: number, userId?: number): Pr
   if (existing) return existing.id;
   const number = await nextNumber("contracts", "CTR");
   const body = await buildContractBody(reservationId, number);
+  const temAssinaturaEmpresa = (await getCompanySignature()) !== null;
   return await insert(
-    `INSERT INTO contracts (number, reservation_id, status, body, created_by) VALUES (?,?,'pendente',?,?)`,
-    [number, reservationId, body, userId ?? null],
+    `INSERT INTO contracts (number, reservation_id, status, body, created_by, company_signature_included) VALUES (?,?,'pendente',?,?,?)`,
+    [number, reservationId, body, userId ?? null, temAssinaturaEmpresa ? 1 : 0],
   );
 }

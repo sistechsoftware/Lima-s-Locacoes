@@ -510,7 +510,10 @@ CREATE TABLE IF NOT EXISTS contracts (
   signed_at      TEXT,
   notes          TEXT,
   created_by     INTEGER REFERENCES users(id),
-  created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  body_frozen_at TEXT,
+  /* assinatura da empresa ja cadastrada no momento da geracao (0019/0021) */
+  company_signature_included INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_contract_res ON contracts(reservation_id);
 
@@ -660,6 +663,8 @@ CREATE TABLE IF NOT EXISTS receipts (
   issued_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
   issued_by_name TEXT,
   created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  /* assinatura da empresa ja cadastrada no momento da emissao (0021) */
+  company_signature_included INTEGER,
   CHECK (
     (source_type = 'payment' AND payment_id IS NOT NULL AND deposit_id IS NULL)
     OR

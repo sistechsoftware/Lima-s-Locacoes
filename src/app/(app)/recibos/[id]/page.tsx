@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { obterRecibo } from "@/lib/recibos";
 import { dateBR, dateUtcBR, docBR, money, phoneBR } from "@/lib/format";
 import { formaLabel, sanitizarNomeArquivo, valorPorExtenso } from "@/lib/recibo-visual";
+import { getCompanySignature } from "@/lib/assinatura-empresa";
 import PrintButton from "@/app/(app)/contratos/[id]/PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,13 @@ export default async function ReciboPage({ params }: { params: Promise<{ id: str
       : "";
   const contatoEmpresa = [phoneBR(s.company_phone), s.company_email].filter(Boolean).join(" - ");
   const enderecoEmpresa = [s.company_address, s.company_city].filter(Boolean).join(" - ");
+  /**
+   * Assinatura da empresa: entra apenas quando a flag foi gravada na emissao
+   * (company_signature_included, congela o momento). Recibos emitidos antes de
+   * existir assinatura, ou com ela removida, continuam exatamente como eram.
+   */
+  const mostraAssinaturaEmpresa = recibo.company_signature_included === 1;
+  const assinaturaEmpresa = mostraAssinaturaEmpresa ? await getCompanySignature() : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -180,6 +188,28 @@ export default async function ReciboPage({ params }: { params: Promise<{ id: str
               <Linha rotulo="Valor emitido" valor={money(recibo.amount_cents)} destaque />
               <Linha rotulo="Data do recebimento" valor={dateBR(recibo.paid_at)} />
               <Linha rotulo="Forma" valor={formaLabel(recibo.method)} />
+            </div>
+          </section>
+        )}
+
+        {mostraAssinaturaEmpresa && (
+          <section className="mt-10 flex justify-center">
+            <div className="text-center">
+              {assinaturaEmpresa ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={assinaturaEmpresa.url}
+                  alt="Assinatura da empresa"
+                  className="mx-auto h-20 max-w-[220px] object-contain"
+                />
+              ) : (
+                /* sem assinatura cadastrada hoje: area vazia, recibo segue valido */
+                <div className="h-20 w-[220px]" />
+              )}
+              <p className="mt-1 border-t border-tinta-900 pt-1 text-sm font-semibold text-tinta-900">
+                {s.company_name}
+              </p>
+              <p className="text-xs text-stone-500">EMPRESA · assinatura digital</p>
             </div>
           </section>
         )}

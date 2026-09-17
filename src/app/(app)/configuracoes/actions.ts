@@ -19,6 +19,7 @@ export async function saveStockSettings(fd: FormData) {
 import { logAction } from "@/lib/audit";
 import { saveUpload, UploadError, removeFileByUrl } from "@/lib/uploads";
 import { parseMoney } from "@/lib/format";
+import { salvarAssinaturaEmpresa, removerAssinaturaEmpresa } from "@/lib/assinatura-empresa";
 
 export async function saveCompanySettings(fd: FormData): Promise<void> {
   const user = await assertAdmin();
@@ -229,6 +230,32 @@ export async function removeUserAvatarAdmin(fd: FormData): Promise<void> {
   await removeFileByUrl(anterior);
   await logAction(admin, "editar", "usuario", id, `${admin.name} removeu a foto de perfil`);
   revalidatePath("/", "layout");
+}
+
+/* ------------------------------ assinatura da empresa ------------------------------ */
+
+/**
+ * Assinatura digital da empresa: grava o PNG desenhado no canvas da aba
+ * Assinatura. Somente o administrador (proprietario) chega aqui — a action
+ * confere o papel de novo, porque a tela nunca e a barreira de seguranca.
+ *
+ * Erro volta como string e e exibido sem limpar o desenho: nada e gravado
+ * pela metade (ou grava arquivo e chave juntos, ou nao grava nada).
+ */
+export async function saveCompanySignature(_prev: string | null, fd: FormData): Promise<string | null> {
+  const user = await assertAdmin();
+  const imagem = String(fd.get("signature_image") ?? "");
+  const resultado = await salvarAssinaturaEmpresa(imagem, user);
+  if (!resultado.ok) return resultado.erro;
+  revalidatePath("/configuracoes");
+  return null;
+}
+
+/** Remove a assinatura cadastrada. Documentos ja gerados nao sao tocados. */
+export async function removeCompanySignature(): Promise<void> {
+  const user = await assertAdmin();
+  await removerAssinaturaEmpresa(user);
+  revalidatePath("/configuracoes");
 }
 
 /* --------------------------------- categorias ----------------------------------- */

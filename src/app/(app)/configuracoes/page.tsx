@@ -13,6 +13,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import ImageInput from "@/components/ImageInput";
 import EditorContrato from "@/components/EditorContrato";
 import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveFreightSettings, saveTemplates, toggleUser } from "./actions";
+import { getCompanySignature } from "@/lib/assinatura-empresa";
+import AssinaturaEmpresa from "@/components/AssinaturaEmpresa";
 import AvatarForm from "./AvatarForm";
 import AvatarAdminForm from "./AvatarAdminForm";
 import { saveVehicle, deleteVehicle } from "../operacao/actions";
@@ -53,6 +55,8 @@ export default async function ConfiguracoesPage({
       : [];
   const users = user.role === "admin" ? await listUsers() : [];
   const finalidades = user.role === "admin" ? await todasFinalidades() : [];
+  // assinatura da empresa: so o admin (proprietario) ve e gerencia esta aba
+  const assinaturaEmpresa = user.role === "admin" ? await getCompanySignature() : null;
 
   const ABAS = [
     { value: "empresa", label: "Empresa" },
@@ -64,6 +68,7 @@ export default async function ConfiguracoesPage({
     { value: "frete", label: "Frete" },
     { value: "disponibilidade", label: "Disponibilidade" },
     { value: "fidelidade", label: "Fidelidade" },
+    ...(user.role === "admin" ? [{ value: "assinatura", label: "Assinatura" }] : []),
     { value: "aniversarios", label: "Aniversários" },
     ...(user.role === "admin" ? [{ value: "finalidades", label: "Finalidades" }] : []),
     ...(user.role === "admin" ? [{ value: "usuarios", label: "Usuários" }] : []),
@@ -286,6 +291,19 @@ export default async function ConfiguracoesPage({
       {aba === "frete" && <FreightSettings settings={s} admin={user.role === "admin"} />}
 
       {aba === "fidelidade" && <FidelitySettings settings={s} admin={user.role === "admin"} />}
+
+      {aba === "assinatura" && user.role === "admin" && (
+        <Section title="Assinatura digital da empresa">
+          <p className="mb-3 text-sm text-stone-600">
+            Cadastre sua assinatura para utilizá-la automaticamente em novos contratos e recibos. Documentos já gerados
+            permanecem exatamente como estão.
+          </p>
+          <AssinaturaEmpresa
+            url={assinaturaEmpresa?.url ?? null}
+            atualizadaEm={assinaturaEmpresa?.atualizada_em ?? null}
+          />
+        </Section>
+      )}
 
       {aba === "aniversarios" && <BirthdaySettings settings={s} admin={user.role === "admin"} />}
 

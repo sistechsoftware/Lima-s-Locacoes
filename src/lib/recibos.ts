@@ -1,6 +1,7 @@
 import "server-only";
 import { all, insert, one, run } from "./db";
 import { getSettings } from "./settings";
+import { getCompanySignature } from "./assinatura-empresa";
 import { dateBR, docBR, money, phoneBR } from "./format";
 
 /**
@@ -82,13 +83,21 @@ export async function emitirRecibo(
   const s = await getSettings();
   const body = montarTextoDeclaracao(dados, fonte.tipo === "deposit", s);
 
+  /**
+   * A assinatura da empresa entra nos recibos emitidos a partir de agora,
+   * quando estiver cadastrada. A flag congela a decisão no momento da emissão:
+   * recibos anteriores (coluna NULL) continuam saindo como sempre saíram,
+   * mesmo que a assinatura seja cadastrada depois.
+   */
+  const temAssinaturaEmpresa = (await getCompanySignature()) !== null;
+
   // 4. grava o recibo; as constraints resolvem a corrida de emissões simultâneas
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const numero = await proximoNumero();
     try {
       const id = await insert(
-        `INSERT INTO receipts (number, source_type, payment_id, deposit_id, entry_id, amount_cents, paid_at, method, body, issued_by, issued_by_name)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO receipts (number, source_type, payment_id, deposit_id, entry_id, amount_cents, paid_at, method, body, issued_by, issued_by_name, company_signature_included)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           numero,
           fonte.tipo,
@@ -101,6 +110,7 @@ export async function emitirRecibo(
           body,
           opts.userId ?? null,
           opts.userName ?? null,
+          temAssinaturaEmpresa ? 1 : 0,
         ],
       );
       return { erro: null, receiptId: id };
