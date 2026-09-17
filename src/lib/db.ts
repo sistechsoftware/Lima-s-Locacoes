@@ -480,8 +480,19 @@ CREATE TABLE IF NOT EXISTS damage_reports (
   estimated_cents INTEGER NOT NULL DEFAULT 0,
   charged_cents   INTEGER NOT NULL DEFAULT 0,
   created_by      INTEGER REFERENCES users(id),
-  created_at      TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  created_at      TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  /* ciclo de resolucao (0023): registrada -> baixada | em_manutencao ->
+     consertada | estornada. A baixa definitiva sai de total_qty e grava em
+     stock_movements com o vinculo para este registro e a reserva. */
+  resolution_status TEXT NOT NULL DEFAULT 'registrada'
+                    CHECK (resolution_status IN ('registrada','baixada','em_manutencao','consertada','estornada')),
+  resolution_action TEXT,
+  resolved_at       TEXT,
+  resolved_by       INTEGER REFERENCES users(id),
+  resolution_notes  TEXT,
+  maintenance_id    INTEGER REFERENCES maintenance(id) ON DELETE SET NULL
 );
+CREATE INDEX IF NOT EXISTS idx_damages_resolution ON damage_reports(resolution_status);
 
 CREATE TABLE IF NOT EXISTS maintenance (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -495,8 +506,11 @@ CREATE TABLE IF NOT EXISTS maintenance (
   cost_cents      INTEGER NOT NULL DEFAULT 0,
   notes           TEXT,
   created_by      INTEGER REFERENCES users(id),
+  /* manutencao aberta a partir de um dano (0023), para o estorno achar o par */
+  damage_report_id INTEGER REFERENCES damage_reports(id) ON DELETE SET NULL,
   created_at      TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+CREATE INDEX IF NOT EXISTS idx_maintenance_damage ON maintenance(damage_report_id);
 
 CREATE TABLE IF NOT EXISTS contracts (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -608,12 +622,17 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   qty_delta   INTEGER NOT NULL,
   reason      TEXT NOT NULL,
   purchase_id INTEGER REFERENCES purchases(id) ON DELETE SET NULL,
+  /* origem dano/perda (0023): baixa e estorno apontam para a ocorrencia */
+  damage_report_id INTEGER REFERENCES damage_reports(id) ON DELETE SET NULL,
+  reservation_id   INTEGER REFERENCES reservations(id) ON DELETE SET NULL,
   notes       TEXT,
   created_by  INTEGER REFERENCES users(id),
   created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_stockmov_product ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_stockmov_purchase ON stock_movements(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_stockmov_damage ON stock_movements(damage_report_id);
+CREATE INDEX IF NOT EXISTS idx_stockmov_reservation ON stock_movements(reservation_id);
 
 CREATE TABLE IF NOT EXISTS financial_entries (
   id                 INTEGER PRIMARY KEY AUTOINCREMENT,

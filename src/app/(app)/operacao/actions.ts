@@ -8,6 +8,7 @@ import { attach, removeAttachment, UploadError } from "@/lib/uploads";
 import { parseMoney, nowLocal, today } from "@/lib/format";
 import { stamp } from "@/lib/stock";
 import { checklistFor } from "@/lib/checklists";
+import { completeDamageMaintenance, resolveDamage as resolverDanoCore, revertDamageWriteOff, validarQuantidadeDoDano } from "@/lib/danos";
 
 /* ------------------------------- criar / editar ------------------------------- */
 
@@ -164,6 +165,13 @@ export async function reportDamage(fd: FormData) {
   const estimated = parseMoney(String(fd.get("estimated") ?? ""));
   const charged = parseMoney(String(fd.get("charged") ?? ""));
 
+  // a baixa posterior respeita o que a reserva contratou: nao faz sentido
+  // registrar mais unidades quebradas do que foram entregues
+  if (productId && reservationId) {
+    const invalido = await validarQuantidadeDoDano(reservationId, productId, qty);
+    if (invalido) redirect(`/operacao/${operationId}?erro=${encodeURIComponent(invalido)}`);
+  }
+
   const file = fd.get("photo");
   let photo: string | null = null;
   if (file instanceof File && file.size > 0) {
@@ -208,6 +216,64 @@ export async function reportDamage(fd: FormData) {
   await logAction(user, "dano", "reserva", reservationId, `${user.name} registrou dano em ${qty} item(ns)`, { damage: id });
   revalidatePath(`/operacao/${operationId}`);
   revalidatePath(`/reservas/${reservationId}`);
+}
+
+/* ----------------------------- resolver dano --------------------------------- */
+
+function voltaDoDano(operationId: number | null, reservationId: number | null) {
+  return operationId ? `/operacao/${operationId}` : reservationId ? `/reservas/${reservationId}` : "/operacao";
+}
+
+/**
+ * Resolve um dano registrado: baixa definitiva (sai de total_qty com
+ * movimentacao no livro) ou envio para manutencao (maintenance_qty).
+ * O estoque so muda aqui, nunca no registro do dano.
+ */
+export async function resolverDano(fd: FormData) {
+  const user = await requireUser();
+  const damageId = Number(fd.get("damage_id"));
+  const action = String(fd.get("action") ?? "") === "manutencao" ? "manutencao" : "baixa";
+  const operationId = Number(fd.get("operation_id")) || null;
+  const reservationId = Number(fd.get("reservation_id")) || null;
+  const notes = String(fd.get("notes") ?? "").trim();
+  const volta = voltaDoDano(operationId, reservationId);
+
+  const resultado = await resolverDanoCore(user, damageId, action, { notes });
+  if (!resultado.ok) redirect(`${volta}?erro=${encodeURIComponent(resultado.erro)}`);
+
+  revalidatePath("/", "layout");
+  redirect(volta);
+}
+
+/** Conclui a manutencao aberta a partir de um dano: o item volta ao disponivel. */
+export async function consertarDano(fd: FormData) {
+  const user = await requireUser();
+  const damageId = Number(fd.get("damage_id"));
+  const operationId = Number(fd.get("operation_id")) || null;
+  const reservationId = Number(fd.get("reservation_id")) || null;
+  const volta = voltaDoDano(operationId, reservationId);
+
+  const resultado = await completeDamageMaintenance(user, damageId);
+  if (!resultado.ok) redirect(`${volta}?erro=${encodeURIComponent(resultado.erro)}`);
+
+  revalidatePath("/", "layout");
+  redirect(volta);
+}
+
+/** Estorna uma baixa definitiva: devolve as unidades por movimentacao inversa. */
+export async function estornarBaixaDano(fd: FormData) {
+  const user = await requireUser();
+  const damageId = Number(fd.get("damage_id"));
+  const operationId = Number(fd.get("operation_id")) || null;
+  const reservationId = Number(fd.get("reservation_id")) || null;
+  const motivo = String(fd.get("motivo") ?? "").trim();
+  const volta = voltaDoDano(operationId, reservationId);
+
+  const resultado = await revertDamageWriteOff(user, damageId, motivo);
+  if (!resultado.ok) redirect(`${volta}?erro=${encodeURIComponent(resultado.erro)}`);
+
+  revalidatePath("/", "layout");
+  redirect(volta);
 }
 
 async function attachOne(file: File, userId: number, reservationId: number) {

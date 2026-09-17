@@ -12,7 +12,8 @@ import { Alerta, Badge, Card, Empty, LinkButton, PageHeader, Row, Section, Statu
 import { Icon } from "@/components/Icons";
 import { SubmitButton } from "@/components/SubmitButton";
 import ImageInput from "@/components/ImageInput";
-import { cancelOperation, deletePhoto, reportDamage, saveChecklist, setOperationStatus, updateOperation } from "../actions";
+import { RESOLUTION_LABEL } from "@/lib/danos";
+import { cancelOperation, consertarDano, deletePhoto, estornarBaixaDano, reportDamage, resolverDano, saveChecklist, setOperationStatus, updateOperation } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function OperacaoDetalhePage({
   const itensChecklist = checklistFor(op.kind);
   const danos = op.reservation_id
     ? await all<any>(
-        `SELECT d.*, p.name AS product_name FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
+        `SELECT d.*, p.name AS product_name, p.kind AS product_kind FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
           WHERE d.reservation_id = ? ORDER BY d.id DESC`,
         [op.reservation_id],
       )
@@ -313,13 +314,76 @@ export default async function OperacaoDetalhePage({
           </form>
 
           {danos.length > 0 && (
-            <ul className="mt-3 space-y-1.5">
-              {danos.map((d) => (
-                <li key={d.id} className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
-                  {d.qty}x {d.product_name} · {d.damage_type || "dano"} · estimado {money(d.estimated_cents)}
-                  {d.charged_cents > 0 ? `, descontado ${money(d.charged_cents)}` : ""}
-                </li>
-              ))}
+            <ul className="mt-3 space-y-2">
+              {danos.map((d) => {
+                const pendente = d.resolution_status === "registrada" || d.resolution_status === "estornada" || d.resolution_status === "consertada";
+                const ehKit = d.product_kind === "kit";
+                return (
+                  <li key={d.id} className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">
+                        {d.qty}x {d.product_name ?? "equipamento"} · {d.damage_type || "dano"}
+                      </span>
+                      <Badge tone={d.resolution_status === "baixada" ? "cinza" : d.resolution_status === "em_manutencao" ? "roxo" : d.resolution_status === "estornada" ? "ambar" : "vermelho"}>
+                        {RESOLUTION_LABEL[d.resolution_status] ?? "Registrada"}
+                      </Badge>
+                      {d.charged_cents > 0 && <span>· descontado {money(d.charged_cents)}</span>}
+                    </div>
+                    {d.description && <span className="block text-xs opacity-80">{d.description}</span>}                    {pendente && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <form action={resolverDano} className="flex items-center gap-1">
+                          <input type="hidden" name="damage_id" value={d.id} />
+                          <input type="hidden" name="operation_id" value={op.id} />
+                          <input type="hidden" name="reservation_id" value={op.reservation_id} />
+                          <input type="hidden" name="action" value="baixa" />
+                          <SubmitButton variant="perigo" confirm={ehKit ? `Baixar ${d.qty}x ${d.product_name ?? "kit"} do estoque? A baixa será expandida nos componentes físicos do kit.` : `Baixar definitivamente ${d.qty} un. de ${d.product_name ?? "do estoque"}? O disponível será reduzido.`} className="px-2 py-1 text-xs">
+                            Baixar do estoque
+                          </SubmitButton>
+                        </form>
+                        {!ehKit && (
+                          <form action={resolverDano} className="flex items-center gap-1">
+                            <input type="hidden" name="damage_id" value={d.id} />
+                            <input type="hidden" name="operation_id" value={op.id} />
+                            <input type="hidden" name="reservation_id" value={op.reservation_id} />
+                            <input type="hidden" name="action" value="manutencao" />
+                            <SubmitButton variant="secundario" className="px-2 py-1 text-xs">
+                              Enviar p/ manutenção
+                            </SubmitButton>
+                          </form>
+                        )}
+                      </div>
+                    )}
+                    {ehKit && pendente && (
+                      <p className="mt-1 text-xs opacity-80">
+                        A baixa de um kit é expandida nos componentes físicos (ex.: 1 kit = 1 mesa + 4 cadeiras). Manutenção deve ser registrada no componente avulso.
+                      </p>
+                    )}
+
+                    {d.resolution_status === "baixada" && (
+                      <form action={estornarBaixaDano} className="mt-2 flex items-center gap-1">
+                        <input type="hidden" name="damage_id" value={d.id} />
+                        <input type="hidden" name="operation_id" value={op.id} />
+                        <input type="hidden" name="reservation_id" value={op.reservation_id} />
+                        <input name="motivo" placeholder="Motivo do estorno" className="rounded-lg border border-red-200 px-2 py-1 text-xs" />
+                        <SubmitButton variant="secundario" className="px-2 py-1 text-xs">
+                          Estornar baixa
+                        </SubmitButton>
+                      </form>
+                    )}
+
+                    {d.resolution_status === "em_manutencao" && (
+                      <form action={consertarDano} className="mt-2">
+                        <input type="hidden" name="damage_id" value={d.id} />
+                        <input type="hidden" name="operation_id" value={op.id} />
+                        <input type="hidden" name="reservation_id" value={op.reservation_id} />
+                        <SubmitButton variant="sucesso" className="px-2 py-1 text-xs">
+                          Consertado: devolver ao disponível
+                        </SubmitButton>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Section>
