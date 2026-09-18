@@ -1,6 +1,7 @@
 import { all } from "@/lib/db";
 import Link from "next/link";
 import FreightSettings from "./FreightSettings";
+import ReciboSettings from "./ReciboSettings";
 import FidelitySettings from "./FidelitySettings";
 import BirthdaySettings from "./BirthdaySettings";
 import { createPurpose, renamePurpose, todasFinalidades, togglePurpose } from "../financeiro/actions";
@@ -66,6 +67,7 @@ export default async function ConfiguracoesPage({
     { value: "fornecedores", label: "Fornecedores" },
     ...(user.role === "admin" ? [{ value: "contas", label: "Contas" }] : []),
     { value: "frete", label: "Frete" },
+    { value: "recibos", label: "Recibos" },
     { value: "disponibilidade", label: "Disponibilidade" },
     { value: "fidelidade", label: "Fidelidade" },
     ...(user.role === "admin" ? [{ value: "assinatura", label: "Assinatura" }] : []),
@@ -289,6 +291,8 @@ export default async function ConfiguracoesPage({
       )}
 
       {aba === "frete" && <FreightSettings settings={s} admin={user.role === "admin"} />}
+
+      {aba === "recibos" && <ReciboSettings settings={s} admin={user.role === "admin"} />}
 
       {aba === "fidelidade" && <FidelitySettings settings={s} admin={user.role === "admin"} />}
 

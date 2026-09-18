@@ -6,6 +6,7 @@ import { insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, hashPassword, requireUser, verifyPassword, type SessionUser } from "@/lib/auth";
 import { getSettings, setSettings } from "@/lib/settings";
 import { contractUsesHtml, sanitizeContractHtml } from "@/lib/contract-html";
+import { validarDimensoesRecibo } from "@/lib/recibo-visual";
 
 export async function saveStockSettings(fd: FormData) {
   const user = await assertAdmin();
@@ -87,6 +88,38 @@ export async function saveTemplates(fd: FormData) {
     wa_quote: String(fd.get("wa_quote") ?? ""),
   });
   await logAction(user, "editar", "configuracao", null, `${user.name} atualizou os modelos de contrato e WhatsApp`);
+  revalidatePath("/configuracoes");
+}
+
+/**
+ * Tamanho do recibo (Configurações → Recibos).
+ *
+ * Persiste na tabela settings (KV), como os demais ajustes — sem tabela nova.
+ * A validação das dimensões personalizadas roda AQUI, no servidor, de novo:
+ * a barreira nunca é o componente de tela. Alterar a configuração afeta
+ * apenas novas impressões; recibos já emitidos permanecem como estão.
+ */
+export async function saveReciboSettings(fd: FormData) {
+  const user = await assertAdmin();
+  const tamanho = String(fd.get("recibo_tamanho") ?? "a4");
+  const validos = ["a4", "meio_a4", "quarto_a4", "personalizado"];
+  if (!validos.includes(tamanho)) {
+    redirect(`/configuracoes?aba=recibos&erro=${encodeURIComponent("Tamanho de recibo inválido.")}`);
+  }
+  const values: Record<string, string> = { recibo_tamanho: tamanho };
+  if (tamanho === "personalizado") {
+    const r = validarDimensoesRecibo(
+      String(fd.get("recibo_largura_mm") ?? ""),
+      String(fd.get("recibo_altura_mm") ?? ""),
+    );
+    if ("erro" in r) {
+      redirect(`/configuracoes?aba=recibos&erro=${encodeURIComponent(r.erro)}`);
+    }
+    values.recibo_largura_mm = String(r.larguraMm);
+    values.recibo_altura_mm = String(r.alturaMm);
+  }
+  await setSettings(values);
+  await logAction(user, "editar", "configuracao", null, `${user.name} configurou o tamanho dos recibos (${tamanho})`);
   revalidatePath("/configuracoes");
 }
 
