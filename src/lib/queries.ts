@@ -55,6 +55,22 @@ export async function getOperation(id: number) {
   return await one<any>(`${OPERATION_SELECT} WHERE o.id = ?`, [id]);
 }
 
+/**
+ * Fretes do dia para a "Operação de hoje", no mesmo molde do bloco de fretes
+ * da agenda: so o cancelado fica de fora e quem não tem horário vem primeiro.
+ * Reutiliza o filtro consagrado da agenda em vez de criar uma terceira regra;
+ * o card (FreightCard) mostra o status real, inclusive Concluído do dia.
+ */
+export async function freightsOn(date: string) {
+  return await all<any>(
+    `SELECT f.*, c.name AS customer, c.phone, c.whatsapp
+       FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
+      WHERE f.date = ? AND f.status <> 'cancelado'
+      ORDER BY f.time`,
+    [date],
+  );
+}
+
 /* ------------------------------ eventos da agenda ---------------------------- */
 
 export type AgendaEvent = {
