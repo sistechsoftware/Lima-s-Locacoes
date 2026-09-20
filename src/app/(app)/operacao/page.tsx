@@ -1,8 +1,9 @@
-import { lateOperations, operationsBetween } from "@/lib/queries";
+import { freightsOn, lateFreights, lateOperations, operationsBetween, ordenarOperacoesMistas } from "@/lib/queries";
 import { requireUser } from "@/lib/auth";
 import { addDays, dateBR, today } from "@/lib/format";
 import { Card, Empty, LinkButton, PageHeader } from "@/components/ui";
 import { OperationCard } from "@/components/OperationCard";
+import { FreightCard } from "@/components/FreightCard";
 import { Tabs } from "@/components/List";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ const ABAS = [
   { value: "retiradas", label: "Retiradas", kind: "retirada" },
   { value: "montagens", label: "Montagens", kind: "montagem" },
   { value: "desmontagens", label: "Desmontagens", kind: "desmontagem" },
+  { value: "fretes", label: "Fretes", kind: null },
   { value: "todas", label: "Todas", kind: null },
   { value: "atrasadas", label: "Atrasadas", kind: null },
 ];
@@ -29,11 +31,24 @@ export default async function OperacaoPage({
   const ate = addDays(data, dias);
 
   // Uma leitura do periodo cobre a aba aberta e os numeros de todas as abas:
-  // consultar cada tipo separadamente custava seis idas ao banco.
-  const [atrasadas, doPeriodo] = await Promise.all([lateOperations(), operationsBetween(data, ate)]);
+  // consultar cada tipo separadamente custava seis idas ao banco. Os fretes
+  // entram na mesma leitura paralela, pela mesma janela de datas (regra da
+  // agenda: so o cancelado fica de fora).
+  const [atrasadas, fretesAtrasados, doPeriodo, fretesPeriodo] = await Promise.all([
+    lateOperations(),
+    lateFreights(),
+    operationsBetween(data, ate),
+    freightsOn(data, ate),
+  ]);
   const def = ABAS.find((a) => a.value === aba) ?? ABAS[0];
   const ops =
-    aba === "atrasadas" ? atrasadas : def.kind ? doPeriodo.filter((o: any) => o.kind === def.kind) : doPeriodo;
+    aba === "atrasadas"
+      ? ordenarOperacoesMistas([...atrasadas, ...fretesAtrasados])
+      : aba === "fretes"
+        ? fretesPeriodo
+        : def.kind
+          ? doPeriodo.filter((o: any) => o.kind === def.kind)
+          : doPeriodo;
 
   const contar = (kind: string) => doPeriodo.filter((o: any) => o.kind === kind).length;
   const contagem = {
@@ -41,8 +56,9 @@ export default async function OperacaoPage({
     retiradas: contar("retirada"),
     montagens: contar("montagem"),
     desmontagens: contar("desmontagem"),
+    fretes: fretesPeriodo.length,
     todas: doPeriodo.length,
-    atrasadas: atrasadas.length,
+    atrasadas: atrasadas.length + fretesAtrasados.length,
   };
 
   return (
@@ -86,9 +102,13 @@ export default async function OperacaoPage({
         <Empty>Nenhuma operação neste filtro.</Empty>
       ) : (
         <div className="space-y-2">
-          {ops.map((o: any) => (
-            <OperationCard key={o.id} op={o} showDate={dias > 0 || aba === "atrasadas"} />
-          ))}
+          {ops.map((o: any) =>
+            aba === "fretes" || o.kind === "frete" ? (
+              <FreightCard key={o.id} f={o} showDate={dias > 0 || aba === "atrasadas"} />
+            ) : (
+              <OperationCard key={o.id} op={o} showDate={dias > 0 || aba === "atrasadas"} />
+            ),
+          )}
         </div>
       )}
     </div>

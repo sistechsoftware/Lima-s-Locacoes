@@ -12,7 +12,14 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { createTestDb } from "./helpers/d1.ts";
 import { all, insert, one } from "../src/lib/db.ts";
-import { freightsOn, lateOperations, operationsOn } from "../src/lib/queries.ts";
+import {
+  freightsOn,
+  lateFreights,
+  lateOperations,
+  operationsBetween,
+  operationsOn,
+  ordenarOperacoesMistas,
+} from "../src/lib/queries.ts";
 import { addDays, today } from "../src/lib/format.ts";
 
 let cliente = 0;
@@ -189,12 +196,60 @@ describe("operações passadas", () => {
     assert.equal((await freightsOn(addDays(T0, -1))).length, 1);
   });
 
-  it("frete aberto de ontem NAO entra nos atrasados: lateOperations cobre so operacoes de locacao (comportamento pre-existente, preservado)", async () => {
+  it("frete agendado de ontem entra nos atrasados via lateFreights; concluido nao", async () => {
+    const ontem = addDays(T0, -1);
+    const aberto = await frete(ontem, { time: "09:00" });
+    await frete(ontem, { time: "10:00", status: "concluido" });
+    const atrasadas = await lateFreights();
+    assert.equal(atrasadas.length, 1);
+    assert.equal(atrasadas[0].id, aberto);
+    assert.equal(atrasadas[0].status, "agendado");
+    assert.equal(atrasadas[0].kind, "frete");
+  });
+
+  it("em_rota e orcamento abertos de dias anteriores tambem sao atrasados", async () => {
+    const ontem = addDays(T0, -1);
+    await frete(ontem, { time: "08:00", status: "em_rota" });
+    await frete(addDays(T0, -3), { time: "12:00", status: "orcamento" });
+    const atrasadas = await lateFreights();
+    assert.equal(atrasadas.length, 2);
+    assert.deepEqual(
+      atrasadas.map((f: any) => f.date),
+      [addDays(T0, -3), ontem],
+      "o mais antigo primeiro",
+    );
+  });
+
+  it("frete aberto de hoje NAO e atrasado", async () => {
+    await frete(T0, { time: "23:00" });
+    assert.equal((await lateFreights()).length, 0);
+  });
+
+  it("merge das atrasadas ordena locacao e frete na mesma linha do tempo", async () => {
+    const ontem = addDays(T0, -1);
+    const r = await reserva(ontem);
+    await operacao(r, `${ontem}T08:00`); // locacao 08:00
+    await frete(ontem, { time: "09:00" }); // frete 09:00
+    await frete(ontem, { time: "07:00", status: "em_rota" }); // frete 07:00
+    const mistas = ordenarOperacoesMistas([...(await lateOperations()), ...(await lateFreights())]);
+    assert.equal(mistas.length, 3);
+    assert.deepEqual(
+      mistas.map((x: any) => x.kind),
+      ["frete", "entrega", "frete"],
+      "ordem cronologica: frete 07:00, locacao 08:00, frete 09:00",
+    );
+  });
+
+  it("comparador compartilhado: frete sem horario vem antes dos horarios do dia", async () => {
     const ontem = addDays(T0, -1);
     await frete(ontem, { time: "09:00" });
-    await frete(ontem, { time: "10:00", status: "concluido" });
-    const atrasadas = await lateOperations();
-    assert.equal(atrasadas.length, 0, "nem fretes abertos nem concluidos entram no alerta de atraso");
+    await frete(ontem, { time: null });
+    const mistas = ordenarOperacoesMistas(await lateFreights());
+    assert.deepEqual(
+      mistas.map((x: any) => x.time ?? null),
+      [null, "09:00"],
+      "sem horario primeiro, como na agenda e no freightsOn",
+    );
   });
 
   it("operacao de locacao aberta de ontem tambem aparece nos atrasados", async () => {
@@ -203,6 +258,44 @@ describe("operações passadas", () => {
     const atrasadas = await lateOperations();
     assert.equal(atrasadas.length, 1);
     assert.equal(atrasadas[0].kind, "entrega");
+  });
+});
+
+describe("aba Fretes da tela /operacao (janela de datas)", () => {
+  beforeEach(cenario);
+
+  it("freightsOn(data, ate) cobre o mesmo periodo de operationsBetween", async () => {
+    await frete(T0, { time: "08:00" });
+    await frete(addDays(T0, 2), { time: "09:00" });
+    await frete(addDays(T0, 8), { time: "10:00" });
+    const janela7 = await freightsOn(T0, addDays(T0, 7));
+    assert.equal(janela7.length, 2, "hoje +2 entram, +8 nao");
+    const soHoje = await freightsOn(T0);
+    assert.equal(soHoje.length, 1, "sem ate, segue sendo so o dia");
+  });
+
+  it("janela inclusive nas duas pontas, ordenada por data e horario, sem duplicar", async () => {
+    const amanha = addDays(T0, 1);
+    await frete(amanha, { time: "09:00" });
+    await frete(T0, { time: "14:00" });
+    const janela = await freightsOn(T0, amanha);
+    assert.equal(janela.length, 2);
+    assert.deepEqual(
+      janela.map((f: any) => f.date),
+      [T0, amanha],
+      "hoje antes de amanha, cada frete uma unica vez",
+    );
+  });
+
+  it("nao cria registros nem mistura fretes com operacoes de locacao", async () => {
+    const r = await reserva();
+    await operacao(r, `${T0}T08:00`);
+    await frete(T0, { time: "09:00" });
+    const [ops, fretes] = await Promise.all([operationsBetween(T0, T0), freightsOn(T0, T0)]);
+    assert.equal(ops.length, 1);
+    assert.equal(fretes.length, 1);
+    const total = await all<any>(`SELECT id FROM freights`);
+    assert.equal(total.length, 1, "nenhum frete novo criado pela consulta");
   });
 });
 

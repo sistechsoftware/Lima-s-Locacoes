@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Badge, StatusBadge } from "./ui";
 import { Icon } from "./Icons";
 import { FREIGHT_STATUS } from "@/lib/domain";
-import { mapsLink, phoneBR, timeBR, waLink } from "@/lib/format";
+import { mapsLink, phoneBR, timeBR, today, waLink } from "@/lib/format";
 
 /**
  * Cartao do frete na Operacao do dia. Espelha o OperationCard (mesma grade,
@@ -10,9 +10,11 @@ import { mapsLink, phoneBR, timeBR, waLink } from "@/lib/format";
  * operacoes da mesma familia; a cor fuchsia e a mesma que agenda e dashboard
  * ja usam para o tipo "frete". Reuso total: nada aqui muda dados.
  */
-export function FreightCard({ f }: { f: any }) {
+export function FreightCard({ f, showDate = false }: { f: any; showDate?: boolean }) {
   const maps = mapsLink(f.destination);
   const wa = waLink(f.whatsapp || f.phone, `Olá, ${f.customer ?? f.contact_name ?? ""}!`);
+  // Mesmo criterio do OperationCard: data passada e ainda sem execucao final.
+  const late = f.date < today() && f.status !== "concluido" && f.status !== "cancelado";
 
   return (
     <div className="cartao overflow-hidden">
@@ -23,12 +25,18 @@ export function FreightCard({ f }: { f: any }) {
             <span className="mt-1 text-sm font-bold leading-none text-tinta-900">
               {timeBR(f.time) !== "-" ? timeBR(f.time) : "Dia todo"}
             </span>
+            {showDate && (
+              <span className="mt-0.5 text-[0.6rem] text-stone-500">
+                {f.date.slice(8, 10)}/{f.date.slice(5, 7)}
+              </span>
+            )}
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone="roxo">Frete</Badge>
               <StatusBadge defs={FREIGHT_STATUS} value={f.status} />
+              {late && <Badge tone="vermelho">Atrasada</Badge>}
             </div>
             <p className="mt-1 truncate text-sm font-bold text-tinta-900">
               {f.customer ?? f.contact_name ?? "Sem cliente"}
