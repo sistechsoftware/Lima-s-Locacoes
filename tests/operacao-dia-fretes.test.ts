@@ -297,6 +297,38 @@ describe("aba Fretes da tela /operacao (janela de datas)", () => {
     const total = await all<any>(`SELECT id FROM freights`);
     assert.equal(total.length, 1, "nenhum frete novo criado pela consulta");
   });
+
+  it("REGRESSAO aba Todas: fretes entram na mesma linha do tempo das locacoes", async () => {
+    // Replica exatamente o merge da aba Todas de /operacao:
+    // ordenarOperacoesMistas([...operationsBetween, ...freightsOn]).
+    const r1 = await reserva();
+    await operacao(r1, `${T0}T08:00`);
+    await frete(T0, { time: "09:00" });
+    const r2 = await reserva();
+    await operacao(r2, `${T0}T10:00`);
+    await frete(T0, { time: null });
+    const [doPeriodo, fretesPeriodo] = await Promise.all([
+      operationsBetween(T0, T0),
+      freightsOn(T0, T0),
+    ]);
+    const todas = ordenarOperacoesMistas([...doPeriodo, ...fretesPeriodo]);
+    assert.equal(todas.length, 4, "2 operacoes + 2 fretes, sem perder ninguem");
+    // Horario normalizado: operacao vem de scheduled_at, frete de date+time.
+    const hhmm = (o: any) =>
+      (o.scheduled_at ?? `${o.date}T${o.time || "00:00"}`).slice(11);
+    assert.deepEqual(
+      todas.map((o: any) => `${o.kind}-${hhmm(o)}`),
+      ["frete-00:00", "entrega-08:00", "frete-09:00", "entrega-10:00"],
+      "frete sem horario primeiro, depois intercalado por horario",
+    );
+    // O roteamento de render da tela depende do kind em TODAS as linhas de frete.
+    assert.ok(
+      todas.filter((o: any) => o.kind === "frete").every((f: any) => f.date && f.status),
+      "linhas de frete do merge carregam kind='frete'",
+    );
+    // Contador da aba: operacoes + fretes.
+    assert.equal(doPeriodo.length + fretesPeriodo.length, 4);
+  });
 });
 
 describe("integridade dos dados exibidos", () => {

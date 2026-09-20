@@ -96,7 +96,7 @@ export async function getOperation(id: number) {
  */
 export async function freightsOn(date: string, ate: string = date) {
   return await all<any>(
-    `SELECT f.*, c.name AS customer, c.phone, c.whatsapp
+    `SELECT f.*, 'frete' AS kind, c.name AS customer, c.phone, c.whatsapp
        FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
       WHERE f.date BETWEEN ? AND ? AND f.status <> 'cancelado'
       ORDER BY f.date, f.time`,

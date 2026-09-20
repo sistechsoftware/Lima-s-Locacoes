@@ -48,7 +48,9 @@ export default async function OperacaoPage({
         ? fretesPeriodo
         : def.kind
           ? doPeriodo.filter((o: any) => o.kind === def.kind)
-          : doPeriodo;
+          : // "Todas" representa tudo que roda no periodo: locacoes e fretes
+            // na mesma linha do tempo, com a ordenacao unica do sistema.
+            ordenarOperacoesMistas([...doPeriodo, ...fretesPeriodo]);
 
   const contar = (kind: string) => doPeriodo.filter((o: any) => o.kind === kind).length;
   const contagem = {
@@ -57,7 +59,7 @@ export default async function OperacaoPage({
     montagens: contar("montagem"),
     desmontagens: contar("desmontagem"),
     fretes: fretesPeriodo.length,
-    todas: doPeriodo.length,
+    todas: doPeriodo.length + fretesPeriodo.length,
     atrasadas: atrasadas.length + fretesAtrasados.length,
   };
 
@@ -104,9 +106,11 @@ export default async function OperacaoPage({
         <div className="space-y-2">
           {ops.map((o: any) =>
             aba === "fretes" || o.kind === "frete" ? (
-              <FreightCard key={o.id} f={o} showDate={dias > 0 || aba === "atrasadas"} />
+              // kind entra na chave: operacoes e fretes vem de tabelas
+              // diferentes e podem compartilhar o mesmo id numerico.
+              <FreightCard key={`${o.kind}-${o.id}`} f={o} showDate={dias > 0 || aba === "atrasadas"} />
             ) : (
-              <OperationCard key={o.id} op={o} showDate={dias > 0 || aba === "atrasadas"} />
+              <OperationCard key={`${o.kind}-${o.id}`} op={o} showDate={dias > 0 || aba === "atrasadas"} />
             ),
           )}
         </div>
