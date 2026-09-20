@@ -38,8 +38,8 @@ import { consertarDano, estornarBaixaDano, resolverDano } from "../../operacao/a
 import { generateContract } from "../../contratos/actions";
 import { parcelarReserva, receberParcela } from "../../financeiro/receber-actions";
 import { adiantamentosDaReserva, recebiveisDe } from "@/lib/receber";
-import { recibosDaReserva } from "@/lib/recibos";
-import { gerarReciboDeposit, gerarReciboPayment } from "../../recibos/actions";
+import { recibosDaReserva, reciboQuitacaoDaReserva } from "@/lib/recibos";
+import { gerarReciboDeposit, gerarReciboPayment, gerarQuitacaoCaucao, gerarQuitacaoLocacao } from "../../recibos/actions";
 import { recompensasDisponiveis, simularUso } from "@/lib/fidelidade-db";
 import { aplicarRecompensa } from "../fidelidade-actions";
 import { situacaoParcela } from "@/lib/financeiro";
@@ -84,6 +84,10 @@ export default async function ReservaPage({
   const reciboPorPagamento = new Map<number, any>(
     recibos.filter((rc: any) => rc.payment_id).map((rc: any) => [rc.payment_id, rc]),
   );
+  // Quitação unificada: os recibos já vêm na lista (recibosDaReserva), mas a
+  // consulta dedicada é a leitura canônica — devolve o documento por obrigação
+  // (locação e caução) ou null quando ainda não existe.
+  const quitacao = await reciboQuitacaoDaReserva(r.id);
   // contas ativas para os lancamentos de caixa desta tela: pagamento direto,
   // adiantamento (criacao e confirmacao) e recebimento de parcela
   const contas = await all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`);
@@ -700,8 +704,32 @@ export default async function ReservaPage({
             )}
             <div className="mt-2 flex items-center justify-between rounded-xl bg-nuvem-100 px-3 py-2 text-sm font-bold">
               <span>Saldo</span>
-              <span className={m.balance > 0 ? "text-red-600" : "text-emerald-600"}>{money(m.balance)}</span>
+              <span className={m.balance <= 0 ? "text-emerald-600" : "text-red-600"}>{money(m.balance)}</span>
             </div>
+            {/* Quitação unificada da locação: aparece quando quitada. O recibo de
+                quitação é ADICIONAL aos recibos individuais, nunca os substitui. */}
+            {m.total > 0 && m.balance <= 0 && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                <span className="text-xs font-semibold text-emerald-800">
+                  Locação quitada — recibo unificado com o total recebido
+                </span>
+                {quitacao.locacao ? (
+                  <Link
+                    href={`/recibos/${quitacao.locacao.id}`}
+                    className="rounded-xl border border-nuvem-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-marca-600 hover:bg-nuvem-50"
+                  >
+                    Quitação {quitacao.locacao.number}
+                  </Link>
+                ) : (
+                  <form action={gerarQuitacaoLocacao}>
+                    <input type="hidden" name="reservation_id" value={r.id} />
+                    <SubmitButton variant="secundario" className="px-2.5 py-1.5 text-xs">
+                      Emitir quitação
+                    </SubmitButton>
+                  </form>
+                )}
+              </div>
+            )}
           </div>
         </Section>
 
@@ -752,6 +780,31 @@ export default async function ReservaPage({
               <SubmitButton className="w-full">Salvar caução</SubmitButton>
             </div>
           </form>
+
+          {/* Quitação unificada da caução: quando as cauções da reserva estão
+              integralmente em caixa. Documento ADICIONAL ao recibo individual. */}
+          {m.deposit > 0 && deposito?.status !== "nao_recebida" && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <span className="text-xs font-semibold text-emerald-800">
+                Caução quitada — recibo unificado com o total recebido
+              </span>
+              {quitacao.caucao ? (
+                <Link
+                  href={`/recibos/${quitacao.caucao.id}`}
+                  className="rounded-xl border border-nuvem-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-marca-600 hover:bg-nuvem-50"
+                >
+                  Quitação {quitacao.caucao.number}
+                </Link>
+              ) : (
+                <form action={gerarQuitacaoCaucao}>
+                  <input type="hidden" name="reservation_id" value={r.id} />
+                  <SubmitButton variant="secundario" className="px-2.5 py-1.5 text-xs">
+                    Emitir quitação
+                  </SubmitButton>
+                </form>
+              )}
+            </div>
+          )}
 
           {/* Recibo da caucao: so para caucao recebida, que tem valor a comprovar.
               Leitura pura do deposito — a acao nao altera o registro dela. */}

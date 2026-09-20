@@ -671,7 +671,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_purchase_date ON financial_entries(purcha
 CREATE TABLE IF NOT EXISTS receipts (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   number       TEXT NOT NULL UNIQUE,
-  source_type  TEXT NOT NULL CHECK (source_type IN ('payment', 'deposit')),
+  source_type  TEXT NOT NULL CHECK (source_type IN ('payment', 'deposit', 'quitacao')),
   payment_id   INTEGER REFERENCES payments(id) ON DELETE SET NULL,
   deposit_id   INTEGER REFERENCES deposits(id) ON DELETE SET NULL,
   entry_id     INTEGER REFERENCES financial_entries(id) ON DELETE SET NULL,
@@ -684,17 +684,27 @@ CREATE TABLE IF NOT EXISTS receipts (
   created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   /* assinatura da empresa ja cadastrada no momento da emissao (0021) */
   company_signature_included INTEGER,
+  /* quitação (0024): obrigação quitada ('locacao'|'caucao' apontando para a
+     reserva) e os lançamentos que compõem o total, congelados em JSON */
+  obrigacao_tipo TEXT CHECK (obrigacao_tipo IS NULL OR obrigacao_tipo IN ('locacao','caucao')),
+  obrigacao_id   INTEGER,
+  payment_ids    TEXT,
   CHECK (
-    (source_type = 'payment' AND payment_id IS NOT NULL AND deposit_id IS NULL)
+    (source_type = 'payment' AND payment_id IS NOT NULL AND deposit_id IS NULL AND payment_ids IS NULL)
     OR
-    (source_type = 'deposit' AND deposit_id IS NOT NULL AND payment_id IS NULL)
+    (source_type = 'deposit' AND deposit_id IS NOT NULL AND payment_id IS NULL AND payment_ids IS NULL)
+    OR
+    (source_type = 'quitacao' AND payment_id IS NULL AND deposit_id IS NULL
+       AND obrigacao_tipo IS NOT NULL AND obrigacao_id IS NOT NULL AND payment_ids IS NOT NULL)
   )
 );
 CREATE INDEX IF NOT EXISTS idx_receipts_payment ON receipts(payment_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_deposit ON receipts(deposit_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_entry ON receipts(entry_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_obrigacao ON receipts(obrigacao_tipo, obrigacao_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_receipts_payment ON receipts(payment_id) WHERE payment_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_receipts_deposit ON receipts(deposit_id) WHERE deposit_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_receipts_quitacao ON receipts(obrigacao_tipo, obrigacao_id) WHERE source_type = 'quitacao';
 
 `;
 

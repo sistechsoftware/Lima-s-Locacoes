@@ -1,8 +1,9 @@
 import "server-only";
-import { all, insert, one, run } from "./db";
+import { all, insert, one, run, scalar } from "./db";
 import { getSettings } from "./settings";
 import { getCompanySignature } from "./assinatura-empresa";
 import { dateBR, docBR, money, phoneBR } from "./format";
+import { valorPorExtenso } from "./recibo-visual";
 
 /**
  * Recibos de lançamentos financeiros.
@@ -20,6 +21,11 @@ import { dateBR, docBR, money, phoneBR } from "./format";
  * trava é o banco em si: índice UNIQUE por lançamento e número UNIQUE. Duas
  * emissões simultâneas viram duas corridas; a perdedora quebra na constraint,
  * lê o recibo do vencedor e devolve ele — sem erro para o usuário.
+ *
+ * Quitação (0024): quando a obrigação de uma reserva (locação ou caução) tem
+ * saldo zero, nasce um documento ADICIONAL — o recibo unificado de quitação,
+ * com o TOTAL quitado e a composição dos lançamentos. Ele não substitui os
+ * recibos individuais e é único por obrigação (índice uq_receipts_quitacao).
  */
 
 export type ReciboFonte =
@@ -29,7 +35,70 @@ export type ReciboFonte =
 export const ROTULO_FONTE: Record<string, string> = {
   payment: "Pagamento",
   deposit: "Caução",
+  quitacao: "Quitação",
 };
+
+/* ------------------------------------------------------------------ */
+/* Quitação                                                            */
+/* ------------------------------------------------------------------ */
+
+export type ObrigacaoTipo = "locacao" | "caucao";
+
+/**
+ * Saldo pendente da obrigação de uma reserva, com a mesma aritmética das
+ * telas: locação = total da reserva menos o que já entrou em payments
+ * (qualquer lançamento: pagamento direto, parcela, adiantamento; estornos,
+ * payments negativos, entram subtraindo, como em reservationMoney — e quem
+ * pagou além do total também quitou, por isso o piso em zero, igual ao
+ * "quitada" da tela). Caução = soma de todas as cauções registradas da
+ * reserva menos o que já foi recebido de fato — cobre tanto a caução única
+ * do formulário quanto a "parcelada" em vários recebimentos.
+ */
+export async function saldoObrigacao(
+  tipo: ObrigacaoTipo,
+  reservationId: number,
+): Promise<number> {
+  if (tipo === "locacao") {
+    const total = await scalar<number>(`SELECT COALESCE(total_cents,0) FROM reservations WHERE id = ?`, [reservationId]);
+    const pago = await scalar<number>(
+      `SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE reservation_id = ?`,
+      [reservationId],
+    );
+    return Math.max(0, total - pago);
+  }
+  const total = await scalar<number>(
+    `SELECT COALESCE(SUM(amount_cents),0) FROM deposits WHERE reservation_id = ?`,
+    [reservationId],
+  );
+  const recebido = await scalar<number>(
+    `SELECT COALESCE(SUM(amount_cents),0) FROM deposits
+      WHERE reservation_id = ? AND status <> 'nao_recebida' AND received_at IS NOT NULL`,
+    [reservationId],
+  );
+  return Math.max(0, total - recebido);
+}
+
+/**
+ * Devolve o recibo de quitação da obrigação, quando existir.
+ * Serve à tela da reserva: uma consulta, zero chance de gerar outro.
+ */
+export async function reciboQuitacaoDaReserva(reservationId: number) {
+  const linhas = await all<any>(
+    `SELECT id, number, source_type, obrigacao_tipo, amount_cents FROM receipts
+      WHERE source_type = 'quitacao' AND obrigacao_tipo IN ('locacao','caucao') AND obrigacao_id = ?`,
+    [reservationId],
+  );
+  return { locacao: linhas.find((r) => r.obrigacao_tipo === "locacao") ?? null,
+           caucao: linhas.find((r) => r.obrigacao_tipo === "caucao") ?? null };
+}
+
+/** Recibo de quitação de uma obrigação específica (uso interno e testes). */
+export async function reciboQuitacao(tipo: ObrigacaoTipo, reservationId: number) {
+  return await one<any>(
+    `SELECT * FROM receipts WHERE source_type = 'quitacao' AND obrigacao_tipo = ? AND obrigacao_id = ?`,
+    [tipo, reservationId],
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Numeração                                                           */
@@ -129,6 +198,196 @@ export async function emitirRecibo(
   return { erro: "Não foi possível gerar o recibo. Tente novamente." };
 }
 
+/**
+ * Fecha o ciclo da quitação depois do recibo individual.
+ *
+ * Chamada apenas em rotas que confirmam um recebimento novo (gerarRecibo*),
+ * nunca em rotinas de leitura — abrir a reserva, relistar a tela ou reemitir
+ * um recibo existente não pode gerar documento.
+ */
+export async function emitirQuitacaoSeQuitada(
+  fonte: ReciboFonte,
+  opts: { userId?: number; userName?: string } = {},
+): Promise<{ erro: string | null; receiptId?: number; criado?: boolean }> {
+  try {
+    if (fonte.tipo === "payment") {
+      const p = await one<any>(`SELECT reservation_id, freight_id FROM payments WHERE id = ?`, [fonte.paymentId]);
+      // frete não faz parte do escopo: recebimentos de frete continuam só
+      // com o recibo individual, como sempre foram
+      if (!p || p.freight_id || !p.reservation_id) return { erro: null };
+      // silencioso por definição: saldo diferente de zero ou obrigação sem
+      // valor não são erros no gatilho automático, é só "ainda não"
+      if ((await saldoObrigacao("locacao", p.reservation_id)) !== 0) return { erro: null };
+      return await emitirQuitacao("locacao", p.reservation_id, opts);
+    }
+    const d = await one<any>(`SELECT reservation_id FROM deposits WHERE id = ?`, [fonte.depositId]);
+    if (!d) return { erro: null };
+    /**
+     * Gatilho automático da caução: só no fluxo de linha única, que é o que o
+     * formulário da reserva mantém (uma caução por reserva). Com várias linhas
+     * (recebimentos "parcelados" criados por fora), o sistema não tem como
+     * saber que ainda vêm parcelas — disparar no primeiro recebimento geraria
+     * uma quitação prematura e a UNIQUE impediria a definitiva. Nesse cenário
+     * o dono emita pelo botão "Emitir quitação" da reserva, quando o total
+     * combinado estiver completo.
+     */
+    const linhasCaucao = await scalar<number>(`SELECT COUNT(*) FROM deposits WHERE reservation_id = ?`, [
+      d.reservation_id,
+    ]);
+    if (linhasCaucao !== 1) return { erro: null };
+    if ((await saldoObrigacao("caucao", d.reservation_id)) !== 0) return { erro: null };
+    return await emitirQuitacao("caucao", d.reservation_id, opts);
+  } catch (e: any) {
+    return { erro: `Não foi possível gerar o recibo de quitação: ${String(e?.message ?? e)}` };
+  }
+}
+
+/**
+ * Emite o recibo unificado de quitação da obrigação, quando ela estiver
+ * quitada e ainda não tiver quitação.
+ *
+ * Regras:
+ *  - saldo != 0 -> nada acontece (ainda falta pagar);
+ *  - obrigação sem valor (total da reserva 0, caução 0) -> nada a quitar;
+ *  - já existe quitação -> devolve a existente com criado=false (a UNIQUE
+ *    uq_receipts_quitacao é a trava final, mesmo com duas emissões
+ *    simultâneas);
+ *  - saldo diferente de zero ou obrigação sem valor -> erro descritivo (o
+ *    gatilho automático acima pré-filtra esses casos e nunca os vê);
+ *  - o valor do documento é o TOTAL quitado da obrigação (todos os
+ *    lançamentos que a compõem), nunca só o último.
+ *
+ * Um eventual erro volta como texto para a tela avisar; o recibo individual
+ * já emitido não é desfeito.
+ */
+export async function emitirQuitacao(
+  tipo: ObrigacaoTipo,
+  reservaId: number,
+  opts: { userId?: number; userName?: string } = {},
+): Promise<{ erro: string | null; receiptId?: number; criado?: boolean }> {
+  try {
+    // já existe? nunca duplicar — checagem otimista antes de qualquer cálculo
+    const existente = await reciboQuitacao(tipo, reservaId);
+    if (existente) return { erro: null, receiptId: existente.id, criado: false };
+
+    // ainda falta pagar? então não é quitação (obrigação de valor zero
+    // também não conta: não existe o que quitar)
+    const saldo = await saldoObrigacao(tipo, reservaId);
+    if (saldo !== 0) {
+      return {
+        erro:
+          tipo === "locacao"
+            ? `A locação ainda tem saldo de ${money(saldo)} — quite o saldo antes de emitir a quitação.`
+            : `A caução ainda tem ${money(saldo)} a receber — receba o total antes de emitir a quitação.`,
+      };
+    }
+
+    // Total quitado: a soma dos lançamentos que compõem a obrigação (todos
+    // os recebimentos da reserva), com teto no valor da obrigação — estornos
+    // podem fazer a soma bruta passar do devido, e o documento declara o
+    // que foi efetivamente quitado.
+    let teto = 0;
+    let quitado = 0;
+    let lista: { id: number; amount: number }[] = [];
+    let data = "";
+    let forma: string | null = null;
+
+    if (tipo === "locacao") {
+      teto = await scalar<number>(`SELECT COALESCE(total_cents,0) FROM reservations WHERE id = ?`, [reservaId]);
+      if (teto <= 0) return { erro: null };
+      const linhas = await all<any>(
+        `SELECT id, amount_cents, paid_at, method FROM payments
+          WHERE reservation_id = ? AND amount_cents > 0
+          ORDER BY paid_at ASC, id ASC`,
+        [reservaId],
+      );
+      quitado = Math.min(teto, linhas.reduce((s, l) => s + l.amount_cents, 0));
+      lista = linhas.map((l) => ({ id: l.id, amount: l.amount_cents }));
+      const ultimo = linhas[linhas.length - 1];
+      data = ultimo?.paid_at ?? new Date().toISOString();
+      forma = ultimo?.method ?? null;
+    } else {
+      // A obrigação da caução é o total registrado em todas as cauções da
+      // reserva; o quitado é o que efetivamente entrou (recebidas).
+      teto = await scalar<number>(
+        `SELECT COALESCE(SUM(amount_cents),0) FROM deposits WHERE reservation_id = ?`,
+        [reservaId],
+      );
+      if (teto <= 0) return { erro: null };
+      const linhas = await all<any>(
+        `SELECT id, amount_cents, received_at, method FROM deposits
+          WHERE reservation_id = ? AND status <> 'nao_recebida' AND received_at IS NOT NULL
+          ORDER BY received_at ASC, id ASC`,
+        [reservaId],
+      );
+      quitado = Math.min(teto, linhas.reduce((s, l) => s + l.amount_cents, 0));
+      lista = linhas.map((l) => ({ id: l.id, amount: l.amount_cents }));
+      const ultimo = linhas[linhas.length - 1];
+      data = ultimo?.received_at ?? new Date().toISOString();
+      forma = ultimo?.method ?? null;
+    }
+
+    if (quitado <= 0) return { erro: null };
+
+    // snapshot do texto na emissão, como nos recibos individuais
+    const s = await getSettings();
+    const obrigacaoTexto = tipo === "locacao" ? "da locação" : "da caução";
+    const numeroReserva =
+      (await scalar<string | null>(`SELECT number FROM reservations WHERE id = ?`, [reservaId])) ??
+      `#${reservaId}`;
+    const body = [
+      `DECLARAÇÃO DE QUITAÇÃO`,
+      `Declaramos que foi totalmente quitada a obrigação ${obrigacaoTexto} da reserva ${numeroReserva}.`,
+      `Valor total quitado: ${money(quitado)} (${valorPorExtenso(quitado)}).`,
+      `Composição: ${lista.map((l) => `${money(l.amount)} (lançamento #${l.id})`).join(" + ")}.`,
+      `Data do último recebimento: ${dateBR(data)}. Forma: ${forma ?? "não informada"}.`,
+      s.company_name ? `Emitido por ${s.company_name}.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const temAssinaturaEmpresa = (await getCompanySignature()) !== null;
+
+    for (let tentativa = 0; tentativa < 5; tentativa++) {
+      const numero = await proximoNumero();
+      try {
+        const id = await insert(
+          `INSERT INTO receipts (number, source_type, amount_cents, paid_at, method, body, issued_by, issued_by_name, company_signature_included, obrigacao_tipo, obrigacao_id, payment_ids)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            numero,
+            "quitacao",
+            quitado,
+            data,
+            forma,
+            body,
+            opts.userId ?? null,
+            opts.userName ?? null,
+            temAssinaturaEmpresa ? 1 : 0,
+            tipo,
+            reservaId,
+            JSON.stringify(lista),
+          ],
+        );
+        return { erro: null, receiptId: id, criado: true };
+      } catch (e: any) {
+        const msg = String(e?.message ?? e);
+        // perdeu a corrida: outro processo emitiu a quitação primeiro —
+        // devolve o recibo dele, sem erro e sem duplicar
+        if (msg.includes("UNIQUE")) {
+          const deOutro = await reciboQuitacao(tipo, reservaId);
+          if (deOutro) return { erro: null, receiptId: deOutro.id, criado: false };
+          continue;
+        }
+        return { erro: `Não foi possível gerar o recibo de quitação: ${msg}` };
+      }
+    }
+    return { erro: "Não foi possível gerar o recibo de quitação. Tente novamente." };
+  } catch (e: any) {
+    return { erro: `Não foi possível gerar o recibo de quitação: ${String(e?.message ?? e)}` };
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Consulta                                                            */
 /* ------------------------------------------------------------------ */
@@ -152,19 +411,21 @@ export async function reciboDaEntry(entryId: number) {
  * Todos os recibos de uma reserva, do mais novo ao mais antigo.
  *
  * Cobre pagamento direto, pagamento de parcela e pagamento de adiantamento
- * (todos vivem em payments apontando para a reserva) e a caução. Serve para
- * reabrir recibos antigos na tela da reserva, sem módulo novo nenhum.
+ * (todos vivem em payments apontando para a reserva), a caução e as
+ * quitações (que não apontam para lançamento nenhum: apontam para a
+ * obrigação, pelo par obrigacao_tipo/obrigacao_id).
  */
 export async function recibosDaReserva(reservationId: number) {
   return await all(
-    `SELECT rc.id, rc.number, rc.source_type, rc.amount_cents, rc.paid_at, rc.created_at,
+    `SELECT rc.id, rc.number, rc.source_type, rc.obrigacao_tipo, rc.amount_cents, rc.paid_at, rc.created_at,
             rc.payment_id, rc.deposit_id
        FROM receipts rc
        LEFT JOIN payments p ON p.id = rc.payment_id
        LEFT JOIN deposits d ON d.id = rc.deposit_id
       WHERE p.reservation_id = ? OR d.reservation_id = ?
+         OR (rc.source_type = 'quitacao' AND rc.obrigacao_id = ?)
       ORDER BY rc.id DESC`,
-    [reservationId, reservationId],
+    [reservationId, reservationId, reservationId],
   );
 }
 
@@ -176,6 +437,9 @@ export async function recibosDaReserva(reservationId: number) {
  * registrado na emissão. Se o lançamento foi apagado (ex.: reserva excluída),
  * `lancamentoExiste` fica falso e a página explica isso — o recibo em si
  * continua existindo, como comprovante de que a emissão aconteceu.
+ *
+ * Para a quitação, o "lançamento" é a obrigação: lê a reserva e o cliente,
+ * e `composicao` traz os lançamentos congelados na emissão.
  */
 export async function obterRecibo(id: number) {
   const rec = await one<any>(`SELECT * FROM receipts WHERE id = ?`, [id]);
@@ -195,6 +459,7 @@ export async function obterRecibo(id: number) {
     methodAtual: rec.method as string | null,
     descricao: null as string | null,
     valorDivergente: false,
+    composicao: [] as { id: number; amount: number }[],
   };
 
   if (rec.source_type === "payment" && rec.payment_id) {
@@ -245,6 +510,31 @@ export async function obterRecibo(id: number) {
       base.cliente = { name: d.customer_name, doc: d.customer_doc, phone: d.customer_phone };
       base.reserva = d;
       base.valorDivergente = d.amount_cents !== rec.amount_cents;
+    }
+  }
+
+  if (rec.source_type === "quitacao" && rec.obrigacao_id) {
+    const r = await one<any>(
+      `SELECT r.id, r.number, r.event_date, r.event_time, r.address, r.district, r.city,
+              c.name AS customer_name, c.doc AS customer_doc, c.phone AS customer_phone
+         FROM reservations r
+         LEFT JOIN customers c ON c.id = r.customer_id
+        WHERE r.id = ?`,
+      [rec.obrigacao_id],
+    );
+    if (r) {
+      base.lancamentoExiste = true;
+      base.reserva = { ...r, reservation_number: r.number };
+      base.cliente = { name: r.customer_name, doc: r.customer_doc, phone: r.customer_phone };
+      base.valorDivergente = false;
+    }
+    try {
+      const lista = JSON.parse(rec.payment_ids ?? "[]");
+      if (Array.isArray(lista)) base.composicao = lista;
+    } catch {
+      // JSON corrompido não pode derrubar a página: o total vem da coluna
+      // amount_cents, e a composição é evidência, não fonte da verdade
+      base.composicao = [];
     }
   }
 

@@ -62,6 +62,94 @@ export function valorPorExtenso(cents: number | null | undefined): string {
   return partes.join(" e ");
 }
 
+/* ------------------------------ tamanhos ---------------------------- */
+
+/**
+ * Tamanhos de recibo.
+ *
+ * A configuração vive na tabela settings (KV), como os demais ajustes da
+ * empresa — nenhuma migration nova. O padrão A4 preserva o comportamento
+ * atual das instalações existentes; os formatos compactos são para quem
+ * imprime em bobina/folha cortada. As medidas são em milímetros, direto do
+ * CSS (@page size e largura da folha), então o que se vê na tela é o que sai
+ * no papel — sem depender de o usuário ajustar escala na caixa de impressão.
+ *
+ * A lista é fechada e pequena de propósito: formatos que ninguém usa só
+ * aumentam a superfície de configuração sem valor real. Personalizado cobre
+ * o resto, com validação para não nascer folha impossível.
+ */
+export type TamanhoReciboKey = "a4" | "meio_a4" | "quarto_a4" | "personalizado";
+
+export type TamanhoRecibo = {
+  key: TamanhoReciboKey;
+  label: string;
+  larguraMm: number;
+  alturaMm: number | null;
+  /** Formato contínuo (altura livre): @page sem altura, folha sem altura fixa. */
+  continuo: boolean;
+  /** Escala visual da pré-visualização (largura da coluna em px). */
+  previewPx: number;
+};
+
+export const TAMANHOS_RECIBO: Record<TamanhoReciboKey, TamanhoRecibo> = {
+  a4: { key: "a4", label: "A4 (210 × 297 mm)", larguraMm: 210, alturaMm: 297, continuo: false, previewPx: 150 },
+  meio_a4: { key: "meio_a4", label: "½ A4 (210 × 148,5 mm)", larguraMm: 210, alturaMm: 148.5, continuo: false, previewPx: 150 },
+  quarto_a4: { key: "quarto_a4", label: "¼ A4 (105 × 148,5 mm)", larguraMm: 105, alturaMm: 148.5, continuo: false, previewPx: 120 },
+  personalizado: { key: "personalizado", label: "Personalizado", larguraMm: 105, alturaMm: 148, continuo: false, previewPx: 120 },
+};
+
+/** O pessoal escolhe pelo label; o banco guarda a chave. */
+export const TAMANHOS_RECIBO_LISTA = Object.values(TAMANHOS_RECIBO);
+
+const MM_MIN = 50;
+const MM_MAX = 297;
+
+/**
+ * Lê a configuração de tamanho a partir dos valores salvos. Valores salvos
+ * inválidos, ausentes ou de versões antigas caem no padrão A4 — instalacões
+ * existentes continuam saindo exatamente como sempre saíram.
+ */
+export function tamanhoRecibo(settings: Record<string, string>, overrides?: { larguraMm?: string; alturaMm?: string }): TamanhoRecibo {
+  const key = settings.recibo_tamanho as TamanhoReciboKey | undefined;
+  if (key && key !== "personalizado" && TAMANHOS_RECIBO[key]) return TAMANHOS_RECIBO[key];
+  if (key !== "personalizado") return TAMANHOS_RECIBO.a4;
+
+  // personalizado: dimensões salvas em settings; overrides ganham quando
+  // presentes (a própria aba de configuração mostra o que o usuário digitou
+  // antes de salvar)
+  const parse = (v: string | undefined, fallback: number) => {
+    const n = Math.round(Number(String(v ?? "").replace(",", ".")) * 100) / 100;
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const largura = parse(overrides?.larguraMm ?? settings.recibo_largura_mm, TAMANHOS_RECIBO.personalizado.larguraMm);
+  const altura = parse(overrides?.alturaMm ?? settings.recibo_altura_mm, TAMANHOS_RECIBO.personalizado.alturaMm!);
+  return {
+    key: "personalizado",
+    label: `Personalizado (${largura} × ${altura} mm)`,
+    larguraMm: largura,
+    alturaMm: altura,
+    continuo: false,
+    previewPx: largura > 150 ? 150 : 120,
+  };
+}
+
+/**
+ * Normaliza e valida dimensões personalizadas informadas pelo usuário.
+ * Devolve o erro em texto (padrão das demais actions) ou as medidas limpas.
+ */
+export function validarDimensoesRecibo(larguraMm: string | number, alturaMm: string | number): { erro: string } | { larguraMm: number; alturaMm: number } {
+  const parse = (v: string | number) => {
+    const n = Math.round(Number(String(v).replace(",", ".")) * 100) / 100;
+    return Number.isFinite(n) ? n : NaN;
+  };
+  const largura = parse(larguraMm);
+  const altura = parse(alturaMm);
+  if (!Number.isFinite(largura) || !Number.isFinite(altura)) return { erro: "Informe largura e altura em milímetros (números)." };
+  if (largura < MM_MIN || altura < MM_MIN) return { erro: `Dimensões mínimas: ${MM_MIN} × ${MM_MIN} mm.` };
+  if (largura > MM_MAX || altura > MM_MAX) return { erro: `Dimensões máximas: ${MM_MAX} × ${MM_MAX} mm.` };
+  return { larguraMm: largura, alturaMm: altura };
+}
+
 /** Rótulo legível da forma de pagamento gravada no lançamento. */
 export const FORMA_LABEL: Record<string, string> = {
   pix: "Pix",

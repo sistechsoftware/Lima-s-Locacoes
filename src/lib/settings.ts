@@ -76,6 +76,18 @@ export const DEFAULT_SETTINGS: Settings = {
   default_deposit_cents: "0",
 
   /*
+   * Tamanho do recibo: vive na tabela settings (KV), como os demais ajustes.
+   * O padrão A4 preserva o comportamento das instalações existentes; a
+   * escolha fica em Configurações → Recibos e vale para todos os tipos de
+   * recibo (pagamento, adiantamento, caução e quitação). Medidas em mm são
+   * usadas pelo CSS (@page size e folha), então o tamanho configurado é o
+   * que sai no papel.
+   */
+  recibo_tamanho: "a4",
+  recibo_largura_mm: "105",
+  recibo_altura_mm: "148",
+
+  /*
    * Calculadora de frete. Ficam aqui, na tabela settings, em vez de numa tabela
    * nova: sao parametros unicos da empresa, o mesmo formato dos demais ajustes.
    */

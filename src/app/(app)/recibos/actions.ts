@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { assertAdmin, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
-import { emitirRecibo, excluirRecibo } from "@/lib/recibos";
+import { emitirQuitacao, emitirQuitacaoSeQuitada, emitirRecibo, excluirRecibo } from "@/lib/recibos";
 
 /**
  * Actions dos recibos.
@@ -29,6 +29,13 @@ function destinoSeguro(bruto: string, fallback: string): string {
  * Idempotente: se o pagamento ja tem recibo, apenas redireciona para ele.
  * Em caso de erro, volta para a tela de origem com a mensagem, sem tocar em
  * nada — e o usuario pode tentar de novo quantas vezes quiser.
+ *
+ * Quitação unificada: após o recibo individual, avalia se a locação da
+ * reserva chegou ao saldo zero; chegou, emite também o recibo de quitação
+ * (único por obrigação, idempotente). O redirect segue para o recibo
+ * individual, como sempre — a quitação aparece como documento adicional na
+ * reserva e na lista de recibos. Um erro na quitação não derruba a emissão
+ * individual: volta como aviso no destino.
  */
 export async function gerarReciboPayment(fd: FormData) {
   const user = await requireUser();
@@ -41,8 +48,16 @@ export async function gerarReciboPayment(fd: FormData) {
   );
   if (!erro && receiptId) {
     await logAction(user, "gerar", "recibo", receiptId, `${user.name} gerou o recibo do pagamento #${paymentId}`);
+
+    const q = await emitirQuitacaoSeQuitada({ tipo: "payment", paymentId }, { userId: user.id, userName: user.name });
+    if (!q.erro && q.receiptId) {
+      await logAction(user, "gerar", "recibo", q.receiptId, `${user.name} gerou o recibo de quitação da locação (reserva) — pagamento #${paymentId}`);
+    }
     revalidatePath("/reservas");
-    redirect(`/recibos/${receiptId}`);
+    // quitação criada agora? abre ela (caso do pagamento único que quita a
+    // reserva); senão, segue para o recibo individual, como sempre
+    const destino = q.criado && q.receiptId ? `/recibos/${q.receiptId}` : `/recibos/${receiptId}`;
+    redirect(q.erro ? `${destino}?aviso=${encodeURIComponent(q.erro)}` : destino);
   }
   redirect(`${voltarPara}${voltarPara.includes("?") ? "&" : "?"}erro=${encodeURIComponent(erro ?? "Erro ao gerar o recibo.")}`);
 }
@@ -50,6 +65,9 @@ export async function gerarReciboPayment(fd: FormData) {
 /**
  * Gera o recibo de uma caucao recebida e abre a pagina dele.
  * O recibo da caucao identifica expressamente que se trata de caucao.
+ *
+ * Quitação unificada: mesmo gatilho do pagamento — se a caução da reserva
+ * ficou integralmente em caixa, emite o recibo de quitação adicional dela.
  */
 export async function gerarReciboDeposit(fd: FormData) {
   const user = await requireUser();
@@ -62,8 +80,16 @@ export async function gerarReciboDeposit(fd: FormData) {
   );
   if (!erro && receiptId) {
     await logAction(user, "gerar", "recibo", receiptId, `${user.name} gerou o recibo da caução #${depositId}`);
+
+    const q = await emitirQuitacaoSeQuitada({ tipo: "deposit", depositId }, { userId: user.id, userName: user.name });
+    if (!q.erro && q.receiptId) {
+      await logAction(user, "gerar", "recibo", q.receiptId, `${user.name} gerou o recibo de quitação da caução — cauções da reserva quitadas`);
+    }
     revalidatePath("/reservas");
-    redirect(`/recibos/${receiptId}`);
+    // quitação criada agora? abre ela (caso do pagamento único que quita a
+    // reserva); senão, segue para o recibo individual, como sempre
+    const destino = q.criado && q.receiptId ? `/recibos/${q.receiptId}` : `/recibos/${receiptId}`;
+    redirect(q.erro ? `${destino}?aviso=${encodeURIComponent(q.erro)}` : destino);
   }
   redirect(`${voltarPara}${voltarPara.includes("?") ? "&" : "?"}erro=${encodeURIComponent(erro ?? "Erro ao gerar o recibo.")}`);
 }
@@ -83,4 +109,43 @@ export async function excluirReciboAction(fd: FormData) {
   }
   revalidatePath("/reservas");
   redirect(voltarPara);
+}
+
+/**
+ * Emite o recibo de quitação da locação de uma reserva a partir da própria
+ * tela dela. Reusa emitirQuitacao: idempotente, única por obrigação e só
+ * quando o saldo chegou a zero. Abrir a reserva nunca gera documento — só
+ * este botão (ou um recebimento novo) pode.
+ */
+export async function gerarQuitacaoLocacao(fd: FormData) {
+  const user = await requireUser();
+  const reservationId = Number(fd.get("reservation_id"));
+
+  const { erro, receiptId } = await emitirQuitacao("locacao", reservationId, {
+    userId: user.id,
+    userName: user.name,
+  });
+  revalidatePath(`/reservas/${reservationId}`);
+  if (!erro && receiptId) {
+    await logAction(user, "gerar", "recibo", receiptId, `${user.name} gerou o recibo de quitação da locação da reserva #${reservationId}`);
+    redirect(`/recibos/${receiptId}`);
+  }
+  redirect(`/reservas/${reservationId}?aviso=${encodeURIComponent(erro ?? "Não foi possível emitir a quitação — a reserva ainda tem saldo ou já tem quitação.")}`);
+}
+
+/** Emite a quitação da caução da reserva, com o mesmo padrão da da locação. */
+export async function gerarQuitacaoCaucao(fd: FormData) {
+  const user = await requireUser();
+  const reservationId = Number(fd.get("reservation_id"));
+
+  const { erro, receiptId } = await emitirQuitacao("caucao", reservationId, {
+    userId: user.id,
+    userName: user.name,
+  });
+  revalidatePath(`/reservas/${reservationId}`);
+  if (!erro && receiptId) {
+    await logAction(user, "gerar", "recibo", receiptId, `${user.name} gerou o recibo de quitação da caução da reserva #${reservationId}`);
+    redirect(`/recibos/${receiptId}`);
+  }
+  redirect(`/reservas/${reservationId}?aviso=${encodeURIComponent(erro ?? "Não foi possível emitir a quitação — a caução ainda não está integralmente recebida ou já tem quitação.")}`);
 }
