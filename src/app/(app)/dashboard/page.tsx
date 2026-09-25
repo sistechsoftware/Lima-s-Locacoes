@@ -3,13 +3,14 @@ import AvailabilityFilter from "@/components/AvailabilityFilter";
 import { availabilityQuery, type AvailabilityParams } from "@/lib/availability-time";
 import { stockOptions } from "@/lib/availability-settings";
 import { requireUser } from "@/lib/auth";
-import { agendaEvents, dashboardStats, lateOperations, operationsOn } from "@/lib/queries";
+import { agendaEvents, dashboardStats, freightsOn, lateFreights, lateOperations, operationsOn, ordenarOperacoesMistas } from "@/lib/queries";
 import { listNotifications, rebuildNotifications } from "@/lib/notifications";
 import { dateBR, money, moneyShort, today } from "@/lib/format";
 import { Alerta, Card, LinkButton, PageHeader, Section, Stat } from "@/components/ui";
 import { resumoAniversarios } from "@/lib/aniversarios-db";
 import { adiantamentosPendentes } from "@/lib/receber";
 import { OperationCard } from "@/components/OperationCard";
+import { FreightCard } from "@/components/FreightCard";
 import { Icon } from "@/components/Icons";
 
 export const dynamic = "force-dynamic";
@@ -35,13 +36,19 @@ export default async function DashboardPage({
   const d0 = today();
 
   // Uma leitura so traz as operacoes do dia; a separacao por tipo e feita aqui,
-  // em vez de custar quatro idas ao banco. O resto vai em paralelo.
-  const [, operacoesHoje, atrasadas, agenda] = await Promise.all([
+  // em vez de custar quatro idas ao banco. O resto vai em paralelo. Os fretes
+  // entram com a mesma prioridade: sao operacoes do dia tanto quanto as locacoes.
+  const [, operacoesHoje, fretesHoje, atrasadas, fretesAtrasados, agenda] = await Promise.all([
     rebuildNotifications(),
     operationsOn(d0),
+    freightsOn(d0),
     lateOperations(),
+    lateFreights(),
     agendaEvents(d0, d0),
   ]);
+  // O alerta de atraso passa a representar tudo que atrasou: operacoes de
+  // locacao e fretes em aberto de dias anteriores, na mesma linha do tempo.
+  const atrasoMisto = ordenarOperacoesMistas([...atrasadas, ...fretesAtrasados]);
   // os indicadores contam alertas, entao so podem ser lidos depois do recalculo
   const [s, todosAlertas, aniversarios, adiantamentos] = await Promise.all([
     dashboardStats(query, options),
@@ -130,12 +137,16 @@ export default async function DashboardPage({
             </Alerta>
           )}
 
-          {atrasadas.length > 0 && (
-            <Alerta tone="vermelho" title={`${atrasadas.length} operação(ões) em atraso`}>
+          {atrasoMisto.length > 0 && (
+            <Alerta tone="vermelho" title={`${atrasoMisto.length} operação(ões) em atraso`}>
               <div className="mt-1.5 space-y-1">
-                {atrasadas.slice(0, 4).map((o: any) => (
-                  <Link key={o.id} href={`/operacao/${o.id}`} className="block underline underline-offset-2">
-                    {dateBR(o.scheduled_at)} - {o.kind} - {o.customer} ({o.reservation_number})
+                {atrasoMisto.slice(0, 4).map((o: any) => (
+                  <Link
+                    key={`${o.kind}-${o.id}`}
+                    href={o.kind === "frete" ? `/fretes/${o.id}` : `/operacao/${o.id}`}
+                    className="block underline underline-offset-2"
+                  >
+                    {dateBR(o.scheduled_at ?? o.date)} - {o.kind} - {o.customer ?? o.contact_name ?? "Sem cliente"} ({o.reservation_number ?? o.number})
                   </Link>
                 ))}
               </div>
@@ -146,6 +157,7 @@ export default async function DashboardPage({
           <BlocoOperacao titulo="Retiradas" icone="🔄" ops={retiradas} />
           <BlocoOperacao titulo="Montagens" icone="🛠️" ops={montagens} />
           <BlocoOperacao titulo="Desmontagens" icone="🧰" ops={desmontagens} />
+          <BlocoFrete ops={fretesHoje} />
 
           <div>
             <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-tinta-900">
@@ -330,6 +342,31 @@ function BlocoOperacao({ titulo, icone, ops }: { titulo: string; icone: string; 
         <div className="space-y-2">
           {ops.map((o) => (
             <OperationCard key={o.id} op={o} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Bloco de fretes da Operação de hoje, espelho do BlocoOperacao: mesmo
+ * cabecalho com contador e mesmo vazio, para locação e frete lerem como
+ * operações da mesma família. Só cancelados ficam de fora (freightsOn).
+ */
+function BlocoFrete({ ops }: { ops: any[] }) {
+  return (
+    <div>
+      <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-tinta-900">
+        <span>🚛</span> Fretes
+        <span className="rounded-full bg-nuvem-200 px-2 py-0.5 text-xs font-bold text-stone-600">{ops.length}</span>
+      </h3>
+      {ops.length === 0 ? (
+        <p className="rounded-xl bg-nuvem-50 px-3 py-2.5 text-sm text-stone-500">Nada agendado para hoje.</p>
+      ) : (
+        <div className="space-y-2">
+          {ops.map((f) => (
+            <FreightCard key={f.id} f={f} />
           ))}
         </div>
       )}

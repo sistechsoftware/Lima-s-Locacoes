@@ -51,8 +51,57 @@ export async function lateOperations(kind?: string) {
   );
 }
 
+/** Status de frete que seguem exigindo execucao depois da data. */
+const OPEN_FREIGHTS = list(["orcamento", "agendado", "em_rota"]);
+
+/**
+ * Fretes em aberto de dias anteriores: o espelho do lateOperations para a aba
+ * Atrasadas. Mesmo criterio temporal (data menor que hoje), excluindo o que
+ * nao exige mais execucao (concluido e cancelado). O kind permite misturar
+ * com as operacoes de locacao na mesma lista, ordenada por data/horario.
+ */
+export async function lateFreights() {
+  return await all<any>(
+    `SELECT f.*, 'frete' AS kind, c.name AS customer, c.phone, c.whatsapp
+       FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
+      WHERE f.date < ? AND f.status IN (${OPEN_FREIGHTS})
+      ORDER BY f.date, f.time`,
+    [today()],
+  );
+}
+
+/**
+ * Ordena operacoes de locacao (scheduled_at) e fretes (date + time) na mesma
+ * linha do tempo. Fonte unica usada pelo alerta do dashboard e pela aba
+ * Atrasadas de /operacao: fretes sem horario vem primeiro do dia, como na
+ * agenda e no freightsOn.
+ */
+export function ordenarOperacoesMistas<T extends { scheduled_at?: string | null; date?: string | null; time?: string | null }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) =>
+    `${a.scheduled_at ?? a.date}T${a.time || "00:00"}` < `${b.scheduled_at ?? b.date}T${b.time || "00:00"}` ? -1 : 1,
+  );
+}
+
 export async function getOperation(id: number) {
   return await one<any>(`${OPERATION_SELECT} WHERE o.id = ?`, [id]);
+}
+
+/**
+ * Fretes do dia para a "Operação de hoje", no mesmo molde do bloco de fretes
+ * da agenda: so o cancelado fica de fora e quem não tem horário vem primeiro.
+ * Reutiliza o filtro consagrado da agenda em vez de criar uma terceira regra;
+ * o card (FreightCard) mostra o status real, inclusive Concluído do dia.
+ * O ate opcional cobre o mesmo periodo da aba Fretes da tela de entregas e
+ * retiradas, exatamente como operationsBetween cobre as operacoes de locacao.
+ */
+export async function freightsOn(date: string, ate: string = date) {
+  return await all<any>(
+    `SELECT f.*, 'frete' AS kind, c.name AS customer, c.phone, c.whatsapp
+       FROM freights f LEFT JOIN customers c ON c.id = f.customer_id
+      WHERE f.date BETWEEN ? AND ? AND f.status <> 'cancelado'
+      ORDER BY f.date, f.time`,
+    [date, ate],
+  );
 }
 
 /* ------------------------------ eventos da agenda ---------------------------- */
