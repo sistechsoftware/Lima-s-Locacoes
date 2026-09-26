@@ -86,6 +86,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body className="min-h-screen antialiased">
+        {/*
+         * Meta legada de modo standalone: o Next 15 emite so a variante sem
+         * prefixo (mobile-web-app-capable), que o iOS moderno aceita — mas
+         * versoes mais antigas (ex.: iOS 16) so respeitam a com prefixo
+         * apple-. Sem modo standalone o iPhone nao usa splash nenhuma, entao
+         * a variante legada fica explicita aqui (React 19 eleva ao <head>).
+         * Ter as duas nao conflita: e o proprio padrao de transicao da Apple.
+         */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         {SPLASH_LINKS}
         {children}
       </body>
