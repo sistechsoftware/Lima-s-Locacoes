@@ -33,26 +33,34 @@ export default async function ClientePage({
   const { aviso, portal_link, portal_wa } = await searchParams;
   const c = await getCustomer(Number(id));
   if (!c) notFound();
-  const acessoPortal = await acessoPortalDe(c.id);
 
-  const reservas = await all<any>(
-    `SELECT r.*, (SELECT COALESCE(SUM(amount_cents),0) FROM payments p WHERE p.reservation_id = r.id) AS paid
+  /*
+   * Leitura do painel do cliente em paralelo.
+   *
+   * Sao sete leituras independentes entre si: antes, cada uma esperava a
+   * anterior e o tempo da tela era a SOMA das consultas. Juntas, custam a
+   * consulta mais lenta do grupo (uma latencia de rede so).
+   */
+  const [acessoPortal, reservas, orcamentos, pagamentos, historico, fidelidade, fidelidadeHistorico, fidelidadeMensagens, documentos] = await Promise.all([
+    acessoPortalDe(c.id),
+    all<any>(
+      `SELECT r.*, (SELECT COALESCE(SUM(amount_cents),0) FROM payments p WHERE p.reservation_id = r.id) AS paid
        FROM reservations r WHERE r.customer_id = ? ORDER BY r.event_date DESC LIMIT 50`,
-    [c.id],
-  );
-  const orcamentos = await all<any>(`SELECT * FROM quotes WHERE customer_id = ? ORDER BY id DESC LIMIT 20`, [c.id]);
-  const [fidelidade, fidelidadeHistorico, fidelidadeMensagens, documentos] = await Promise.all([
+      [c.id],
+    ),
+    all<any>(`SELECT * FROM quotes WHERE customer_id = ? ORDER BY id DESC LIMIT 20`, [c.id]),
+    all<any>(
+      `SELECT p.*, r.number FROM payments p LEFT JOIN reservations r ON r.id = p.reservation_id
+      WHERE r.customer_id = ? ORDER BY p.paid_at DESC LIMIT 20`,
+      [c.id],
+    ),
+    logsFor("cliente", c.id),
     painelDoCliente(c.id),
     historicoDe(c.id),
     mensagensDoCliente(c.id),
     documentosDoCliente(c.id),
   ]);
-  const pagamentos = await all<any>(
-    `SELECT p.*, r.number FROM payments p LEFT JOIN reservations r ON r.id = p.reservation_id
-      WHERE r.customer_id = ? ORDER BY p.paid_at DESC LIMIT 20`,
-    [c.id],
-  );
-  const historico = (await logsFor("cliente", c.id)).slice(0, 10);
+  historico.length = Math.min(historico.length, 10);
 
   const wa = waLink(c.whatsapp || c.phone, `Olá, ${c.name.split(" ")[0]}! Aqui é da Lima's Locações.`);
   const maps = mapsLink(c.address, c.district, c.city);

@@ -45,8 +45,10 @@ export async function rebuildNotifications({ force = false } = {}) {
          LEFT JOIN reservations r ON r.id = o.reservation_id
          LEFT JOIN customers c ON c.id = r.customer_id
         WHERE o.status NOT IN ('concluida','cancelada')
-          AND substr(o.scheduled_at,1,10) <= ?`,
-      [d0],
+          /* comparacao direta na coluna (sargable): '<hoje>T23:59' cobre o dia
+             inteiro e permite o uso do indice idx_op_sched */
+          AND o.scheduled_at <= ?`,
+      [`${d0}T23:59`],
     ),
     /* pagamentos pendentes de reservas ja entregues ou com evento passado */
     all<any>(

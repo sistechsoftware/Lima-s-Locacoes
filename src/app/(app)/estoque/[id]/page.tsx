@@ -6,7 +6,7 @@ import { dateTimeBR } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { all, one } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { availabilityFor, componentsOf, holdsForProduct, kitsUsing } from "@/lib/stock";
+import { availabilityFor, availabilityForDays, componentsOf, holdsForProduct, kitsUsing } from "@/lib/stock";
 import { logsFor } from "@/lib/audit";
 import { UNIT_STATUS } from "@/lib/domain";
 import { addDays, dateBR, money, today, utcParaLocal } from "@/lib/format";
@@ -36,30 +36,48 @@ export default async function ProdutoPage({
   if (!p) notFound();
 
   const d0 = query.from.slice(0, 10);
-  const hoje = await availabilityFor(p.id, query.from, query.to, null, options);
-  const proximos = await Promise.all(
-    Array.from({ length: 14 }, async (_, i) => {
-      const d = addDays(d0, i);
-      const from = addMinutes(query.from, i * 1440), to = addMinutes(query.to, i * 1440);
-      return { date: d, from, to, ...(await availabilityFor(p.id, from, to, null, options)) };
-    }),
-  );
-  const units = await all<any>(`SELECT * FROM product_units WHERE product_id = ? ORDER BY code`, [p.id]);
-  const maint = await all<any>(`SELECT * FROM maintenance WHERE product_id = ? ORDER BY status, id DESC LIMIT 20`, [p.id]);
-  const historico = (await logsFor("produto", p.id)).slice(0, 10);
+  /*
+   * Uma serie em lote (hoje + 14 dias) substitui as 15 chamadas de
+   * availabilityFor que a tela fazia — dezenas de consultas ao D1 viram um
+   * numero fixo pequeno. O restante das leituras sai em paralelo.
+   */
+  const serie = await availabilityForDays(p.id, query.from, query.to, 15, options);
+  const [hoje, ...proximosBruto] = serie;
+  const proximos = proximosBruto.map((a, i) => ({
+    date: addDays(d0, i + 1),
+    from: addMinutes(query.from, (i + 1) * 1440),
+    to: addMinutes(query.to, (i + 1) * 1440),
+    ...a,
+  }));
   const ehKit = p.kind === "kit";
-  const componentes = ehKit ? await componentsOf(p.id) : [];
-  const holds = (await Promise.all((ehKit ? componentes.map((c: any) => ({ id: c.component_product_id, name: c.component_name })) : [{ id: p.id, name: p.name }]).map(async (c: any) =>
-    (await holdsForProduct(c.id, query.from, addMinutes(query.to, 60 * 1440), null, null, options)).map((h) => ({ ...h, physicalName: c.name }))
-  ))).flat();
-  const kitsQueUsam = ehKit ? [] : await kitsUsing(p.id);
-
-  const usos = (await all<any>(
-    `SELECT COUNT(*) AS reservas, COALESCE(SUM(i.qty),0) AS unidades, COALESCE(SUM(i.subtotal_cents),0) AS receita
+  const [units, maint, historicoBruto, componentes, kitsQueUsam, usos] = await Promise.all([
+    all<any>(`SELECT * FROM product_units WHERE product_id = ? ORDER BY code`, [p.id]),
+    all<any>(`SELECT * FROM maintenance WHERE product_id = ? ORDER BY status, id DESC LIMIT 20`, [p.id]),
+    logsFor("produto", p.id),
+    ehKit ? componentsOf(p.id) : Promise.resolve([]),
+    ehKit ? Promise.resolve([]) : kitsUsing(p.id),
+    all<any>(
+      `SELECT COUNT(*) AS reservas, COALESCE(SUM(i.qty),0) AS unidades, COALESCE(SUM(i.subtotal_cents),0) AS receita
        FROM reservation_items i JOIN reservations r ON r.id = i.reservation_id
       WHERE i.product_id = ? AND r.status <> 'cancelada'`,
-    [p.id],
-  ))[0];
+      [p.id],
+    ).then((rows) => rows[0]),
+  ]);
+  historicoBruto.length = Math.min(historicoBruto.length, 10);
+  const historico = historicoBruto;
+  const holds = (
+    await Promise.all(
+      (ehKit
+        ? componentes.map((c: any) => ({ id: c.component_product_id, name: c.component_name }))
+        : [{ id: p.id, name: p.name }]
+      ).map(async (c: any) =>
+        (await holdsForProduct(c.id, query.from, addMinutes(query.to, 60 * 1440), null, null, options)).map((h) => ({
+          ...h,
+          physicalName: c.name,
+        })),
+      ),
+    )
+  ).flat();
 
   return (
     <div className="space-y-4">

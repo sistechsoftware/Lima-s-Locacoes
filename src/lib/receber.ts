@@ -1,5 +1,5 @@
 import "server-only";
-import { all, insert, nextNumber, one, run, scalar } from "./db";
+import { all, insert, nextNumber, nextNumbers, one, run, scalar } from "./db";
 import { montarParcelas, situacaoParcela } from "./financeiro";
 import { validarDataPrevista, validarValorAdiantamento } from "./adiantamento";
 import { money, today } from "./format";
@@ -95,8 +95,11 @@ export async function gerarRecebiveis(
   }
 
   const parcelas = montarParcelas(aParcelar, opts.parcelas, opts.primeiroVencimento);
+  // numeros gerados de uma vez (uma leitura), em vez de um SELECT por parcela
+  const numeros = await nextNumbers("financial_entries", "REC", parcelas.length);
+  let i = 0;
   for (const p of parcelas) {
-    const numero = await nextNumber("financial_entries", "REC");
+    const numero = numeros[i++];
     await insert(
       `INSERT INTO financial_entries
         (number, direction, origin, customer_id, ${coluna}, category, description,

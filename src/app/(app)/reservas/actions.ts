@@ -7,7 +7,7 @@ import { all, insert, one, run, scalar } from "@/lib/db";
 import { assertAdmin, currentUser, requireUser } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { removeAttachment } from "@/lib/uploads";
-import { recalcReservation, reservationMoney, syncOperations, getReservation, itemsSummary } from "@/lib/reservations";
+import { recalcReservation, reservationMoney, syncOperations, getReservation } from "@/lib/reservations";
 import {
   checkConflicts,
   checkReservationConflicts,

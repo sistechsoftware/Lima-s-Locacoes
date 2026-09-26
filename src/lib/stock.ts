@@ -392,6 +392,89 @@ export async function availabilityFor(
 }
 
 /**
+ * Disponibilidade do produto em N janelas diarias consecutivas (serie).
+ *
+ * A tela de detalhe do estoque mostrava 14 dias chamando availabilityFor
+ * quinze vezes: cada chamada re-consultava produtos, ocupacoes e composicao,
+ * dando dezenas de idas ao D1 para desenhar um calendario. Aqui as ocupacoes
+ * sao lidas UMA vez cobrindo a janela inteira e o pico de cada dia e apurado
+ * em memoria com o mesmo peakUsage — regra identica, custo de leitura unico.
+ *
+ * A janela do dia i e [from + i dias, to + i dias], exatamente o deslocamento
+ * que a tela fazia antes.
+ */
+export async function availabilityForDays(
+  productId: number,
+  from: string,
+  to: string,
+  days: number,
+  options: StockOptions = {},
+): Promise<Availability[]> {
+  ({ from, to } = timeWindow(from, to, true));
+  const n = Math.max(1, Math.floor(days));
+  const config = await stockOptions(options);
+  const fimTotal = addMinutes(to, (n - 1) * 1440);
+
+  const p = await one<any>(
+    `SELECT p.id, p.code, p.name, p.kind, p.total_qty, p.maintenance_qty, p.min_qty, c.name AS category
+       FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`,
+    [productId],
+  );
+  if (!p) throw new Error("Produto não encontrado: " + productId);
+
+  if (p.kind === "kit") {
+    const spec = (await loadSpecs()).get(productId);
+    // ocupacoes de TODOS os produtos fisicos da janela inteira: a capacidade
+    // do kit em cada dia e derivada dos componentes, como em availabilityFor
+    const [products, holds] = await Promise.all([
+      all<any>(
+        `SELECT p.id, p.code, p.name, p.kind, p.total_qty, p.maintenance_qty, p.min_qty, c.name AS category
+           FROM products p LEFT JOIN categories c ON c.id = p.category_id
+          WHERE p.active = 1 AND p.kind <> 'kit'`,
+      ),
+      loadHoldsInner(from, fimTotal, config),
+    ]);
+    const efetivo = new Map<number, number>(products.map((x) => [x.id, Math.max(0, x.total_qty - x.maintenance_qty)]));
+    const porProduto = new Map<number, Hold[]>();
+    for (const h of holds) {
+      const list = porProduto.get(h.product_id) ?? [];
+      list.push(h);
+      porProduto.set(h.product_id, list);
+    }
+    return Array.from({ length: n }, (_, i) => {
+      const f = addMinutes(from, i * 1440);
+      const t = addMinutes(to, i * 1440);
+      const disponivel = new Map<number, number>();
+      for (const x of products) {
+        disponivel.set(x.id, (efetivo.get(x.id) ?? 0) - peakUsage(porProduto.get(x.id) ?? [], f, t));
+      }
+      const capacity = spec ? kitCapacity(spec, disponivel) : 0;
+      return {
+        product_id: p.id,
+        code: p.code,
+        name: p.name,
+        category: p.category,
+        kind: "kit" as const,
+        total: 0,
+        maintenance: 0,
+        effective: 0,
+        reserved: 0,
+        available: capacity,
+        min_qty: p.min_qty,
+        low: capacity < p.min_qty,
+      };
+    });
+  }
+
+  const holds = await loadHoldsInner(from, fimTotal, config, null, productId);
+  return Array.from({ length: n }, (_, i) => {
+    const f = addMinutes(from, i * 1440);
+    const t = addMinutes(to, i * 1440);
+    return availabilityRow(p, peakUsage(holds, f, t));
+  });
+}
+
+/**
  * Disponibilidade de todos os produtos FISICOS (simples) ativos na janela.
  * Kits ficam de fora para nao duplicar contagem em somatorios.
  */
@@ -546,11 +629,40 @@ export async function checkReservationConflicts(reservationId: number, options: 
   const w = holdWindow(r);
   const config = await stockOptions(options);
   const to = addMinutes(w.to, config.preparationMinutes);
-  const usage = await reservationPhysicalUsage(reservationId);
+
+  /*
+   * Uma leitura so, em lote.
+   *
+   * Antes esta funcao chamava availabilityFor para CADA produto que a reserva
+   * consome (N+1): cada chamada refazia a leitura de produtos, ocupacoes e
+   * fichas de composicao, e a tela de detalhe pagava isso a cada abertura.
+   * O padrao correto e o mesmo de availabilityAll: ler a disponibilidade de
+   * TODOS os produtos fisicos da janela uma unica vez e procurar o produto de
+   * cada consumo no mapa. Mesma regra de calculo, sem nenhuma segunda fonte.
+   */
+  const [usage, disponibilidade] = await Promise.all([
+    reservationPhysicalUsage(reservationId),
+    availabilityAll(w.from, to, reservationId, config),
+  ]);
+  const porProduto = new Map(disponibilidade.map((a) => [a.product_id, a]));
+
   const out: Conflict[] = [];
   for (const u of usage) {
-    const available = await availabilityFor(u.product_id, w.from, to, reservationId, config);
-    if (u.qty > available.available) out.push({ product_id: u.product_id, product: u.product_name, kind: "simples", requested: u.qty, available: available.available, missing: u.qty - available.available, components: [], holds: await holdsForProduct(u.product_id, w.from, to, reservationId, null, config) });
+    const a = porProduto.get(u.product_id);
+    // produto consumido que sumiu do cadastro ativo nao bloqueia a tela
+    if (!a) continue;
+    if (u.qty > a.available) {
+      out.push({
+        product_id: u.product_id,
+        product: u.product_name,
+        kind: "simples",
+        requested: u.qty,
+        available: a.available,
+        missing: u.qty - a.available,
+        components: [],
+        holds: await holdsForProduct(u.product_id, w.from, to, reservationId, null, config),
+      });
+    }
   }
   return out;
 }

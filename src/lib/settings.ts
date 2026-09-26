@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { all, run } from "./db";
 import { esc, sanitizeContractHtml, type MarcaConfiavel } from "./contract-html";
 
@@ -111,7 +112,18 @@ export const DEFAULT_SETTINGS: Settings = {
     "Ola, {{cliente}}! Segue o orcamento {{orcamento}} da {{empresa}} para o dia {{data_evento}}:\n{{itens}}\nTotal: {{valor_total}}",
 };
 
-export async function getSettings(): Promise<Settings> {
+/**
+ * Deduplicacao por requisicao (React cache).
+ *
+ * Uma tela consulta as settings 2 a 3 vezes (layout pega logo/nome, a pagina
+ * pega regras de estoque, modelos, etc). Sem cache, cada getSettings() era uma
+ * ida e volta ao D1 — no Workers isso e latencia de rede de verdade. Com o
+ * cache do React, a primeira chamada busca uma vez e as demais da MESMA
+ * requisicao reutilizam o resultado: zero risco de dado velho entre telas,
+ * porque o escopo morre junto com a request. Escritas (setSettings) continuam
+ * gravando no banco na hora; a releitura fresca acontece na proxima request.
+ */
+export const getSettings = cache(async function (): Promise<Settings> {
   const rows = await all<{ key: string; value: string }>("SELECT key, value FROM settings");
   const out: Settings = { ...DEFAULT_SETTINGS };
   for (const r of rows) if (r.value !== null && r.value !== undefined) out[r.key] = r.value;
@@ -126,7 +138,7 @@ export async function getSettings(): Promise<Settings> {
     out.contract_template_digital = out.contract_template;
   }
   return out;
-}
+});
 
 export async function getSetting(key: string): Promise<string> {
   return (await getSettings())[key] ?? "";

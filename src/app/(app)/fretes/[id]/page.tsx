@@ -23,9 +23,12 @@ export default async function FretePage({ params }: { params: Promise<{ id: stri
   );
   if (!f) notFound();
 
-  const pagamentos = await all<any>(`SELECT * FROM payments WHERE freight_id = ? ORDER BY id DESC`, [f.id]);
-  const pago = await scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE freight_id = ?`, [f.id]);
-  const historico = await logsFor("frete", f.id);
+  // Leituras independentes em paralelo: uma latencia de rede em vez de tres.
+  const [pagamentos, pago, historico] = await Promise.all([
+    all<any>(`SELECT * FROM payments WHERE freight_id = ? ORDER BY id DESC`, [f.id]),
+    scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE freight_id = ?`, [f.id]),
+    logsFor("frete", f.id),
+  ]);
   const maps = mapsLink(f.destination);
   const wa = waLink(f.whatsapp || f.phone, `Olá! Sobre o frete ${f.number} do dia ${dateBR(f.date)}.`);
 

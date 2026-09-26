@@ -76,17 +76,19 @@ export default async function RelatoriosPage({
     ),
     scalar<number>(`SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status <> 'cancelada'`, [de, ate]),
     scalar<number>(`SELECT COUNT(*) FROM reservations WHERE event_date BETWEEN ? AND ? AND status = 'cancelada'`, [de, ate]),
+    /* contagens sargable: comparacao direta na coluna (usa idx_op_kind e
+       idx_op_sched) em vez de substr() na coluna, que forca varredura */
     scalar<number>(
-      `SELECT COUNT(*) FROM operations WHERE kind = 'entrega' AND substr(scheduled_at,1,10) BETWEEN ? AND ? AND status <> 'cancelada'`,
-      [de, ate],
+      `SELECT COUNT(*) FROM operations WHERE kind = 'entrega' AND scheduled_at BETWEEN ? AND ? AND status <> 'cancelada'`,
+      [`${de}T00:00`, `${ate}T23:59`],
     ),
     scalar<number>(
-      `SELECT COUNT(*) FROM operations WHERE kind = 'retirada' AND substr(scheduled_at,1,10) BETWEEN ? AND ? AND status <> 'cancelada'`,
-      [de, ate],
+      `SELECT COUNT(*) FROM operations WHERE kind = 'retirada' AND scheduled_at BETWEEN ? AND ? AND status <> 'cancelada'`,
+      [`${de}T00:00`, `${ate}T23:59`],
     ),
     scalar<number>(
-      `SELECT COUNT(*) FROM operations WHERE kind = 'montagem' AND substr(scheduled_at,1,10) BETWEEN ? AND ? AND status <> 'cancelada'`,
-      [de, ate],
+      `SELECT COUNT(*) FROM operations WHERE kind = 'montagem' AND scheduled_at BETWEEN ? AND ? AND status <> 'cancelada'`,
+      [`${de}T00:00`, `${ate}T23:59`],
     ),
     scalar<number>(`SELECT COUNT(*) FROM freights WHERE date BETWEEN ? AND ? AND status <> 'cancelado'`, [de, ate]),
     /* consumo fisico: expande kits nos componentes que realmente sairam do estoque */
