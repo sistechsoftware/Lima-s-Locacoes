@@ -7,11 +7,21 @@ import { logAction } from "@/lib/audit";
 import { parseMoney, today } from "@/lib/format";
 import { loadSpecs } from "@/lib/stock";
 import { validateComposition, type Component } from "@/lib/kits";
+import { inserirProdutoComCodigoGerado } from "@/lib/products";
+
+/**
+ * Numero de vezes que createProduct tenta gravar com um codigo novo quando o
+ * codigo escolhido foi tomado por outro cadastro simultaneo (outra aba, outro
+ * usuario, outra requisicao). O UNIQUE de products.code e a fonte de verdade.
+ */
+const TENTATIVAS_CODIGO = 3;
 
 function readProduct(fd: FormData) {
-  const kind = String(fd.get("kind") ?? "simples") === "kit" ? "kit" : "simples";
+  const kind: "simples" | "kit" = String(fd.get("kind") ?? "simples") === "kit" ? "kit" : "simples";
   return {
     kind,
+    // Na criacao o codigo vem gerado e o formulario envia em modo leitura;
+    // na edicao o formulario envia o codigo atual do produto, nunca digitado.
     code: String(fd.get("code") ?? "").trim().toUpperCase(),
     name: String(fd.get("name") ?? "").trim(),
     category_id: Number(fd.get("category_id")) || null,
@@ -57,9 +67,6 @@ export async function createProduct(_prev: string | null, fd: FormData): Promise
   const user = await requireUser();
   const p = readProduct(fd);
   if (!p.name) return "Informe o nome do produto.";
-  if (!p.code) return "Informe um codigo (ex.: MESA, CAD).";
-  if (await scalar<number>(`SELECT COUNT(*) FROM products WHERE code = ?`, [p.code]) > 0)
-    return "Já existe um produto com este código.";
 
   const components = readComponents(fd);
   if (p.kind === "kit") {
@@ -67,22 +74,34 @@ export async function createProduct(_prev: string | null, fd: FormData): Promise
     if (erro) return erro;
   }
 
-  const id = await insert(
-    `INSERT INTO products (code, name, category_id, kind, total_qty, min_qty, rent_price_cents, replace_cents, description, photo)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [
-      p.code,
-      p.name,
-      p.category_id,
-      p.kind,
-      p.total_qty,
-      p.min_qty,
-      p.rent_price_cents,
-      p.replace_cents,
-      p.description,
-      p.photo,
-    ],
-  );
+  /*
+   * Codigo gerado automaticamente. O formulario sugere um codigo, mas quem
+   * decide e o banco: o valor e gerado aqui, na hora do INSERT, e verificado
+   * contra products.code. Se outro cadastro simultaneo gravar o mesmo codigo
+   * primeiro, o UNIQUE derruba o INSERT perdedor e o proximo codigo e gerado
+   * de novo, ja enxergando o codigo ocupado.
+   */
+  let id: number;
+  try {
+    ({ id } = await inserirProdutoComCodigoGerado(
+      {
+        name: p.name,
+        category_id: p.category_id,
+        kind: p.kind,
+        total_qty: p.total_qty,
+        min_qty: p.min_qty,
+        rent_price_cents: p.rent_price_cents,
+        replace_cents: p.replace_cents,
+        description: p.description,
+        photo: p.photo,
+      },
+      TENTATIVAS_CODIGO,
+    ));
+  } catch (e) {
+    console.error("createProduct: falha ao gerar/gravar codigo de produto", e);
+    return "Não foi possível gerar um código de produto livre agora. Nada foi gravado: tente novamente em instantes.";
+  }
+
   if (p.kind === "kit") await saveComponents(id, components);
 
   await logAction(
@@ -105,8 +124,12 @@ export async function updateProduct(_prev: string | null, fd: FormData): Promise
   const current = await one<any>(`SELECT * FROM products WHERE id = ?`, [id]);
   if (!current) return "Produto não encontrado.";
   if (!p.name) return "Informe o nome do produto.";
-  if (await scalar<number>(`SELECT COUNT(*) FROM products WHERE code = ? AND id <> ?`, [p.code, id]) > 0)
-    return "Já existe outro produto com este código.";
+  /*
+   * O codigo de um produto existente e imutavel: unidades (MESA-001...),
+   * reservas e relatorios o referenciam. O formulario nem envia mais o campo;
+   * o valor gravado continua sendo o do banco.
+   */
+  p.code = String(current.code ?? "").toUpperCase();
 
   const components = readComponents(fd);
   if (p.kind === "kit") {
