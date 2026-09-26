@@ -25,6 +25,7 @@ export default function ProductForm({
   simpleProducts,
   components: initialComponents = [],
   submitLabel = "Salvar Produto",
+  sugestaoCodigo,
 }: {
   action: Action;
   product?: any;
@@ -32,6 +33,8 @@ export default function ProductForm({
   simpleProducts: SimpleProduct[];
   components?: ComponentRow[];
   submitLabel?: string;
+  /** Novo produto: codigo sugerido, gerado a partir do padrao do cadastro. */
+  sugestaoCodigo?: string;
 }) {
   const [error, formAction] = useActionState(action, null);
   const v = product ?? {};
@@ -82,9 +85,27 @@ export default function ProductForm({
       </Field>
 
       <Grid>
-        <Field label="Código *" hint="Prefixo das unidades (MESA-001, CAD-001).">
-          <input name="code" defaultValue={v.code ?? ""} className="campo uppercase" required />
-        </Field>
+        {sugestaoCodigo !== undefined ? (
+          <Field label="Código" hint="Gerado automaticamente pelo sistema no momento do cadastro, seguindo o padrão dos códigos existentes.">
+            <input
+              name="code"
+              value={sugestaoCodigo}
+              readOnly
+              className="campo uppercase cursor-default bg-nuvem-50 text-stone-600"
+            />
+          </Field>
+        ) : (
+          <Field
+            label="Código"
+            hint={
+              product
+                ? "Fixo: unidades (MESA-001, CAD-001), reservas e históricos o utilizam."
+                : "Será gerado automaticamente no momento do cadastro."
+            }
+          >
+            <input value={v.code ?? ""} readOnly className="campo uppercase cursor-default bg-nuvem-50 text-stone-600" />
+          </Field>
+        )}
         <Field label="Nome *">
           <input name="name" defaultValue={v.name ?? ""} className="campo" required />
         </Field>
