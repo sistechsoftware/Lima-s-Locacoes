@@ -720,3 +720,25 @@ export async function nextNumber(
   const last = row ? parseInt(row.n.split("-").pop() ?? "0", 10) : 0;
   return `${prefix}-${String(last + 1).padStart(3, "0")}`;
 }
+
+/**
+ * Gera uma SEQUENCIA de numeros de documentos (parcelamento N parcelas).
+ *
+ * Uma unica consulta substitui N: antes, cada parcela buscava "o ultimo
+ * numero" de novo, e o custo crescia linearmente com a quantidade de
+ * parcelas. Mesma regra de formatacao do nextNumber, com todos os valores
+ * calculados em memoria a partir da mesma leitura.
+ */
+export async function nextNumbers(
+  table: "reservations" | "quotes" | "freights" | "contracts" | "purchases" | "financial_entries",
+  prefix: string,
+  quantidade: number,
+): Promise<string[]> {
+  const n = Math.max(1, Math.floor(quantidade));
+  const row = await one<{ n: string }>(
+    `SELECT number AS n FROM ${table} WHERE number LIKE ? ORDER BY LENGTH(number) DESC, number DESC LIMIT 1`,
+    [prefix + "-%"],
+  );
+  const last = row ? parseInt(row.n.split("-").pop() ?? "0", 10) : 0;
+  return Array.from({ length: n }, (_, i) => `${prefix}-${String(last + i + 1).padStart(3, "0")}`);
+}

@@ -202,8 +202,14 @@ export async function reservationOperations(id: number) {
   );
 }
 
-export async function itemsSummary(id: number): Promise<string> {
-  const items = await reservationItems(id);
+/**
+ * Resumo "3x Kit Mesa, 2x Cadeira" a partir dos itens JA carregados.
+ *
+ * Antes reconsultava o banco com os itens que a tela de detalhe ja tinha em
+ * maos — uma consulta desperdicada por abertura. Quem tem a lista em memoria
+ * passa direto; quem so tem o id usa reservationItems antes.
+ */
+export function itemsSummary(items: { qty: number; product_name: string }[]): string {
   return items.map((i) => `${i.qty}x ${i.product_name}`).join(", ");
 }
 

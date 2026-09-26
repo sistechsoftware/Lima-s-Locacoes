@@ -1,6 +1,6 @@
 import { all, scalar } from "@/lib/db";
 import { CUSTOMER_SELECT } from "@/lib/queries";
-import { dateBR, money, phoneBR } from "@/lib/format";
+import { cutoff3h, dateBR, money, phoneBR } from "@/lib/format";
 import { Badge, Empty, LinkButton, PageHeader } from "@/components/ui";
 import { ListRow, Pagination, SearchForm } from "@/components/List";
 
@@ -27,11 +27,16 @@ export default async function ClientesPage({
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const total = await scalar<number>(`SELECT COUNT(*) FROM customers c ${clause}`, params);
-  const rows = await all<any>(
-    `${CUSTOMER_SELECT} ${clause} ORDER BY c.name LIMIT ? OFFSET ?`,
-    [...params, PER_PAGE, (page - 1) * PER_PAGE],
-  );
+  /* CUSTOMER_SELECT espera ?1 = corte das 3h (veja queries.ts): vem primeiro
+     nos params, e os filtros do formulario entram depois. COUNT e listagem
+     saem juntos (Promise.all): uma latencia so em vez de duas em sequencia. */
+  const [total, rows] = await Promise.all([
+    scalar<number>(`SELECT COUNT(*) FROM customers c ${clause}`, params),
+    all<any>(
+      `${CUSTOMER_SELECT} ${clause} ORDER BY c.name LIMIT ? OFFSET ?`,
+      [cutoff3h(), ...params, PER_PAGE, (page - 1) * PER_PAGE],
+    ),
+  ]);
 
   return (
     <div className="space-y-4">

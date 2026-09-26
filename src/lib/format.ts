@@ -90,6 +90,19 @@ export function nowLocal(): string {
   return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
 }
 
+/**
+ * Janela de busca equivalente a "as ultimas 3 horas" no fuso do negocio.
+ *
+ * Devolve o dia (YYYY-MM-DD) a partir do qual vale comparar colunas de DATA
+ * pura com o indice, em vez de embutir date('now','-3 hours') na SQL — dentro
+ * do banco, 'now' e UTC e a aritmetica em coluna impede o uso de indice
+ * (varredura inteira em customers/reservations a cada leitura).
+ */
+export function cutoff3h(): string {
+  const { ano, mes, dia } = partesNoFuso(new Date(Date.now() - 3 * 3600 * 1000));
+  return `${ano}-${mes}-${dia}`;
+}
+
 export function toISODate(d: Date): string {
   const { ano, mes, dia } = partesNoFuso(d);
   return `${ano}-${mes}-${dia}`;

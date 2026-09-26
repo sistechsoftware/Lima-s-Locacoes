@@ -42,10 +42,14 @@ export default async function OrcamentoPage({
   const w = holdWindow(q);
   const query = availabilityQuery({ ...sp, inicio: w.from, fim: w.to, preparo: sp.preparo ?? (sp.consulta === "1" ? "0" : String(q.stock_consider_preparation)) });
   const options = await stockOptions(query);
-  const conflicts = q.status === "convertido" ? [] : await checkConflicts(items, w.from, w.to, null, options);
+  /* itens -> conflito/mensagem/historico em paralelo (leituras independentes:
+     antes cada uma esperava a anterior, somando latencias do D1) */
+  const [conflicts, msg, historico] = await Promise.all([
+    q.status === "convertido" ? Promise.resolve([]) : checkConflicts(items, w.from, w.to, null, options),
+    messageForQuote(q, items.map((i) => `- ${i.qty}x ${i.product_name}: ${money(i.subtotal_cents)}`).join("\n")),
+    logsFor("orcamento", q.id),
+  ]);
   const resumo = items.map((i) => `${i.qty}x ${i.product_name}`).join(", ");
-  const msg = await messageForQuote(q, items.map((i) => `- ${i.qty}x ${i.product_name}: ${money(i.subtotal_cents)}`).join("\n"));
-  const historico = await logsFor("orcamento", q.id);
 
   return (
     <div className="space-y-4">

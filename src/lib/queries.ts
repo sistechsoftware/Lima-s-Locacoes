@@ -2,7 +2,7 @@ import "server-only";
 import { availabilityQuery, type AvailabilityQuery } from "./availability-time";
 import { type StockOptions } from "./availability-settings";
 import { all, one, scalar } from "./db";
-import { addDays, endOfMonth, startOfMonth, startOfWeek, today } from "./format";
+import { addDays, cutoff3h, endOfMonth, startOfMonth, startOfWeek, today } from "./format";
 import { availabilityAll, kitsFromPhysical } from "./stock";
 import { ACTIVE_STATUSES, HOLDING_STATUSES, OPEN_OPERATION_STATUS } from "./domain";
 
@@ -28,12 +28,15 @@ export const OPERATION_SELECT = `
 
 export async function operationsBetween(from: string, to: string, kinds?: string[]) {
   const kindFilter = kinds?.length ? `AND o.kind IN (${kinds.map((k) => `'${k}'`).join(",")})` : "";
+  /* Janela fechada por prefixo de carimbo (sargable, usa idx_op_sched):
+     scheduled_at <= '<dia>T23:59' cobre todo o dia final sem recortar a
+     coluna com substr(), que invalidava o indice. */
   return await all<any>(
     `${OPERATION_SELECT}
-      WHERE substr(o.scheduled_at,1,10) BETWEEN ? AND ?
+      WHERE o.scheduled_at BETWEEN ? AND ?
         AND o.status <> 'cancelada' ${kindFilter}
       ORDER BY o.scheduled_at`,
-    [from, to],
+    [`${from}T00:00`, `${to}T23:59`],
   );
 }
 
@@ -43,11 +46,14 @@ export function operationsOn(date: string, kinds?: string[]) {
 
 export async function lateOperations(kind?: string) {
   const k = kind ? `AND o.kind = '${kind}'` : "";
+  /* Comparacao direta na coluna (sargable): 'YYYY-MM-DD' < 'YYYY-MM-DDTHH:MM'
+     vale exatamente "dia anterior a hoje" e deixa o SQLite usar o indice
+     idx_op_sched — substr() na coluna forca varredura completa. */
   return await all<any>(
     `${OPERATION_SELECT}
-      WHERE substr(o.scheduled_at,1,10) < ? AND o.status IN (${OPEN_OPS}) ${k}
+      WHERE o.scheduled_at < ? AND o.status IN (${OPEN_OPS}) ${k}
       ORDER BY o.scheduled_at`,
-    [today()],
+    [`${today()}T00:00`],
   );
 }
 
@@ -217,13 +223,14 @@ export async function dashboardStats(query: AvailabilityQuery = availabilityQuer
           FROM freights f WHERE f.status IN ('agendado','em_rota','concluido')) AS receber_fretes`,
       [mStart, mEnd],
     ),
-    /* uma unica leitura resolve as seis contagens de operacao */
+    /* uma unica leitura resolve as seis contagens de operacao (comparacao
+       sargable na coluna, sem substr()) */
     all<{ kind: string; hoje: number; atrasadas: number }>(
     `SELECT kind,
-            SUM(CASE WHEN substr(scheduled_at,1,10) = ?1 AND status <> 'cancelada' THEN 1 ELSE 0 END) AS hoje,
-            SUM(CASE WHEN substr(scheduled_at,1,10) < ?1 AND status IN (${OPEN_OPS}) THEN 1 ELSE 0 END) AS atrasadas
+            SUM(CASE WHEN scheduled_at BETWEEN ?1 AND ?2 AND status <> 'cancelada' THEN 1 ELSE 0 END) AS hoje,
+            SUM(CASE WHEN scheduled_at < ?1 AND status IN (${OPEN_OPS}) THEN 1 ELSE 0 END) AS atrasadas
        FROM operations GROUP BY kind`,
-      [d0],
+      [d0, `${d0}T23:59`],
     ),
     availabilityAll(query.from, query.to, null, options),
   ]);
@@ -280,22 +287,31 @@ export async function dashboardStats(query: AvailabilityQuery = availabilityQuer
 
 /* --------------------------------- clientes ---------------------------------- */
 
-// date('now','localtime') devolve UTC no Worker, entao das 21h a meia-noite ele
-// ja esta no dia seguinte e uma reserva de amanha entraria como "ultima". O
-// deslocamento explicito mantem a conta no fuso de Brasilia em qualquer maquina.
+// O corte de "-3 horas" para ultima/proxima vem pronto do JS (cutoff3h, fuso
+// de Brasilia), como ?1: dentro do SQL, date('now') e UTC (das 21h as 24h de
+// Brasilia apontava para o dia seguinte) e a aritmetica na coluna impedia o
+// uso do indice idx_res_event — varredura de customers x reservations a cada
+// leitura de lista.
 export const CUSTOMER_SELECT = `
   SELECT c.*,
          (SELECT COUNT(*) FROM reservations r WHERE r.customer_id = c.id AND r.status <> 'cancelada') AS locacoes,
          (SELECT COUNT(*) FROM reservations r WHERE r.customer_id = c.id AND r.status = 'cancelada') AS canceladas,
          (SELECT COALESCE(SUM(r.total_cents),0) FROM reservations r WHERE r.customer_id = c.id AND r.status IN (${ACTIVE})) AS total_cents,
-         (SELECT MAX(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date <= date('now','-3 hours') AND r.status <> 'cancelada') AS ultima,
-         (SELECT MIN(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date > date('now','-3 hours') AND r.status <> 'cancelada') AS proxima,
+         /* limite das 3h vem pronto do JS (cutoff3h): comparacao pura entre
+            coluna e constante, com uso do indice idx_res_event */
+         (SELECT MAX(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date <= ?1 AND r.status <> 'cancelada') AS ultima,
+         (SELECT MIN(r.event_date) FROM reservations r WHERE r.customer_id = c.id AND r.event_date > ?1 AND r.status <> 'cancelada') AS proxima,
          (SELECT COALESCE(SUM(r.total_cents - COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.reservation_id = r.id),0)),0)
             FROM reservations r WHERE r.customer_id = c.id AND r.status IN (${ACTIVE})) AS saldo_cents
     FROM customers c`;
 
+/**
+ * Valor do corte das 3 horas consumido por CUSTOMER_SELECT (?1).
+ */
+const customerCutoff = () => cutoff3h();
+
 export async function getCustomer(id: number) {
-  return await one<any>(`${CUSTOMER_SELECT} WHERE c.id = ?`, [id]);
+  return await one<any>(`${CUSTOMER_SELECT} WHERE c.id = ?`, [customerCutoff(), id]);
 }
 
 /**
@@ -322,7 +338,7 @@ export async function globalSearch(q: string) {
     customers: await all<any>(
       `${CUSTOMER_SELECT} WHERE c.name LIKE ? OR c.doc LIKE ? OR replace(replace(replace(replace(c.phone,'(',''),')',''),'-',''),' ','') LIKE ?
         ORDER BY c.name LIMIT 20`,
-      [like, like, phoneLike],
+      [like, like, phoneLike, customerCutoff()],
     ),
     reservations: await all<any>(
       `SELECT r.*, c.name AS customer_name FROM reservations r JOIN customers c ON c.id = r.customer_id

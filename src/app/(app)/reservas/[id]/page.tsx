@@ -67,19 +67,60 @@ export default async function ReservaPage({
   const r = await getReservation(Number(id));
   if (!r) notFound();
 
-  const items = await reservationItems(r.id);
-  const m = await reservationMoney(r.id);
-  const ops = await reservationOperations(r.id);
-  const payments = await all<any>(`SELECT * FROM payments WHERE reservation_id = ? ORDER BY paid_at DESC, id DESC`, [r.id]);
-  // Recibos ja emitidos para os lancamentos desta reserva (pagamentos,
-  // adiantamentos recebidos e caucao): uma consulta so, sem N+1. Nada aqui
-  // altera lancamento — a leitura existe so para decidir entre "Gerar recibo"
-  // e o link do recibo que ja existe.
-  const recibos = await recibosDaReserva(r.id);
-  const deposito = await one<any>(
-    `SELECT id, status, received_at FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`,
-    [r.id],
-  );
+  /*
+   * Leitura da tela em paralelo.
+   *
+   * Nenhuma destas consultas depende da outra — antes, cada uma esperava a
+   * anterior, e a tela pagava a soma de ~17 voltas ao D1 (2 a 4s em 4G).
+   * Junto, o tempo cai para o custo da consulta mais lenta do grupo.
+   */
+  const [
+    items,
+    m,
+    ops,
+    payments,
+    // Recibos ja emitidos para os lancamentos desta reserva (pagamentos,
+    // adiantamentos recebidos e caucao): uma consulta so, sem N+1. Nada aqui
+    // altera lancamento — a leitura existe so para decidir entre "Gerar recibo"
+    // e o link do recibo que ja existe.
+    recibos,
+    deposito,
+    // contas ativas para os lancamentos de caixa desta tela: pagamento direto,
+    // adiantamento (criacao e confirmacao) e recebimento de parcela
+    contas,
+    contracts,
+    damages,
+    historico,
+    parcelasReceber,
+    adiantamentos,
+    // recompensas de fidelidade (vazio para reserva cancelada)
+    recompensas,
+    consumoFisico,
+    // divergencia de composicao dos kits (vazia para reserva cancelada)
+    divergencia,
+  ] = await Promise.all([
+    reservationItems(r.id),
+    reservationMoney(r.id),
+    reservationOperations(r.id),
+    all<any>(`SELECT * FROM payments WHERE reservation_id = ? ORDER BY paid_at DESC, id DESC`, [r.id]),
+    recibosDaReserva(r.id),
+    one<any>(`SELECT id, status, received_at FROM deposits WHERE reservation_id = ? ORDER BY id DESC LIMIT 1`, [r.id]),
+    all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`),
+    all<any>(`SELECT * FROM contracts WHERE reservation_id = ? ORDER BY id DESC`, [r.id]),
+    all<any>(
+      `SELECT d.*, p.name AS product_name, p.kind AS product_kind FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
+      WHERE d.reservation_id = ? ORDER BY d.id DESC`,
+      [r.id],
+    ),
+    logsFor("reserva", r.id),
+    recebiveisDe({ tipo: "locacao", reservationId: r.id }),
+    adiantamentosDaReserva(r.id),
+    r.status === "cancelada" ? Promise.resolve([]) : recompensasDisponiveis(r.customer_id),
+    reservationPhysicalUsage(r.id),
+    r.status === "cancelada" ? Promise.resolve([]) : compositionDrift(r.id),
+  ]);
+  const adiantamentoAberto = adiantamentos.find((a: any) => a.status === "aberta");
+  const historicoAdiantamentos = adiantamentos.filter((a: any) => a.id !== adiantamentoAberto?.id);
   const reciboDeposit = deposito ? recibos.find((rc: any) => rc.deposit_id === deposito.id) : null;
   const reciboPorPagamento = new Map<number, any>(
     recibos.filter((rc: any) => rc.payment_id).map((rc: any) => [rc.payment_id, rc]),
@@ -88,21 +129,6 @@ export default async function ReservaPage({
   // consulta dedicada é a leitura canônica — devolve o documento por obrigação
   // (locação e caução) ou null quando ainda não existe.
   const quitacao = await reciboQuitacaoDaReserva(r.id);
-  // contas ativas para os lancamentos de caixa desta tela: pagamento direto,
-  // adiantamento (criacao e confirmacao) e recebimento de parcela
-  const contas = await all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`);
-  const contracts = await all<any>(`SELECT * FROM contracts WHERE reservation_id = ? ORDER BY id DESC`, [r.id]);
-  const damages = await all<any>(
-    `SELECT d.*, p.name AS product_name, p.kind AS product_kind FROM damage_reports d LEFT JOIN products p ON p.id = d.product_id
-      WHERE d.reservation_id = ? ORDER BY d.id DESC`,
-    [r.id],
-  );
-  const historico = await logsFor("reserva", r.id);
-  const parcelasReceber = await recebiveisDe({ tipo: "locacao", reservationId: r.id });
-  const adiantamentos = await adiantamentosDaReserva(r.id);
-  const adiantamentoAberto = adiantamentos.find((a: any) => a.status === "aberta");
-  const historicoAdiantamentos = adiantamentos.filter((a: any) => a.id !== adiantamentoAberto?.id);
-  const recompensas = r.status === "cancelada" ? [] : await recompensasDisponiveis(r.customer_id);
   const recompensaUsada = await one<any>(
     `SELECT * FROM fidelity_rewards WHERE used_reservation_id = ? LIMIT 1`,
     [r.id],
@@ -111,11 +137,9 @@ export default async function ReservaPage({
   const previaRecompensas = await Promise.all(
     recompensas.map(async (rec: any) => ({ rec, previa: await simularUso(rec.id, r.id) })),
   );
-  const consumoFisico = await reservationPhysicalUsage(r.id);
-  const divergencia = r.status === "cancelada" ? [] : await compositionDrift(r.id);
   const temKit = items.some((i: any) => i.product_kind === "kit");
   const pay = paymentState(m.total, m.paid);
-  const resumo = await itemsSummary(r.id);
+  const resumo = itemsSummary(items);
   const mensagens = await messagesForReservation(r, resumo, m.balance);
   const maps = mapsLink(r.address, r.district, r.city);
 
