@@ -33,6 +33,7 @@ export const NAV: NavItem[] = [
   { href: "/fretes", label: "Fretes", icon: "fretes" },
   { href: "/relatorios", label: "Relatórios", icon: "relatorios" },
   { href: "/historico", label: "Histórico", icon: "historico" },
+  { href: "/erros", label: "Diário de erros", icon: "configuracoes", adminOnly: true },
   { href: "/configuracoes", label: "Configurações", icon: "configuracoes" },
 ];
 
