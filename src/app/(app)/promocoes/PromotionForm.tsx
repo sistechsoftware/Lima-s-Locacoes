@@ -1,14 +1,20 @@
 "use client";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { Alerta, Field, Grid } from "@/components/ui";
+import PreviaDatas from "@/components/PreviaDatas";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Icon } from "@/components/Icons";
 import { money, parseMoney } from "@/lib/format";
-import { rotuloFaixa, validarFaixas, type Faixa } from "@/lib/promocoes";
+import { ordenar, rotuloFaixa, validarFaixas, type Faixa, type Promocao } from "@/lib/promocoes";
 
 type Produto = { id: number; name: string; code: string; rent_price_cents: number; kind?: string };
 type Action = (prev: string | null, fd: FormData) => Promise<string | null>;
+
+/** Outras promocoes ja cadastradas do produto, para a conferencia por data. */
+type OutraPromocao = Pick<Promocao, "id" | "product_id" | "active" | "starts_on" | "ends_on" | "tiers"> & {
+  name?: string;
+};
 
 /** Faixa em edicao: os numeros ficam como texto para o campo aceitar vazio. */
 type Linha = { min: string; max: string; preco: string };
@@ -23,11 +29,14 @@ export default function PromotionForm({
   action,
   produtos,
   promocao,
+  outras,
   submitLabel = "Salvar Promoção",
 }: {
   action: Action;
   produtos: Produto[];
   promocao?: any;
+  /** Outras promocoes do produto, para mostrar na conferencia por data. */
+  outras?: OutraPromocao[];
   submitLabel?: string;
 }) {
   const [erro, formAction] = useActionState(action, null);
@@ -42,12 +51,37 @@ export default function PromotionForm({
         }))
       : [{ min: "1", max: "", preco: "" }],
   );
+  const [dataInicio, setDataInicio] = useState(promocao?.starts_on ?? "");
+  const [dataFim, setDataFim] = useState(promocao?.ends_on ?? "");
 
   const produto = produtos.find((p) => String(p.id) === productId);
   const faixas = linhas.map(paraFaixa);
   const problemas = validarFaixas(faixas);
   const erros = problemas.filter((p) => p.tipo === "erro");
   const avisos = problemas.filter((p) => p.tipo === "aviso");
+
+  // a conferencia por data mostra a promocao em edicao primeiro, mesmo quando
+  // ainda desativada: o administrador precisa ver o periodo antes de ativar
+  const paraConferencia = useMemo(() => {
+    const emEdicao: OutraPromocao = {
+      id: promocao?.id ?? 0,
+      product_id: Number(productId) || 0,
+      active: true,
+      starts_on: dataInicio.trim() === "" ? null : dataInicio,
+      ends_on: dataFim.trim() === "" ? null : dataFim,
+      tiers: faixas,
+      name: String(promocao?.name ?? "").trim() || undefined,
+    };
+    const outrasDoProduto = (outras ?? [])
+      .filter((o) => String(o.product_id) === productId && (!promocao || o.id !== promocao.id))
+      .map((o) => ({ ...o, active: o.active }));
+    return [emEdicao, ...outrasDoProduto];
+  }, [productId, dataInicio, dataFim, faixas, outras, promocao]);
+
+  const qtdExemplo =
+    faixas.length > 0
+      ? ordenar(faixas)[0].min_qty
+      : 1;
 
   const patch = (i: number, mud: Partial<Linha>) =>
     setLinhas((atuais) => atuais.map((l, k) => (k === i ? { ...l, ...mud } : l)));
@@ -91,10 +125,22 @@ export default function PromotionForm({
             <input name="name" defaultValue={promocao?.name ?? ""} maxLength={120} className="campo" />
           </Field>
           <Field label="Início" hint="Deixe vazio para valer desde já.">
-            <input type="date" name="starts_on" defaultValue={promocao?.starts_on ?? ""} className="campo" />
+            <input
+              type="date"
+              name="starts_on"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+              className="campo"
+            />
           </Field>
           <Field label="Fim" hint="Deixe vazio para não expirar.">
-            <input type="date" name="ends_on" defaultValue={promocao?.ends_on ?? ""} className="campo" />
+            <input
+              type="date"
+              name="ends_on"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+              className="campo"
+            />
           </Field>
           <Field label="Observações" className="sm:col-span-2">
             <input name="notes" defaultValue={promocao?.notes ?? ""} maxLength={500} className="campo" />
@@ -222,6 +268,15 @@ export default function PromotionForm({
               })}
             </ul>
           </div>
+        )}
+
+        {produto && produto.rent_price_cents > 0 && erros.length === 0 && qtdExemplo >= 1 && (
+          <PreviaDatas
+            className="mt-3"
+            promocoes={paraConferencia}
+            precoNormalCents={produto.rent_price_cents}
+            quantidadeExemplo={qtdExemplo}
+          />
         )}
       </section>
 

@@ -123,7 +123,8 @@ export async function sellableProducts() {
     ),
     // a promocao viaja junto com o produto para o formulario decidir o preco
     // sem uma consulta por linha; a vigencia por data e avaliada la, contra a
-    // data do evento que o operador escolheu
+    // data do evento que o operador escolheu. Pode ser mais de uma por produto:
+    // uma por periodo, e a data do evento que decide qual vale.
     promocoesAtivasPorProduto(),
   ]);
   const byParent = new Map<number, string[]>();
@@ -135,7 +136,7 @@ export async function sellableProducts() {
   return rows.map((r) => ({
     ...r,
     composition: r.kind === "kit" ? (byParent.get(r.id) ?? []).join(" + ") || null : null,
-    promocao: promocoes.get(r.id) ?? null,
+    promocao: promocoes.get(r.id) ?? [],
   }));
 }
 

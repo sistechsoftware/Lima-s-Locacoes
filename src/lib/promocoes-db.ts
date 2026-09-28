@@ -45,6 +45,25 @@ function montar(linhas: any[], faixas: any[]): Map<number, PromocaoComProduto> {
   return mapa;
 }
 
+/**
+ * Agrupa as promocoes por produto mantendo TODAS as de cada produto.
+ *
+ * Este era o ponto onde o sistema perdia promocoes: manter so a primeira de
+ * cada produto descartava as de periodos futuros (outubro, novembro...) antes
+ * de qualquer consulta de data, e a promocao de setembro vencia sempre. A
+ * ordem de id se preserva: e ela que desempata se duas valem na mesma data.
+ */
+function porProdutoTodas(promocoes: Iterable<PromocaoComProduto>): Map<number, Promocao[]> {
+  const porProduto = new Map<number, Promocao[]>();
+  for (const promocao of promocoes) {
+    if (promocao.tiers.length === 0) continue;
+    const lista = porProduto.get(promocao.product_id) ?? [];
+    lista.push(promocao);
+    porProduto.set(promocao.product_id, lista);
+  }
+  return porProduto;
+}
+
 const SELECT = `
   SELECT pr.*, p.name AS product_name, p.code AS product_code, p.rent_price_cents
     FROM promotions pr JOIN products p ON p.id = pr.product_id`;
@@ -97,12 +116,14 @@ export async function promocoesDoProduto(productId: number, exceto?: number) {
 }
 
 /**
- * Promocao vigente de cada produto na data, em duas consultas.
+ * Promocoes vigentes de cada produto na data do evento, em duas consultas.
  *
- * Devolve no maximo uma promocao por produto: o cadastro ja recusa promocoes
- * conflitantes, entao aqui basta pegar a que vale.
+ * Devolve TODAS as promocoes vigentes por produto: o cadastro recusa promocoes
+ * que brigam pela mesma quantidade no mesmo periodo, mas periodos diferentes
+ * podem coexistir (setembro, outubro, novembro-dezembro...). A escolha do preco
+ * fica para precoUnitario, que avalia cada uma contra a data recebida.
  */
-export async function promocoesVigentes(dataISO: string): Promise<Map<number, Promocao>> {
+export async function promocoesVigentes(dataISO: string): Promise<Map<number, Promocao[]>> {
   const dia = dataISO.slice(0, 10);
   const linhas = await all<any>(
     `${SELECT}
@@ -118,13 +139,7 @@ export async function promocoesVigentes(dataISO: string): Promise<Map<number, Pr
         linhas.map((l) => l.id),
       )
     : [];
-  const porProduto = new Map<number, Promocao>();
-  for (const promocao of montar(linhas, faixas).values()) {
-    if (promocao.tiers.length > 0 && !porProduto.has(promocao.product_id)) {
-      porProduto.set(promocao.product_id, promocao);
-    }
-  }
-  return porProduto;
+  return porProdutoTodas(montar(linhas, faixas).values());
 }
 
 /**
@@ -132,22 +147,17 @@ export async function promocoesVigentes(dataISO: string): Promise<Map<number, Pr
  *
  * A vigencia fica para quem chama avaliar com a data certa: o formulario de
  * reserva usa a data do evento, que pode ser daqui a dois meses, e nao a de
- * hoje. Uma promocao por produto, porque o cadastro ja recusa conflitos.
+ * hoje. A lista pode ter varias promocoes do mesmo produto, uma por periodo:
+ * e a data do evento, e nao a ordem de cadastro, que decide qual vale.
  */
-export async function promocoesAtivasPorProduto(): Promise<Map<number, Promocao>> {
+export async function promocoesAtivasPorProduto(): Promise<Map<number, Promocao[]>> {
   const linhas = await all<any>(`${SELECT} WHERE pr.active = 1 ORDER BY pr.id`);
   if (linhas.length === 0) return new Map();
   const faixas = await all<any>(
     `SELECT * FROM promotion_tiers WHERE promotion_id IN (${linhas.map(() => "?").join(",")}) ORDER BY min_qty`,
     linhas.map((l) => l.id),
   );
-  const porProduto = new Map<number, Promocao>();
-  for (const promocao of montar(linhas, faixas).values()) {
-    if (promocao.tiers.length > 0 && !porProduto.has(promocao.product_id)) {
-      porProduto.set(promocao.product_id, promocao);
-    }
-  }
-  return porProduto;
+  return porProdutoTodas(montar(linhas, faixas).values());
 }
 
 /**
@@ -158,5 +168,7 @@ export async function promocoesAtivasPorProduto(): Promise<Map<number, Promocao>
 export async function precoSugerido(productId: number, qty: number, dataISO: string) {
   const [produto] = await all<any>(`SELECT rent_price_cents FROM products WHERE id = ?`, [productId]);
   const vigentes = await promocoesVigentes(dataISO);
+  // vigentes.get() traz todas as promocoes do produto que valem nesta data;
+  // precoUnitario escolhe entre elas a que cobre a quantidade.
   return precoUnitario(produto?.rent_price_cents ?? 0, vigentes.get(productId), qty, dataISO);
 }
