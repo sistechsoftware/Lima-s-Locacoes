@@ -28,6 +28,8 @@ export type Promocao = {
   starts_on: string | null;
   ends_on: string | null;
   tiers: Faixa[];
+  /** Nome do cadastro, quando disponivel; usado na conferencia visual. */
+  name?: string;
 };
 
 /** Ordena por quantidade minima, que e como as faixas fazem sentido para quem le. */
@@ -49,7 +51,9 @@ export function vigente(p: Pick<Promocao, "active" | "starts_on" | "ends_on">, d
   return true;
 }
 
-/** A faixa que cobre esta quantidade, ou null quando nenhuma cobre. */
+/**
+ * A faixa que cobre esta quantidade, ou null quando nenhuma cobre.
+ */
 export function faixaPara(faixas: Faixa[], qty: number): Faixa | null {
   if (qty <= 0) return null;
   return (
@@ -58,25 +62,75 @@ export function faixaPara(faixas: Faixa[], qty: number): Faixa | null {
 }
 
 /**
+ * A promocao que responde por este produto na data e quantidade, ou null.
+ *
+ * Percorre a lista na ordem recebida (ordem de id no banco) e vale a primeira
+ * que esteja vigente na DATA DO EVENTO e tenha faixa cobrindo a quantidade.
+ * Pular a que nao cobre e o que permite duas promocoes do mesmo periodo com
+ * faixas complementares (1-4 numa, 5+ na outra) conviverem.
+ *
+ * Esta funcao e a resposta unica para "qual promocao vale aqui": o preco da
+ * linha (precoUnitario) e a conferencia visual do cadastro (PromotionForm)
+ * usam a mesma escolha, entao nao existe como a tela prometer uma coisa e o
+ * servidor gravar outra.
+ */
+export function promocaoVencedora(
+  promocoes: Promocao[] | null | undefined,
+  qty: number,
+  dataISO: string,
+): { promocao: Promocao; faixa: Faixa } | null {
+  for (const p of promocoes ?? []) {
+    if (!vigente(p, dataISO)) continue;
+    const faixa = faixaPara(ordenar(p.tiers), qty);
+    if (faixa) return { promocao: p, faixa };
+  }
+  return null;
+}
+
+/**
+ * Datas de amostragem para a conferencia visual ("qual promocao vale em que
+ * mes"): os N meses seguintes ao mes da data base, sempre no dia 15 — dia
+ * fixo evita esbarrar em meses de 28/30/31, que as bordas de vigencia ja
+ * cobrem. Aritmetica de calendario pura, sem Date: ano e mes vem da string.
+ */
+export function datasDePrevia(baseISO: string, meses = 6): string[] {
+  const ano = Number(baseISO.slice(0, 4));
+  const mes = Number(baseISO.slice(5, 7));
+  if (!ano || !mes || mes < 1 || mes > 12) return [];
+  const saida: string[] = [];
+  for (let i = 1; i <= Math.max(0, Math.trunc(meses)); i++) {
+    const total = mes - 1 + i;
+    const a = ano + Math.floor(total / 12);
+    const m = (total % 12) + 1;
+    saida.push(`${a}-${String(m).padStart(2, "0")}-15`);
+  }
+  return saida;
+}
+
+/**
  * Preco unitario promocional, ou null quando nao ha promocao aplicavel.
+ *
+ * Aceita uma promocao ou a lista de promocoes ativas do produto; a escolha de
+ * qual vale e a mesma de promocaoVencedora, usada tambem pela conferencia
+ * visual do cadastro.
  *
  * Devolver null e proposital: quem chama decide o que fazer, e a resposta certa
  * e sempre "usa o preco normal do produto", nunca zero.
  */
 export function precoPromocional(
-  promocao: Promocao | null | undefined,
+  promocao: Promocao | Promocao[] | null | undefined,
   qty: number,
   dataISO: string,
 ): { unit_price_cents: number; faixa: Faixa } | null {
-  if (!promocao || !vigente(promocao, dataISO)) return null;
-  const faixa = faixaPara(ordenar(promocao.tiers), qty);
-  return faixa ? { unit_price_cents: faixa.unit_price_cents, faixa } : null;
+  const lista = promocao === null || promocao === undefined ? [] : Array.isArray(promocao) ? promocao : [promocao];
+  const vencedora = promocaoVencedora(lista, qty, dataISO);
+  return vencedora ? { unit_price_cents: vencedora.faixa.unit_price_cents, faixa: vencedora.faixa } : null;
 }
 
 /** Preco que vale para a linha: promocional quando existir, normal quando nao. */
 export function precoUnitario(
   precoNormalCents: number,
-  promocao: Promocao | null | undefined,
+  promocao: Promocao | Promocao[] | null | undefined,
   qty: number,
   dataISO: string,
 ): { unit_price_cents: number; promocional: boolean; faixa: Faixa | null } {

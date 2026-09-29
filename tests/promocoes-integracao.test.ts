@@ -53,14 +53,14 @@ describe("carga das promocoes", () => {
     await promocao();
     const produtos = await sellableProducts();
     const kit = produtos.find((p: any) => p.id === KIT)!;
-    assert.equal(kit.promocao?.tiers.length, 3);
+    assert.equal(kit.promocao?.[0]?.tiers.length, 3, "as 3 faixas da unica promocao");
     assert.equal(kit.rent_price_cents, NORMAL, "o preco normal continua intacto no cadastro");
   });
 
   it("produto sem promocao vem com promocao nula", async () => {
     await promocao();
     const produtos = await sellableProducts();
-    assert.equal(produtos.find((p: any) => p.id === FORRO)!.promocao, null);
+    assert.deepEqual(produtos.find((p: any) => p.id === FORRO)!.promocao, [], "lista vazia, sem promocao");
   });
 
   it("promocao desativada nao viaja para o formulario", async () => {
@@ -84,7 +84,7 @@ describe("carga das promocoes", () => {
         [id, f.min, f.max, f.preco],
       );
     }
-    const p = (await promocoesAtivasPorProduto()).get(KIT)!;
+    const p = (await promocoesAtivasPorProduto()).get(KIT)![0];
     assert.deepEqual(p.tiers.map((t) => t.min_qty), [1, 15]);
   });
 });
@@ -131,6 +131,7 @@ describe("valor da reserva", () => {
 
   it("15 kits ao preco promocional somam R$ 150", async () => {
     const p = await precoSugerido(KIT, 15, "2026-09-20");
+    assert.equal(p.unit_price_cents, NORMAL, "sem promocao seria o preco normal");
     await promocao();
     const promo = await precoSugerido(KIT, 15, "2026-09-20");
     const r = await reservaCom([{ produto: KIT, qty: 15, preco: promo.unit_price_cents }]);
@@ -229,10 +230,83 @@ describe("mudanca de quantidade refaz o preco", () => {
 
   it("subir e descer de faixa devolve o preco certo", async () => {
     await promocao();
-    const p = (await promocoesAtivasPorProduto()).get(KIT);
+    const p = (await promocoesAtivasPorProduto()).get(KIT)?.[0];
     const em = (qty: number) => precoUnitario(NORMAL, p, qty, "2026-09-20").unit_price_cents;
     assert.equal(em(5), 1300);
     assert.equal(em(15), 1000, "subiu de faixa");
     assert.equal(em(4), 1500, "voltou para a faixa anterior");
+  });
+});
+
+describe("varias promocoes do mesmo produto, uma por periodo", () => {
+  beforeEach(cenario);
+
+  /** O cenario do problema real: setembro, outubro e novembro-dezembro. */
+  async function tresPromocoes() {
+    await promocao({ inicio: "2026-09-01", fim: "2026-09-30" });
+    await promocao({ inicio: "2026-10-01", fim: "2026-10-31" });
+    await promocao({ inicio: "2026-11-01", fim: "2026-12-31" });
+  }
+
+  it("cada mes usa a promocao da data do evento, mesmo criadas todas hoje", async () => {
+    await tresPromocoes();
+    assert.equal((await promocoesAtivasPorProduto()).get(KIT)!.length, 3, "nenhuma descartada");
+    assert.equal((await precoSugerido(KIT, 15, "2026-09-15")).unit_price_cents, 1000, "setembro");
+    assert.equal((await precoSugerido(KIT, 15, "2026-10-15")).unit_price_cents, 1000, "outubro");
+    assert.equal((await precoSugerido(KIT, 15, "2026-11-20")).unit_price_cents, 1000, "novembro");
+    assert.equal((await precoSugerido(KIT, 15, "2026-12-10")).unit_price_cents, 1000, "dezembro");
+  });
+
+  it("limites do periodo: dia exato vale, vizinho nao", async () => {
+    await tresPromocoes();
+    assert.equal((await precoSugerido(KIT, 15, "2026-10-01")).unit_price_cents, 1000, "primeiro dia de outubro");
+    assert.equal((await precoSugerido(KIT, 15, "2026-10-31")).unit_price_cents, 1000, "ultimo dia de outubro");
+    assert.equal((await precoSugerido(KIT, 15, "2026-09-30")).unit_price_cents, 1000, "30/09 ainda e setembro");
+    assert.equal((await precoSugerido(KIT, 15, "2026-11-01")).unit_price_cents, 1000, "1/11 ja e nov/dez");
+    assert.equal((await precoSugerido(KIT, 15, "2026-12-31")).unit_price_cents, 1000, "ultimo dia de dezembro");
+    assert.equal((await precoSugerido(KIT, 15, "2027-01-01")).unit_price_cents, NORMAL, "um dia depois do fim");
+    assert.equal((await precoSugerido(KIT, 15, "2026-08-31")).unit_price_cents, NORMAL, "um dia antes do inicio");
+  });
+
+  it("periodo 01/11 a 31/12 vale nos dois meses", async () => {
+    await promocao({ inicio: "2026-11-01", fim: "2026-12-31" });
+    for (const dia of ["2026-11-05", "2026-11-30", "2026-12-01", "2026-12-25", "2026-12-31"]) {
+      assert.equal((await precoSugerido(KIT, 15, dia)).unit_price_cents, 1000, dia);
+    }
+  });
+
+  it("data fora de qualquer promocao nao aplica desconto", async () => {
+    await tresPromocoes();
+    assert.equal((await precoSugerido(KIT, 15, "2027-02-10")).unit_price_cents, NORMAL, "longe de tudo");
+  });
+
+  it("sellableProducts entrega as tres promocoes do produto", async () => {
+    await tresPromocoes();
+    const kit = (await sellableProducts()).find((p: any) => p.id === KIT)!;
+    assert.equal(kit.promocao.length, 3);
+  });
+
+  it("orcamento/reserva salvos com preco de outubro continuam intactos", async () => {
+    await tresPromocoes();
+    const precoOutubro = (await precoSugerido(KIT, 15, "2026-10-15")).unit_price_cents;
+    assert.equal(precoOutubro, 1000);
+
+    const id = await insert(
+      `INSERT INTO reservations (number, customer_id, status, event_date, total_cents)
+       VALUES ('LIMA-950',?,'confirmada','2026-10-15',0)`,
+      [cliente],
+    );
+    await insert(
+      `INSERT INTO reservation_items (reservation_id, product_id, qty, unit_price_cents) VALUES (?,?,15,?)`,
+      [id, KIT, precoOutubro],
+    );
+    await recalcReservation(id);
+
+    // hoje a empresa encerra a promocao de outubro: documento ja salvo nao muda
+    await run(`UPDATE promotions SET active = 0 WHERE starts_on = '2026-10-01'`);
+    const salva = await one<any>(`SELECT total_cents FROM reservations WHERE id = ?`, [id]);
+    const [item] = await all<any>(`SELECT unit_price_cents FROM reservation_items WHERE reservation_id = ?`, [id]);
+    assert.equal(item.unit_price_cents, 1000, "a linha guarda o preco do dia em que foi fechada");
+    assert.equal(salva.total_cents, 15000, "o total nao foi reescrito");
   });
 });

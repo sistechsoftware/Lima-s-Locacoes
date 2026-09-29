@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { money, parseMoney } from "@/lib/format";
+import { money, parseMoney, today } from "@/lib/format";
 import { precoUnitario, rotuloFaixa, type Promocao } from "@/lib/promocoes";
 import { Icon } from "./Icons";
 
@@ -14,8 +14,11 @@ export type Product = {
   kind?: "simples" | "kit" | string;
   /** Resumo da composicao do kit ("1 Mesa + 4 Cadeira"). */
   composition?: string | null;
-  /** Promocao por quantidade ativa deste produto, quando existir. */
-  promocao?: Promocao | null;
+  /**
+   * Promocoes por quantidade ativas deste produto (pode ser mais de uma, uma
+   * por periodo; a data do evento decide qual vale). Vazio = sem promocao.
+   */
+  promocao?: Promocao[];
 };
 
 export type ItemRow = {
@@ -56,7 +59,9 @@ export default function ItemsEditor({
 }) {
   const [picker, setPicker] = useState("");
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
-  const dia = dataReferencia || new Date().toISOString().slice(0, 10);
+  // a data do evento manda; so recorre a data de hoje (no fuso local, nunca UTC)
+  // enquanto o operador nao escolheu uma
+  const dia = dataReferencia || today();
 
   /** Preco que a regra manda cobrar por esta linha, com a faixa que o justifica. */
   const calcular = (productId: number, qty: number) => {
@@ -247,7 +252,7 @@ export default function ItemsEditor({
                     )}
                   </p>
                 )}
-                {item.preco_manual && p?.promocao && (
+                {item.preco_manual && !!p?.promocao?.length && (
                   <p className="mt-2 text-xs text-stone-500">
                     Preço digitado à mão: a promoção não está sendo aplicada nesta linha.
                   </p>
