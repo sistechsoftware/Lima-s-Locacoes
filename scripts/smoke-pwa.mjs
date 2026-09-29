@@ -53,7 +53,7 @@ try {
   await page.getByRole("button",{name:"Marcar como lida",exact:true}).click();
   await page.getByText(/0 nao lida/).waitFor();
   console.log("Cron real workerd → D1 → central → marcar lida: OK");
-  for(const route of ["/fretes/novo","/reservas/nova","/orcamentos/novo","/configuracoes?aba=frete","/notificacoes/atividades"]){
+  for(const route of ["/fretes/novo","/fretes/calculadora","/reservas/nova","/orcamentos/novo","/configuracoes?aba=frete","/notificacoes/atividades"]){
     const response=await page.goto(base+route);assert.equal(response.status(),200,route);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`Overflow mobile: ${route}`);
   }
@@ -64,6 +64,13 @@ try {
   await page.getByRole("alert").filter({hasText:/endereco-base/}).waitFor();
   assert.equal(await amount.inputValue(),"123.45");
   console.log("Base ausente: erro visivel e preco manual preservado: OK");
+  await page.goto(base+"/fretes/calculadora");
+  await page.getByRole("button",{name:"Consultar rota"}).click();
+  await page.getByRole("alert").filter({hasText:/endereço base da empresa/i}).waitFor();
+  await page.locator('input[placeholder="15"]').fill("12");
+  await page.getByText("Valor Sugerido do Frete").waitFor();
+  await page.screenshot({path:temporary+"/calculadora-mobile.png",fullPage:true});
+  console.log("Calculadora: rota sem base mostra erro claro e calculo manual segue OK");
   const unauth=await fetch(base+"/api/push");assert.equal(unauth.status,401);
   const csrf=await context.request.post(base+"/api/push",{data:{action:"disable",id:1},headers:{Origin:"https://attacker.invalid"}});assert.equal(csrf.status(),401);
   assert.deepEqual(errors,[]);

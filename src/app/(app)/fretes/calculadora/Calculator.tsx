@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alerta, Card, Field, Grid, Row } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { money, parseMoney } from "@/lib/format";
 import { calcularFrete, VIAGENS, type TipoFrete } from "@/lib/freight";
 
 export type ConfigFrete = {
+  baseAddress: string;
   fuelType: string;
   fuelPriceCents: number;
   consumption: number;
@@ -17,9 +18,22 @@ export type ConfigFrete = {
   laborCents: number;
 };
 
+type OpcaoRota = {
+  index: number;
+  totalKm: number;
+  durationMin: number | null;
+};
+
+const semOpcoes: OpcaoRota[] = [];
+const semSugestoes: Sugestao[] = [];
+
 /**
  * Calculo roda inteiro no navegador, a partir das configuracoes ja carregadas.
  * Assim o resultado aparece enquanto o usuario digita, sem ida ao servidor.
+ *
+ * A distancia pode ser digitada manualmente (como sempre) ou preenchida
+ * automaticamente pela rota base → destino: a formula continua sendo a mesma,
+ * so a origem do numero muda.
  */
 export default function Calculator({
   configs,
@@ -93,6 +107,15 @@ export default function Calculator({
             />
           </div>
         </Field>
+
+        <div className="mt-3">
+          <EnderecoDestino
+            tipo={tipo}
+            basePresente={config.baseAddress.trim().length > 0}
+            onDistancia={setDistancia}
+            onErroDestino={() => setDistancia("")}
+          />
+        </div>
 
         <div className="mt-3">
           <Field label="Distância de ida (km) *" hint="Somente a ida. As viagens de volta entram no cálculo.">
@@ -302,6 +325,252 @@ function TipoOpcao({
         {descricao} <b className="text-tinta-700">{viagens} viagens</b>
       </span>
     </button>
+  );
+}
+
+type Sugestao = { label: string; lat: number; lon: number };
+
+/**
+ * Campo de destino da calculadora: consulta a rota de IDA (base → destino) a
+ * partir do endereco-base da empresa e entrega a distancia da rota escolhida
+ * para o campo "Distância de ida (km)". O valor sugerido e calculado pelo
+ * useMemo existente, com o tipo de frete que estiver selecionado — nada aqui
+ * multiplica, divide ou recalcula nada.
+ */
+function EnderecoDestino({
+  tipo,
+  basePresente,
+  onDistancia,
+  onErroDestino,
+}: {
+  tipo: TipoFrete;
+  basePresente: boolean;
+  onDistancia: (km: string) => void;
+  onErroDestino: () => void;
+}) {
+  const [destino, setDestino] = useState("");
+  const [sugestoes, setSugestoes] = useState<Sugestao[]>([]);
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
+  const [opcoes, setOpcoes] = useState<OpcaoRota[]>(semOpcoes);
+  const [selecionada, setSelecionada] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [erro, setErro] = useState("");
+  const [aviso, setAviso] = useState("");
+  const generation = useRef(0);
+  const raiz = useRef<HTMLDivElement | null>(null);
+
+  // Mudou o tipo de frete: reenvia a distancia da rota selecionada, para o
+  // useMemo existente recalcular com as regras do tipo marcado agora.
+  useEffect(() => {
+    if (opcoes.length && selecionada !== null) {
+      onDistancia(opcoes[selecionada].totalKm.toFixed(2).replace(".", ","));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo]);
+
+  // Fecha a lista de sugestoes ao clicar fora (padrao iOS: toque fora fecha).
+  useEffect(() => {
+    function fora(event: PointerEvent) {
+      if (!raiz.current?.contains(event.target as Node)) setSugestoesAbertas(false);
+    }
+    document.addEventListener("pointerdown", fora);
+    return () => document.removeEventListener("pointerdown", fora);
+  }, []);
+
+  // Sugestoes so depois de 5 caracteres, com debounce: sem consulta por tecla.
+  useEffect(() => {
+    const consulta = destino.trim();
+    if (consulta.length < 5) {
+      setSugestoes(semSugestoes);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const version = ++generation.current;
+      try {
+        const response = await fetch("/api/geocode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: consulta }),
+        });
+        const data = await response.json() as unknown;
+        if (version !== generation.current) return;
+        if (!response.ok || !Array.isArray(data)) return;
+        setSugestoes(data.filter((s): s is Sugestao => typeof s?.label === "string" && Number.isFinite(s?.lat) && Number.isFinite(s?.lon)));
+      } catch { /* offline: o usuario digita o endereco manualmente */ }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [destino]);
+
+  async function consultarRotas(enderecoDestino: string) {
+    const alvo = enderecoDestino.trim();
+    if (!basePresente) {
+      setErro("Cadastre o endereço base da empresa antes de calcular o frete.");
+      onErroDestino();
+      return;
+    }
+    if (!alvo) {
+      setErro("Informe o endereço de destino.");
+      onErroDestino();
+      return;
+    }
+    if (alvo.length < 10) {
+      setErro("Informe o endereço completo: rua, número, cidade e estado.");
+      onErroDestino();
+      return;
+    }
+    const version = ++generation.current;
+    setBusy(true);
+    setErro("");
+    setAviso("");
+    try {
+      const response = await fetch("/api/routes/opcoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, destination: alvo }),
+      });
+      const data = await response.json() as unknown;
+      if (version !== generation.current) return;
+      if (!response.ok) {
+        setOpcoes(semOpcoes);
+        setSelecionada(null);
+        setErro(typeof (data as { error?: unknown })?.error === "string" ? (data as { error: string }).error : "Não foi possível consultar a rota. Informe a distância manualmente.");
+        onErroDestino();
+        return;
+      }
+      const brutas = Array.isArray(data) ? data : [];
+      const validas = brutas
+        .filter((o): o is { totalKm: number; durationMin: number | null } => !!o && typeof o === "object" && Number.isFinite((o as { totalKm?: unknown }).totalKm) && (o as { totalKm: number }).totalKm > 0)
+        .map((o, index) => ({ ...o, index }));
+      if (!validas.length) {
+        setOpcoes(semOpcoes);
+        setSelecionada(null);
+        setErro("Nenhuma rota encontrada para este endereço. Informe a distância manualmente.");
+        onErroDestino();
+        return;
+      }
+      setOpcoes(validas);
+      escolher(validas[0]);
+      setAviso(validas.length > 1 ? `${validas.length} rotas encontradas. Escolha uma opção.` : "");
+    } catch {
+      if (version !== generation.current) return;
+      setOpcoes(semOpcoes);
+      setSelecionada(null);
+      setErro("Não foi possível consultar a rota agora. Informe a distância manualmente.");
+      onErroDestino();
+    } finally {
+      if (version === generation.current) setBusy(false);
+    }
+  }
+
+  function escolher(opcao: OpcaoRota) {
+    setSelecionada(opcao.index);
+    // Envia somente a ida; quem multiplica pelas viagens e a formula de sempre.
+    onDistancia(opcao.totalKm.toFixed(2).replace(".", ","));
+  }
+
+  return (
+    <div>
+      <div ref={raiz} className="relative">
+        <Field label="Endereço de destino" hint="Rua, número, cidade e estado. A origem é o endereço base da empresa.">
+          <input
+            value={destino}
+            onChange={(e) => {
+              setDestino(e.target.value);
+              setSugestoesAbertas(true);
+            }}
+            onFocus={() => sugestoes.length > 0 && setSugestoesAbertas(true)}
+            inputMode="text"
+            autoComplete="off"
+            placeholder="Ex.: Rua das Palmeiras, 120, Santos, SP"
+            className="campo"
+            aria-label="Endereço de destino"
+            aria-expanded={sugestoesAbertas}
+          />
+        </Field>
+        {sugestoesAbertas && sugestoes.length > 0 && (
+          <ul className="absolute z-20 left-0 right-0 top-full mt-1 overflow-hidden rounded-xl border border-nuvem-300 bg-white shadow-lg">
+            {sugestoes.map((s, i) => (
+              <li key={`${s.lat}-${s.lon}-${i}`}>
+                <button
+                  type="button"
+                  className="w-full px-3 py-3 text-left text-sm text-tinta-900 hover:bg-marca-50"
+                  onClick={() => {
+                    setDestino(s.label);
+                    setSugestoesAbertas(false);
+                    consultarRotas(s.label);
+                  }}
+                >
+                  {s.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {!basePresente && (
+        <p className="mt-1 text-xs text-amber-700">
+          Cadastre o endereço base da empresa em Configurações para calcular o frete por endereço.
+        </p>
+      )}
+
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => consultarRotas(destino)}
+        className="mt-2 w-full rounded-xl bg-marca-600 px-4 py-3 text-sm font-semibold text-white transition active:scale-[0.98] disabled:opacity-50 sm:w-auto"
+      >
+        {busy ? "Calculando rota..." : "Consultar rota"}
+      </button>
+
+      {busy && (
+        <p aria-live="polite" className="mt-2 text-sm font-semibold text-marca-700">
+          Calculando rota...
+        </p>
+      )}
+      {erro && (
+        <p role="alert" className="mt-2 text-sm text-red-700">
+          {erro}
+        </p>
+      )}
+      {aviso && !busy && (
+        <p aria-live="polite" className="mt-2 text-sm font-semibold text-tinta-700">
+          {aviso}
+        </p>
+      )}
+
+      {opcoes.length > 1 && (
+        <div className="mt-2 space-y-2" role="radiogroup" aria-label="Rotas encontradas">
+          {opcoes.map((opcao) => (
+            <button
+              key={opcao.index}
+              type="button"
+              role="radio"
+              aria-checked={selecionada === opcao.index}
+              onClick={() => escolher(opcao)}
+              className={`w-full rounded-xl border p-3 text-left transition ${
+                selecionada === opcao.index ? "border-marca-600 bg-marca-50" : "border-nuvem-300 bg-white"
+              }`}
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-bold text-tinta-900">Rota {opcao.index + 1}</span>
+                <span className="text-sm font-semibold text-tinta-900">{formatarKm(opcao.totalKm)} km</span>
+              </span>
+              <span className="mt-0.5 block text-xs text-stone-500">
+                {opcao.durationMin !== null ? `aproximadamente ${opcao.durationMin} min` : "duração indisponível"}
+                {selecionada === opcao.index ? " · selecionada" : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {opcoes.length === 1 && selecionada === 0 && !busy && !erro && (
+        <p className="mt-2 text-sm text-emerald-700">
+          Rota única aplicada: {formatarKm(opcoes[0].totalKm)} km de ida.
+        </p>
+      )}
+    </div>
   );
 }
 
