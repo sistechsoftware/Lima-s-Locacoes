@@ -8,6 +8,28 @@ import { getSettings, setSettings } from "@/lib/settings";
 import { contractUsesHtml, sanitizeContractHtml } from "@/lib/contract-html";
 import { validarDimensoesRecibo } from "@/lib/recibo-visual";
 
+/**
+ * Layout de navegacao (Configuracoes > Navegacao): "classico" (menu plano de
+ * sempre) ou "agrupado" (grupos conceituais — ver src/lib/nav.ts). Nao e
+ * permissao nem dado de negocio: e uma preferencia visual da empresa, guarda
+ * na tabela settings como os demais ajustes e vale para todo mundo.
+ */
+export async function saveNavLayout(fd: FormData) {
+  const user = await assertAdmin();
+  const valor = String(fd.get("nav_layout") || "");
+  const layout = valor === "agrupado" ? "agrupado" : "classico";
+  await setSettings({ nav_layout: layout });
+  await logAction(
+    user,
+    "editar",
+    "configuracao",
+    null,
+    `${user.name} alternou o layout de navegacao para ${layout}`,
+  );
+  // "layout" invalida inclusive o shell, que escolhe sidebar/sheet/+ pelo modo.
+  revalidatePath("/", "layout");
+}
+
 export async function saveStockSettings(fd: FormData) {
   const user = await assertAdmin();
   let minutes: number;

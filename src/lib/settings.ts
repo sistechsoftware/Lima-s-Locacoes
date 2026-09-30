@@ -110,6 +110,14 @@ export const DEFAULT_SETTINGS: Settings = {
     "Ola, {{cliente}}! Identificamos um saldo de {{saldo}} referente a sua locacao {{reserva}}. Pix: {{pix}}",
   wa_quote:
     "Ola, {{cliente}}! Segue o orcamento {{orcamento}} da {{empresa}} para o dia {{data_evento}}:\n{{itens}}\nTotal: {{valor_total}}",
+
+  /*
+   * Layout de navegacao (Configuracoes > Navegacao). "classico" preserva o
+   * menu plano de sempre; "agrupado" organiza os mesmos destinos em grupos
+   * (ver src/lib/nav.ts). Vive na tabela settings como os demais ajustes:
+   * nenhuma migration, nenhum dado existente alterado.
+   */
+  nav_layout: "classico",
 };
 
 /**
