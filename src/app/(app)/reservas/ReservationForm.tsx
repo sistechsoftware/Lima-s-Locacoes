@@ -10,6 +10,8 @@ import { money, parseMoney } from "@/lib/format";
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABEL, RESERVATION_STATUS } from "@/lib/domain";
 import { unicosPorId, type OpcaoSelecionavel } from "@/lib/search-select-utils";
 import SearchableSelect from "@/components/SearchableSelect";
+import { useEventWindow } from "@/components/useEventWindow";
+import { janelaInicial } from "@/lib/event-window";
 import { checkStock } from "./actions";
 import { useStockCheck } from "@/components/useStockCheck";
 import PreparationChoice from "@/components/PreparationChoice";
@@ -47,9 +49,9 @@ export default function ReservationForm({
   const [error, formAction] = useActionState(action, null);
   const [items, setItems] = useState<ItemRow[]>(initialItems);
   const [customerId, setCustomerId] = useState(String(reservation?.customer_id ?? defaultCustomerId ?? ""));
-  const [eventDate, setEventDate] = useState(reservation?.event_date ?? "");
-  const [deliveryAt, setDeliveryAt] = useState(reservation?.delivery_at ?? "");
-  const [pickupAt, setPickupAt] = useState(reservation?.pickup_at ?? "");
+  const { eventDate, deliveryAt, pickupAt, bind } = useEventWindow(
+    janelaInicial(reservation?.event_date ?? "", reservation?.delivery_at ?? "", reservation?.pickup_at ?? ""),
+  );
   const [address, setAddress] = useState(reservation?.address ?? "");
   const [district, setDistrict] = useState(reservation?.district ?? "");
   const [city, setCity] = useState(reservation?.city ?? "");
@@ -95,13 +97,9 @@ export default function ReservationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
-  // sugere janela de entrega/retirada a partir da data do evento
-  useEffect(() => {
-    if (!eventDate) return;
-    if (!deliveryAt) setDeliveryAt(`${eventDate}T08:00`);
-    if (!pickupAt) setPickupAt(`${nextDay(eventDate)}T10:00`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventDate]);
+  // Janela evento → entrega → retirada: regras unicas com o Novo Orçamento em
+  // useEventWindow; a data do evento preenche as datas e o horario da entrega
+  // se espelha na retirada. O antigo efeito com 08:00/+1 dia 10:00 saiu daqui.
 
   const stockInfo: StockInfo = useMemo(
     () =>
@@ -173,10 +171,9 @@ export default function ReservationForm({
               <input
                 name="event_date"
                 type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className="campo"
+                {...bind.eventDate}
                 required
+                className="campo"
               />
             </Field>
             <Field label="Horário do evento">
@@ -202,25 +199,19 @@ export default function ReservationForm({
       <section className="cartao p-4">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Entrega e retirada</h2>
         <Grid>
-          <Field label="Entrega em" hint="Define quando o equipamento sai do estoque.">
-            <input
-              name="delivery_at"
-              required
-              type="datetime-local"
-              value={deliveryAt}
-              onChange={(e) => setDeliveryAt(e.target.value)}
-              className="campo"
-            />
+          <input type="hidden" name="delivery_at" value={deliveryAt} />
+          <input type="hidden" name="pickup_at" value={pickupAt} />
+          <Field label="Entrega em (data)">
+            <input type="date" {...bind.deliveryDate} className="campo" />
           </Field>
-          <Field label="Retirada em" hint="Define quando o equipamento volta ao estoque.">
-            <input
-              name="pickup_at"
-              required
-              type="datetime-local"
-              value={pickupAt}
-              onChange={(e) => setPickupAt(e.target.value)}
-              className="campo"
-            />
+          <Field label="Entrega em (horário)">
+            <input type="time" {...bind.deliveryTime} className="campo data-hora" />
+          </Field>
+          <Field label="Retirada em (data)">
+            <input type="date" {...bind.pickupDate} className="campo" />
+          </Field>
+          <Field label="Retirada em (horário)">
+            <input type="time" {...bind.pickupTime} className="campo data-hora" />
           </Field>
         </Grid>
         <PreparationChoice value={considerPreparation} onChange={setConsiderPreparation} minutes={preparationMinutes} from={deliveryAt} to={pickupAt} />
@@ -490,9 +481,3 @@ function Linha({ label, value }: { label: string; value: string }) {
 }
 
 const cents = (v: number | undefined) => ((v ?? 0) / 100).toFixed(2);
-
-function nextDay(dateISO: string) {
-  const d = new Date(dateISO + "T12:00");
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
-}

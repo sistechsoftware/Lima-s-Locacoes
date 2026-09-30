@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { ACTIVE_STATUSES } from "@/lib/domain";
 import { addDays, dateBR, endOfMonth, money, startOfMonth, startOfWeek, today } from "@/lib/format";
 import { Card, Empty, PageHeader, Section, Stat } from "@/components/ui";
+import { SQL_NAO_TRANSFERENCIA } from "@/lib/financeiro";
 import { Tabs } from "@/components/List";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +59,8 @@ export default async function RelatoriosPage({
     inativos,
     meses,
   ] = await Promise.all([
-    scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ? AND ?`, [de, ate]),
+    // transferencia entre contas nao e ganho: fica fora do total recebido
+    scalar<number>(`SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ? AND ? AND ${SQL_NAO_TRANSFERENCIA}`, [de, ate]),
     scalar<number>(
       `SELECT COALESCE(SUM(total_cents),0) FROM reservations WHERE event_date BETWEEN ? AND ? AND status IN (${ACTIVE})`,
       [de, ate],

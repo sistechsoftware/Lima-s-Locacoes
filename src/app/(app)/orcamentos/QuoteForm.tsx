@@ -10,6 +10,8 @@ import { money, parseMoney } from "@/lib/format";
 import { QUOTE_STATUS } from "@/lib/domain";
 import { unicosPorId, type OpcaoSelecionavel } from "@/lib/search-select-utils";
 import SearchableSelect from "@/components/SearchableSelect";
+import { useEventWindow } from "@/components/useEventWindow";
+import { janelaInicial } from "@/lib/event-window";
 import { checkStock } from "../reservas/actions";
 import { useStockCheck } from "@/components/useStockCheck";
 import PreparationChoice from "@/components/PreparationChoice";
@@ -39,9 +41,9 @@ export default function QuoteForm({
   const [error, formAction] = useActionState(action, null);
   const [items, setItems] = useState<ItemRow[]>(initialItems);
   const [customerId, setCustomerId] = useState(String(quote?.customer_id ?? defaultCustomerId ?? ""));
-  const [eventDate, setEventDate] = useState(quote?.event_date ?? "");
-  const [deliveryAt, setDeliveryAt] = useState(quote?.delivery_at ?? "");
-  const [pickupAt, setPickupAt] = useState(quote?.pickup_at ?? "");
+  const { eventDate, deliveryAt, pickupAt, bind } = useEventWindow(
+    janelaInicial(quote?.event_date ?? "", quote?.delivery_at ?? "", quote?.pickup_at ?? ""),
+  );
   const [considerPreparation, setConsiderPreparation] = useState(quote?.stock_consider_preparation !== 0);
   const [address, setAddress] = useState(quote?.address ?? "");
   const [district, setDistrict] = useState(quote?.district ?? "");
@@ -74,12 +76,9 @@ export default function QuoteForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
-  useEffect(() => {
-    if (!eventDate) return;
-    if (!deliveryAt) setDeliveryAt(`${eventDate}T08:00`);
-    if (!pickupAt) setPickupAt(`${eventDate}T18:00`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventDate]);
+  // Janela evento → entrega → retirada: regras unicas com a Nova Reserva em
+  // useEventWindow; a data do evento preenche as datas e o horario da entrega
+  // se espelha na retirada. O antigo efeito com 08:00/18:00 foi substituido.
 
   const stockInfo: StockInfo = useMemo(
     () =>
@@ -144,24 +143,26 @@ export default function QuoteForm({
               <input
                 name="event_date"
                 type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                {...bind.eventDate}
                 className="campo"
               />
             </Field>
             <Field label="Horário">
               <input name="event_time" type="time" defaultValue={quote?.event_time ?? ""} className="campo" />
             </Field>
-            <Field label="Entrega prevista">
-              <input
-                name="delivery_at"
-                type="datetime-local"
-                required value={deliveryAt} onChange={(e) => setDeliveryAt(e.target.value)}
-                className="campo"
-              />
+            <input type="hidden" name="delivery_at" value={deliveryAt} />
+            <input type="hidden" name="pickup_at" value={pickupAt} />
+            <Field label="Entrega prevista (data)">
+              <input type="date" {...bind.deliveryDate} className="campo" />
             </Field>
-            <Field label="Retirada prevista">
-              <input required name="pickup_at" type="datetime-local" value={pickupAt} onChange={(e) => setPickupAt(e.target.value)} className="campo" />
+            <Field label="Entrega prevista (horário)">
+              <input type="time" {...bind.deliveryTime} className="campo data-hora" />
+            </Field>
+            <Field label="Retirada prevista (data)">
+              <input type="date" {...bind.pickupDate} className="campo" />
+            </Field>
+            <Field label="Retirada prevista (horário)">
+              <input type="time" {...bind.pickupTime} className="campo data-hora" />
             </Field>
           </Grid>
           <Field label="Endereço">

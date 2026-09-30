@@ -211,7 +211,7 @@ export async function dashboardStats(query: AvailabilityQuery = availabilityQuer
     ),
     one<any>(
     `SELECT
-       (SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ?1 AND ?2) AS recebido,
+       (SELECT COALESCE(SUM(amount_cents),0) FROM payments WHERE paid_at BETWEEN ?1 AND ?2 AND transfer_group IS NULL) AS recebido,
        (SELECT COALESCE(SUM(total_cents),0) FROM reservations
          WHERE event_date BETWEEN ?1 AND ?2 AND status IN (${ACTIVE})) AS faturamento,
        (SELECT COALESCE(SUM(amount_cents),0) FROM freights
