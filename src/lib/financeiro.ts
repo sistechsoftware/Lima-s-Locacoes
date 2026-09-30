@@ -145,3 +145,58 @@ export function saldoConta(inicialCents: number, entradasCents: number, saidasCe
 export function resultadoPeriodo(recebidoCents: number, pagoCents: number): number {
   return recebidoCents - pagoCents;
 }
+
+/* ------------------------------------------------------------------ */
+/* Transferencia entre contas                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A transferencia e um evento DUPLO do caixa, nao uma receita e uma despesa:
+ * saida = pagamento negativo na conta de origem; entrada = pagamento positivo
+ * na de destino. Como saldo de conta e sempre inicial + entradas - saidas, os
+ * dois lados aparecem nele sem nenhuma consulta nova — e o saldo consolidado
+ * nao se altera, porque o que sai de uma entra na outra.
+ */
+
+/** Validacao compartilhada pelos caminhos de criar e editar. */
+export function validarTransferencia(
+  origemId: number,
+  destinoId: number,
+  valorCents: number,
+  data: string,
+): string | null {
+  if (!origemId || !destinoId) return "Escolha a conta de origem e a conta de destino.";
+  if (origemId === destinoId) return "Origem e destino não podem ser a mesma conta.";
+  if (!Number.isFinite(valorCents) || valorCents <= 0) return "Informe um valor maior que zero para transferir.";
+  if (valorCents !== Math.round(valorCents)) return "O valor da transferência não pode ter fração de centavo.";
+  if (!/^\d{4}-\d{2}-\d{2}/.test(data ?? "")) return "Informe a data da transferência.";
+  return null;
+}
+
+/** Marca conceitual: transferência não é ganho nem gasto do negócio. */
+export const TRANSFER_NOTES_PREFIX = "transfer:";
+
+/**
+ * Predicado SQL que separa lancamento comum de transferencia.
+ *
+ * Sem alias de proposito: vale tanto em consulta com `FROM payments p`
+ * (Financeiro) quanto com `FROM payments` puro (relatorios, dashboard).
+ */
+export const SQL_NAO_TRANSFERENCIA = "transfer_group IS NULL";
+
+/**
+ * Descricao de cada lado no extrato, a partir dos NOMES no momento da
+ * transferencia: renomear a conta depois nao reescreve o que foi registrado.
+ */
+export function descricaoTransferencia(direcao: "saida" | "entrada", contaContraria: string): string {
+  return direcao === "saida" ? `Transferência para ${contaContraria}` : `Transferência recebida de ${contaContraria}`;
+}
+
+/**
+ * Direcao de cada lado a partir da MESMA origem que gerou os lancamentos:
+ * recalcular em vez de confiar em texto gravado evita que o extrato mostre o
+ * lado errado quando o par deixa de existir.
+ */
+export function direcaoDoLado(amountCents: number, origemId: number, contaId: number): "saida" | "entrada" {
+  return contaId === origemId || amountCents < 0 ? "saida" : "entrada";
+}

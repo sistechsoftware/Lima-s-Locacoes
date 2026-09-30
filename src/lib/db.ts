@@ -342,9 +342,15 @@ CREATE TABLE IF NOT EXISTS payments (
   /* ligacao opcional com a parcela prevista (ver financial_entries) */
   entry_id       INTEGER REFERENCES financial_entries(id) ON DELETE SET NULL,
   account_id     INTEGER REFERENCES financial_accounts(id) ON DELETE SET NULL,
-  reconciled_at  TEXT
+  reconciled_at  TEXT,
+  /* transferencia dupla (0027): saida = pagamento negativo na origem, entrada
+     = pagamento positivo no destino; o mesmo transfer_group liga os dois lados
+     e counterpart aponta para o par. Nulo = lancamento comum. */
+  transfer_group TEXT,
+  transfer_counterpart_id INTEGER REFERENCES payments(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_pay_res ON payments(reservation_id);
+CREATE INDEX IF NOT EXISTS idx_pay_transfer_group ON payments(transfer_group);
 CREATE INDEX IF NOT EXISTS idx_pay_date ON payments(paid_at);
 
 CREATE TABLE IF NOT EXISTS deposits (
@@ -566,7 +572,11 @@ CREATE TABLE IF NOT EXISTS financial_accounts (
   initial_balance_cents INTEGER NOT NULL DEFAULT 0,
   notes                 TEXT,
   active                INTEGER NOT NULL DEFAULT 1,
-  created_at            TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  created_at            TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  /* natureza do dinheiro (0027): 1 = carteira fisica/caixa/dinheiro na mao.
+     Nao altera comportamento nenhum: a conta segue no mesmo saldo, extrato e
+     seletores; apenas identifica que o dinheiro ali e fisico. */
+  is_cash_account       INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS suppliers (

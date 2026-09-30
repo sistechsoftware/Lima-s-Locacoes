@@ -12,6 +12,8 @@ import { payEntry } from "../compras/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addExpense, createPurpose, deleteExpense, finalidadesDisponiveis } from "./actions";
 import { cancelarPagarManual, criarPagarManual } from "./pagar-actions";
+import { editarTransferenciaAction, excluirTransferenciaAction, transferirValor } from "./transferencias-actions";
+import { listarTransferencias } from "@/lib/transferencias";
 import NovoPagarForm from "./NovoPagarForm";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +41,7 @@ export default async function FinanceiroPage({
        LEFT JOIN reservations r ON r.id = p.reservation_id
        LEFT JOIN customers c ON c.id = r.customer_id
        LEFT JOIN freights f ON f.id = p.freight_id
-      WHERE p.paid_at BETWEEN ? AND ? ORDER BY p.paid_at DESC, p.id DESC`,
+      WHERE p.paid_at BETWEEN ? AND ? AND p.transfer_group IS NULL ORDER BY p.paid_at DESC, p.id DESC`,
       [de, ate],
     ),
     all<any>(
@@ -74,8 +76,42 @@ export default async function FinanceiroPage({
     listarEntries({ direction: "pagar", situacao: "todas" }),
     totaisEntries("receber"),
     totaisEntries("pagar"),
-    all<any>(`SELECT id, name FROM financial_accounts WHERE active = 1 ORDER BY name`),
+    // contas para transferir e para lancar: inativas entram no fim, para o
+    // historico antigo continuar mostrando o nome certo ao editar
+    all<any>(`SELECT id, name, is_cash_account, active FROM financial_accounts ORDER BY active DESC, name COLLATE NOCASE`),
   ]);
+
+  const transfers = await listarTransferencias(200);
+
+  // Extrato por conta da aba Transferencias: linhas do periodo e saldo
+  // consolidado de cada conta (inicial + entradas - saidas, todas as datas) —
+  // a mesma conta que sempre rodou, agora lendo tambem os lados da transferencia.
+  const idsContas = contasAtivas.map((c) => c.id);
+  const [movimentosContas, agregadosContas] = idsContas.length
+    ? await Promise.all([
+        all<any>(
+          `SELECT account_id, amount_cents, paid_at, notes, transfer_group
+             FROM payments
+            WHERE account_id IN (${idsContas.map(() => "?").join(",")})
+              AND paid_at BETWEEN ? AND ?
+            ORDER BY paid_at DESC, id DESC`,
+          [...idsContas, de, ate],
+        ),
+        all<any>(
+          `SELECT a.id AS account_id, a.initial_balance_cents,
+                  COALESCE(SUM(CASE WHEN p.amount_cents > 0 THEN p.amount_cents END),0) AS entradas,
+                  COALESCE(SUM(CASE WHEN p.amount_cents < 0 THEN -p.amount_cents END),0) AS saidas
+             FROM financial_accounts a
+             LEFT JOIN payments p ON p.account_id = a.id
+            WHERE a.id IN (${idsContas.map(() => "?").join(",")})
+            GROUP BY a.id`,
+          idsContas,
+        ),
+      ])
+    : [[], []];
+  const saldoFinalDe = new Map<number, number>(
+    (agregadosContas as any[]).map((a) => [a.account_id, Number(a.initial_balance_cents) + Number(a.entradas) - Number(a.saidas)]),
+  );
 
   // dados do lancamento manual: fornecedores e finalidades seguem o que ja existe
   const fornecedores = await all<any>(`SELECT id, name FROM suppliers WHERE active = 1 ORDER BY name`);
@@ -133,12 +169,162 @@ export default async function FinanceiroPage({
           { value: "resumo", label: "Resumo" },
           { value: "entradas", label: "Entradas", count: entradas.length },
           { value: "saidas", label: "Saídas", count: saidas.length },
+          { value: "transferencias", label: "Transferências", count: transfers.length },
           { value: "receber", label: "A receber", count: parcelasReceber.filter((p) => p.situacao !== "quitada").length },
           { value: "pagar", label: "A pagar", count: parcelasPagar.filter((p) => p.situacao !== "quitada").length },
         ]}
         current={aba}
         base={`/financeiro?de=${de}&ate=${ate}`}
       />
+
+      {aba === "transferencias" && (
+        <div className="space-y-4">
+          {/*ExtratoContas*/}
+          <Section title="Transferir entre contas">
+            <p className="mb-3 text-sm text-stone-600">
+              Movimenta dinheiro de uma conta para outra. <b>Não é receita e não é despesa:</b> o total em caixa fica
+              exatamente igual — só muda onde o dinheiro está.
+            </p>
+            {contasAtivas.filter((c) => c.active).length < 2 ? (
+              <Empty>Cadastre ao menos duas contas ativas para transferir. O cadastro fica em Configurações › Contas.</Empty>
+            ) : (
+              <form action={transferirValor} className="grid grid-cols-2 gap-2">
+                <input type="hidden" name="aba" value="transferencias" />
+                <input type="hidden" name="de" value={de} />
+                <input type="hidden" name="ate" value={ate} />
+                <label className="block">
+                  <span className="rotulo">Conta de origem *</span>
+                  <select name="origem_id" className="campo" required defaultValue="">
+                    <option value="" disabled>
+                      Selecionar conta…
+                    </option>
+                    {contasAtivas.filter((c) => c.active).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {c.is_cash_account ? " (dinheiro em espécie)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="rotulo">Conta de destino *</span>
+                  <select name="destino_id" className="campo" required defaultValue="">
+                    <option value="" disabled>
+                      Selecionar conta…
+                    </option>
+                    {contasAtivas.filter((c) => c.active).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {c.is_cash_account ? " (dinheiro em espécie)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="rotulo">Valor (R$) *</span>
+                  <input name="amount" inputMode="decimal" placeholder="0,00" required className="campo" />
+                </label>
+                <label className="block">
+                  <span className="rotulo">Data *</span>
+                  <input name="date" type="date" defaultValue={today()} className="campo" required />
+                </label>
+                <label className="col-span-2 block">
+                  <span className="rotulo">Observação</span>
+                  <input name="observacao" maxLength={120} placeholder="Opcional — ex.: saque para o evento" className="campo" />
+                </label>
+                <div className="col-span-2">
+                  <SubmitButton className="w-full">Transferir valor</SubmitButton>
+                </div>
+              </form>
+            )}
+          </Section>
+
+          <Section title={`Transferências realizadas (${transfers.length})`}>
+            {transfers.length === 0 ? (
+              <Empty>Nenhuma transferência entre contas.</Empty>
+            ) : (
+              <ul className="divide-y divide-nuvem-200">
+                {transfers.map((t) => (
+                  <li key={t.grupo} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-tinta-900">
+                        <Badge tone="azul">Transferência</Badge>
+                        <span>
+                          {t.origem_nome} → {t.destino_nome}
+                        </span>
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        {dateBR(t.data)} · transferência interna · não entra em receitas nem despesas
+                        {t.observacao ? ` · ${t.observacao}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <details className="relative">
+                        <summary className="cursor-pointer list-none rounded-xl border border-nuvem-300 px-3 py-1.5 text-xs font-semibold text-stone-600">
+                          Editar
+                        </summary>
+                        <div className="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-nuvem-300 bg-white p-3 shadow-lg">
+                          <form action={editarTransferenciaAction} className="space-y-2">
+                            <input type="hidden" name="grupo" value={t.grupo} />
+                            <input type="hidden" name="aba" value="transferencias" />
+                            <input type="hidden" name="de" value={de} />
+                            <input type="hidden" name="ate" value={ate} />
+                            <select name="origem_id" defaultValue={String(t.origem_id)} className="campo" aria-label="Conta de origem">
+                              {contasAtivas.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                            <select name="destino_id" defaultValue={String(t.destino_id)} className="campo" aria-label="Conta de destino">
+                              {contasAtivas.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              name="amount"
+                              defaultValue={(t.valor_cents / 100).toFixed(2)}
+                              inputMode="decimal"
+                              className="campo"
+                              aria-label="Valor"
+                            />
+                            <input name="date" type="date" defaultValue={String(t.data).slice(0, 10)} className="campo" aria-label="Data" />
+                            <input
+                              name="observacao"
+                              defaultValue={t.observacao}
+                              maxLength={120}
+                              className="campo"
+                              aria-label="Observação"
+                            />
+                            <SubmitButton className="w-full">Salvar alteração</SubmitButton>
+                          </form>
+                        </div>
+                      </details>
+                      <form action={excluirTransferenciaAction}>
+                        <input type="hidden" name="grupo" value={t.grupo} />
+                        <input type="hidden" name="aba" value="transferencias" />
+                        <input type="hidden" name="de" value={de} />
+                        <input type="hidden" name="ate" value={ate} />
+                        <SubmitButton
+                          variant="perigo"
+                          confirm={`Excluir a transferência de ${money(t.valor_cents)}? Os dois lados voltam: ${t.origem_nome} recebe de volta e ${t.destino_nome} perde o valor.`}
+                          className="px-2 py-1 text-xs"
+                        >
+                          Excluir
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          {contasAtivas.length > 0 && <ExtratoContas contas={contasAtivas} movimentos={movimentosContas} saldoDe={saldoFinalDe} de={de} ate={ate} />}
+        </div>
+      )}
 
       {aba === "resumo" && (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -484,3 +670,76 @@ function ListaParcelas({
     </div>
   );
 }
+
+/**
+ * Extrato de cada conta, com as transferencias destacadas.
+ *
+ * Os lados entram como entradas/saidas normais (e e assim que o saldo fecha),
+ * mas a descricao gravada na propria linha ja diz de onde/para onde o dinheiro
+ * foi — e o selo azul separa visualmente transferencia de receita e despesa.
+ */
+function ExtratoContas({
+  contas,
+  movimentos,
+  saldoDe,
+}: {
+  contas: any[];
+  movimentos: any[];
+  saldoDe: Map<number, number>;
+  de?: string;
+  ate?: string;
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {contas.map((c) => (
+        <ExtratoConta key={c.id} conta={c} movimentos={movimentos} saldo={saldoDe.get(c.id) ?? 0} />
+      ))}
+    </div>
+  );
+}
+
+function ExtratoConta({
+  conta,
+  movimentos,
+  saldo,
+}: {
+  conta: any;
+  movimentos: any[];
+  saldo: number;
+}) {
+  const linhas = movimentos
+    .filter((m) => m.account_id === conta.id)
+    .map((m) => ({ ...m, transfer: m.transfer_group != null }));
+  const entradasPeriodo = linhas.filter((l) => l.amount_cents > 0).reduce((s, l) => s + l.amount_cents, 0);
+  const saidasPeriodo = linhas.filter((l) => l.amount_cents < 0).reduce((s, l) => s - l.amount_cents, 0);
+  return (
+    <Section title={`${conta.name}${conta.is_cash_account ? " (dinheiro em espécie)" : ""}`}>
+      <p className="mb-2 text-xs text-stone-500">
+        Saldo da conta (todas as datas): <b className="text-tinta-900">{money(saldo)}</b> · entradas do período{" "}
+        {money(entradasPeriodo)} · saídas {money(saidasPeriodo)}
+      </p>
+      {linhas.length === 0 ? (
+        <Empty>Nenhuma movimentação no período.</Empty>
+      ) : (
+        <ul className="divide-y divide-nuvem-200">
+          {linhas.map((l, i) => (
+            <li key={i} className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-tinta-900">
+                  {l.transfer ? <Badge tone="azul">Transferência</Badge> : null}
+                  <span className="truncate">{l.notes || (l.amount_cents > 0 ? "Entrada" : "Saída")}</span>
+                </p>
+                <p className="text-xs text-stone-500">{dateBR(l.paid_at)}</p>
+              </div>
+              <span className={`shrink-0 text-sm font-bold ${l.amount_cents < 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                {l.amount_cents < 0 ? "−" : "+"}
+                {money(Math.abs(l.amount_cents))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+

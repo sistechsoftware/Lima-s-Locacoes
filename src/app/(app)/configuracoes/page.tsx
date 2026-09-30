@@ -19,7 +19,7 @@ import AssinaturaEmpresa from "@/components/AssinaturaEmpresa";
 import AvatarForm from "./AvatarForm";
 import AvatarAdminForm from "./AvatarAdminForm";
 import { saveVehicle, deleteVehicle } from "../operacao/actions";
-import { createAccount, createSupplier } from "../compras/actions";
+import { createAccount, createSupplier, updateAccount } from "../compras/actions";
 import { money } from "@/lib/format";
 import UserForm from "./UserForm";
 import PasswordForm from "./PasswordForm";
@@ -423,6 +423,16 @@ export default async function ConfiguracoesPage({
             <input name="bank" placeholder="Banco" className="campo" />
             <input name="initial_balance" placeholder="Saldo inicial (R$)" inputMode="decimal" className="campo" />
             <input name="notes" placeholder="Observações" className="campo" />
+            <label className="col-span-2 flex items-center gap-2 text-sm text-stone-700">
+              <input type="checkbox" name="is_cash_account" value="1" className="h-4 w-4" />
+              <span>
+                Esta conta representa <b>dinheiro em espécie</b>
+                <span className="block text-xs text-stone-500">
+                  Marque para carteira física, caixa ou dinheiro em mãos. A conta funciona igual a qualquer outra:
+                  recebe lançamentos, participa de transferências e entra no saldo.
+                </span>
+              </span>
+            </label>
             <div className="col-span-2">
               <SubmitButton variant="secundario" className="w-full">
                 Adicionar Conta
@@ -442,7 +452,8 @@ export default async function ConfiguracoesPage({
                     <div className="flex items-center justify-between gap-2">
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-tinta-900">
-                          {c.name} {!c.active && <Badge tone="cinza">Inativa</Badge>}
+                          {c.name} {c.is_cash_account ? <Badge tone="terracota">Dinheiro em espécie</Badge> : null}{" "}
+                          {!c.active && <Badge tone="cinza">Inativa</Badge>}
                         </span>
                         <span className="block text-xs text-stone-500">
                           {c.kind}
@@ -456,6 +467,53 @@ export default async function ConfiguracoesPage({
                     <p className="mt-1 text-xs text-stone-500">
                       entradas {money(c.entradas)} · saídas {money(c.saidas)}
                     </p>
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs font-semibold text-marca-600">Editar conta</summary>
+                      {/* As duas caixas do mesmo form viajam juntas: desmarcar a
+                          opção remove a marca em vez de manter o valor antigo. */}
+                      <form action={updateAccount} className="mt-2 grid grid-cols-2 gap-2">
+                        <input type="hidden" name="id" value={c.id} />
+                        <input type="hidden" name="is_cash_account_presente" value="1" />
+                        <input name="name" defaultValue={c.name} placeholder="Nome da conta *" className="campo col-span-2" required />
+                        <select name="kind" defaultValue={c.kind} className="campo">
+                          <option value="banco">Conta corrente</option>
+                          <option value="dinheiro">Dinheiro</option>
+                          <option value="digital">Conta digital</option>
+                          <option value="poupanca">Poupança</option>
+                          <option value="outro">Outra</option>
+                        </select>
+                        <input name="bank" defaultValue={c.bank ?? ""} placeholder="Banco" className="campo" />
+                        <input
+                          name="initial_balance"
+                          defaultValue={(Number(c.initial_balance_cents || 0) / 100).toFixed(2)}
+                          placeholder="Saldo inicial (R$)"
+                          inputMode="decimal"
+                          className="campo"
+                        />
+                        <input name="notes" defaultValue={c.notes ?? ""} placeholder="Observações" className="campo" />
+                        <label className="col-span-2 flex items-center gap-2 text-sm text-stone-700">
+                          <input
+                            type="checkbox"
+                            name="is_cash_account"
+                            value="1"
+                            defaultChecked={!!c.is_cash_account}
+                            className="h-4 w-4"
+                          />
+                          <span>
+                            Esta conta representa <b>dinheiro em espécie</b>
+                          </span>
+                        </label>
+                        <div className="col-span-2">
+                          <SubmitButton variant="secundario" className="w-full">
+                            Salvar Conta
+                          </SubmitButton>
+                        </div>
+                      </form>
+                      <p className="mt-1 text-xs text-stone-500">
+                        Editar o saldo inicial não altera lançamentos antigos: ele entra na conta do saldo junto com o
+                        que já foi movimentado.
+                      </p>
+                    </details>
                   </li>
                 );
               })}

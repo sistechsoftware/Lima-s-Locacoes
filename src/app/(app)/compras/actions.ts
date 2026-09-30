@@ -289,16 +289,63 @@ export async function createAccount(fd: FormData) {
   const name = String(fd.get("name") ?? "").trim();
   if (!name) return;
   const id = await insert(
-    `INSERT INTO financial_accounts (name, kind, bank, initial_balance_cents, notes) VALUES (?,?,?,?,?)`,
+    `INSERT INTO financial_accounts (name, kind, bank, initial_balance_cents, notes, is_cash_account) VALUES (?,?,?,?,?,?)`,
     [
       name,
       String(fd.get("kind") ?? "banco"),
       String(fd.get("bank") ?? "").trim(),
       parseMoney(String(fd.get("initial_balance") ?? "")),
       String(fd.get("notes") ?? "").trim(),
+      fd.get("is_cash_account") === "1" ? 1 : 0,
     ],
   );
   await logAction(user, "criar", "conta", id, `${user.name} cadastrou a conta ${name}`);
+  revalidatePath("/configuracoes");
+  revalidatePath("/financeiro");
+}
+
+/**
+ * Edicao do cadastro de conta, incluindo a natureza "dinheiro em especie".
+ *
+ * Alterar cadastro nao reescreve lancamento nenhum: o saldo continua sendo
+ * inicial + movimentacoes, e o que muda aqui e so o cadastro. O checkbox tem
+ * um marcador escondido no formulario: sem ele, um checkbox desmarcado nao
+ * viajaria no POST e a conta nunca conseguiria deixar de ser dinheiro em
+ * especie.
+ */
+export async function updateAccount(fd: FormData) {
+  const user = await assertAdmin();
+  const id = Number(fd.get("id"));
+  const conta = await one<any>(`SELECT * FROM financial_accounts WHERE id = ?`, [id]);
+  if (!conta) return;
+
+  const name = String(fd.get("name") ?? "").trim() || conta.name;
+  const isCash = fd.has("is_cash_account_presente") ? (fd.get("is_cash_account") === "1" ? 1 : 0) : conta.is_cash_account ? 1 : 0;
+  await run(
+    `UPDATE financial_accounts
+        SET name = ?, kind = ?, bank = ?, initial_balance_cents = ?, notes = ?, is_cash_account = ?
+      WHERE id = ?`,
+    [
+      name,
+      String(fd.get("kind") ?? conta.kind),
+      String(fd.get("bank") ?? "").trim(),
+      parseMoney(String(fd.get("initial_balance") ?? "")),
+      String(fd.get("notes") ?? "").trim(),
+      isCash,
+      id,
+    ],
+  );
+
+  const mudouNatureza = (conta.is_cash_account ? 1 : 0) !== isCash;
+  await logAction(
+    user,
+    "editar",
+    "conta",
+    id,
+    mudouNatureza
+      ? `${user.name} editou a conta ${name}${isCash ? " e marcou como dinheiro em espécie" : " e desmarcou dinheiro em espécie"}`
+      : `${user.name} editou a conta ${name}`,
+  );
   revalidatePath("/configuracoes");
   revalidatePath("/financeiro");
 }
