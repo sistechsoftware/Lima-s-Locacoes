@@ -8,7 +8,7 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { EXTRA_NAV, MOBILE_NAV, NAV } from "../src/lib/nav";
+import { EXTRA_NAV, MOBILE_NAV, NAV, NAV_GRUPOS, gruposVisiveis, visiveis } from "../src/lib/nav";
 
 describe("estrutura do menu", () => {
   it("barra inferior tem exatamente 4 itens diretos (5o espaco e o Mais)", () => {
@@ -34,6 +34,44 @@ describe("estrutura do menu", () => {
     assert.equal(new Set(hrefs).size, hrefs.length, "hrefs duplicados no EXTRA_NAV");
     for (const n of MOBILE_NAV) {
       assert.equal(hrefs.includes(n.href), false, `${n.href} nao pode aparecer na barra e no Mais`);
+    }
+  });
+});
+
+/**
+ * adminOnly precisa ser APLICADO em toda surface da navegacao.
+ * Registrado na auditoria: a flag existia em nav.ts mas nenhum componente
+ * filtrava por ela — "Diario de erros" aparecia para operador em todos os
+ * modos (classico, agrupado, barra inferior e sheets "Mais").
+ */
+describe("adminOnly aplicado na navegacao", () => {
+  const semAdmin = (hrefs: string[]) => hrefs.filter((h) => h === "/erros");
+
+  it("somente admin ve o item no menu classico e no Mais", () => {
+    assert.equal(visiveis(NAV, true).some((n) => n.href === "/erros"), true);
+    assert.equal(visiveis(EXTRA_NAV, true).some((n) => n.href === "/erros"), true);
+    assert.equal(visiveis(NAV, false).some((n) => n.href === "/erros"), false, "operador nao pode ver o item");
+    assert.equal(visiveis(EXTRA_NAV, false).some((n) => n.href === "/erros"), false);
+  });
+
+  it("operador nao ve o item em nenhum grupo do modo agrupado", () => {
+    const grupos = gruposVisiveis(NAV_GRUPOS, false);
+    const temErros = grupos.some((g) => g.itens.some((n) => n.href === "/erros"));
+    assert.equal(temErros, false);
+    // e o grupo nao fica vazio nem fantasioso
+    for (const g of grupos) assert.ok(g.itens.length > 0);
+    assert.equal(gruposVisiveis(NAV_GRUPOS, true).some((g) => g.itens.some((n) => n.href === "/erros")), true);
+  });
+
+  it("filtra sem alterar a ordem dos demais itens", () => {
+    const esperado = NAV.filter((n) => n.href !== "/erros").map((n) => n.href);
+    assert.deepEqual(visiveis(NAV, false).map((n) => n.href), esperado);
+  });
+
+  it("nenhum item adminOnly escapa nos filtros de qualquer lista", () => {
+    for (const lista of [NAV, EXTRA_NAV, MOBILE_NAV, ...NAV_GRUPOS.map((g) => g.itens)]) {
+      const vazados = semAdmin(visiveis(lista, false).map((n) => n.href));
+      assert.deepEqual(vazados, [], "item adminOnly visivel para operador");
     }
   });
 });

@@ -21,13 +21,14 @@ export const dynamic = "force-dynamic";
 export default async function TimelinePage({
   searchParams,
 }: {
-  searchParams: Promise<AvailabilityParams & { modo?: string }>;
+  searchParams: Promise<AvailabilityParams & { modo?: string | string[] }>;
 }) {
   await requireUser();
   const sp = await searchParams;
   const query = availabilityQuery(sp);
   const options = await stockOptions(query);
-  const modo = sp.modo === "todos" ? "todos" : "ocupados";
+  const modoBruto = Array.isArray(sp.modo) ? sp.modo[sp.modo.length - 1] : sp.modo;
+  const modo = modoBruto === "todos" ? "todos" : "ocupados";
 
   const rows = await equipmentTimeline(query.from, query.to, options, {
     apenasOcupados: modo === "ocupados",
@@ -43,7 +44,15 @@ export default async function TimelinePage({
 
   const qs = query.queryString;
   const linkModo = (m: string) => `/disponibilidade/timeline?${qs}&modo=${m}`;
-  const linkPeriodo = (f: string, t: string) => `/disponibilidade/timeline?${qs}&inicio=${f}&fim=${t}&modo=${modo}`;
+  // qs ja traz inicio/fim: trocar em vez de acrescentar, senao a URL fica com
+  // os dois pares repetidos e a tela quebra ao reparsear (ver availabilityQuery).
+  const linkPeriodo = (f: string, t: string) => {
+    const p = new URLSearchParams(qs);
+    p.set("inicio", f);
+    p.set("fim", t);
+    p.set("modo", modo);
+    return `/disponibilidade/timeline?${p.toString()}`;
+  };
 
   return (
     <div className="space-y-4">

@@ -36,12 +36,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <PushRegistration />
-      <Sidebar company={settings.company_name} logo={settings.company_logo} layout={navLayout} />
+      <Sidebar company={settings.company_name} logo={settings.company_logo} layout={navLayout} admin={user.role === "admin"} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} company={settings.company_name} logo={settings.company_logo} />
         <main className="com-barra-inferior mx-auto w-full max-w-6xl flex-1 p-3 sm:p-5">{children}</main>
       </div>
-      <BottomNav layout={navLayout} />
+      <BottomNav layout={navLayout} admin={user.role === "admin"} />
       <FloatingAction layout={navLayout} />
     </div>
   );

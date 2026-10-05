@@ -46,6 +46,24 @@ export const MOBILE_NAV = NAV.filter((n) => n.mobile);
  *  original do menu lateral (Mensagens primeiro) — sem duplicar entradas. */
 export const EXTRA_NAV = NAV.filter((n) => !n.mobile);
 
+/**
+ * Itens visiveis para o papel de quem navega: `adminOnly` (hoje, o Diario de
+ * erros) so aparece para admin. O filtro e unico e central — sidebar classica,
+ * modo agrupado, barra inferior e os dois sheets "Mais" leem daqui, entao a
+ * flag declarada no item nunca pode vazar em uma tela nova que reutilize NAV.
+ * A tela /erros continua se protegendo sozinha na rota; aqui e so o item de menu.
+ */
+export function visiveis(itens: NavItem[], admin: boolean): NavItem[] {
+  return admin ? itens : itens.filter((n) => !n.adminOnly);
+}
+
+/** Grupos do modo Agrupado ja filtrados; grupos que ficaram vazios saem. */
+export function gruposVisiveis(grupos: NavGroup[], admin: boolean): NavGroup[] {
+  return grupos
+    .map((g) => ({ ...g, itens: visiveis(g.itens, admin) }))
+    .filter((g) => g.itens.length > 0);
+}
+
 /* ==================== MODO AGRUPADO (opcional) ==================== */
 
 /** Layout de navegacao escolhido pela empresa (Configuracoes > Navegacao).
