@@ -247,10 +247,40 @@ aplicada **para não inventar causa**. Os 2 registros permanecem no Diário como
 - Contorno usado para verificação de telas: harness fora do repositório que invoca os server
   components com stubs de `next/headers` + uma cópia offline do export de produção.
   O build de produção rodou com skip temporário do proxy (`initOpenNextCloudflareForDev`)
-  **revertido em seguida** — `next.config.mjs` está intacto no diff.
+  **revertido em seguida** — na época o `next.config.mjs` estava intacto no diff.
+  (2026-10-05: o skip virou fix permanente na linha do commit de deploy — ver seção abaixo.)
 
 ### Pendências operacionais (após revisão/deploy)
 1. Marcar como resolvidos os ids **1, 4, 5, 6, 7, 8, 9, 10** em `/erros` (admin) — nada foi
    alterado em produção.
 2. Observar os ids **2 e 3**: se recorrerem, a linha de servidor trará a mensagem real.
 3. Decidir sobre R2 (normalizador de `searchParams` nas listas).
+
+---
+
+## Deploy (2026-10-05)
+
+| Etapa | Resultado |
+| --- | --- |
+| Commit | `117fcd8` `fix: corrige causas raiz do diario de erros` (12 arquivos, +652/−40) |
+| Push | `origin/fix/auditoria-diario-erros` (branch nova a partir de `main` @ `09b929b`) |
+| Migrations | **nenhuma pendente** (`wrangler d1 migrations list --remote` → "No migrations to apply!") |
+| Build | `opennextjs-cloudflare build` **OK** após o guard abaixo |
+| Deploy | **OK** — versão `aa7f4e7a-806f-4684-8505-75668a3e6c96` em 100% |
+| Smoke | `/`, `/login`, `/erros` → **200** em `https://limas-locacoes.limas-locacoes.workers.dev` |
+| Cron | trigger `* * * * *` reinstalado no deploy |
+
+### Ajuste de build necessário (`next.config.mjs`)
+- `initOpenNextCloudflareForDev()` rodava **incondicionalmente**, também dentro de
+  `next build`, subindo o workerd — que quebra nesta máquina (access violation). Agora o init
+  só roda quando a fase é de desenvolvimento (`argv`/`npm_lifecycle_event` = `dev`); produção
+  não depende dele (o runtime vem do entrypoint do Workers).
+
+### Por que o `npm run deploy:cloudflare` não roda inteiro nesta máquina
+- O comando `opennextjs-cloudflare deploy` chama `getPlatformProxy()` (miniflare → workerd)
+  **mesmo sem precisar** — mesmo bloqueio de workerd, agora no passo de deploy.
+- O que isso faria além do upload: `populate-cache` (no-op neste projeto: os caches padrão do
+  `defineCloudflareConfig()` são `dummy`, e o `wrangler.jsonc` não tem KV/R2 de cache) e o
+  mapping de skew protection (desabilitado → `undefined`).
+- Deploy manual equivalente executado: `OPEN_NEXT_DEPLOY=true npx wrangler deploy` → mesmo
+  resultado (worker + assets + triggers).
