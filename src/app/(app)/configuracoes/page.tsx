@@ -13,7 +13,7 @@ import { Tabs } from "@/components/List";
 import { SubmitButton } from "@/components/SubmitButton";
 import ImageInput from "@/components/ImageInput";
 import EditorContrato from "@/components/EditorContrato";
-import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveFreightSettings, saveTemplates, toggleUser } from "./actions";
+import { addCategory, removeCategory, resetPassword, saveCompanySettings, saveFreightSettings, saveNavLayout, saveTemplates, toggleUser } from "./actions";
 import { getCompanySignature } from "@/lib/assinatura-empresa";
 import AssinaturaEmpresa from "@/components/AssinaturaEmpresa";
 import AvatarForm from "./AvatarForm";
@@ -30,10 +30,10 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ aba?: string; erro?: string }>;
+  searchParams: Promise<{ aba?: string; grupo?: string; erro?: string }>;
 }) {
   const user = await requireUser();
-  const { aba = "empresa", erro } = await searchParams;
+  const { aba = "empresa", grupo, erro } = await searchParams;
   const s = await getSettings();
   const categorias = await all<any>(
     `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS produtos FROM categories c ORDER BY c.name`,
@@ -61,6 +61,7 @@ export default async function ConfiguracoesPage({
 
   const ABAS = [
     { value: "empresa", label: "Empresa" },
+    { value: "navegacao", label: "Navegação" },
     { value: "modelos", label: "Modelos" },
     { value: "categorias", label: "Categorias" },
     { value: "veiculos", label: "Veículos" },
@@ -77,10 +78,25 @@ export default async function ConfiguracoesPage({
     { value: "conta", label: "Minha conta" },
   ];
 
+  /**
+   * Agrupamento visual das abas (so apresentacao): cada chip continua sendo o
+   * link /configuracoes?aba=... de sempre, agora com um rotulo de contexto ao
+   * lado — elimina a sensacao de configuracoes "adas umas as outras" sem
+   * mudar nenhuma URL, action ou permissao.
+   */
+  const GRUPOS_ABAS: { titulo: string; itens: { value: string; label: string }[] }[] = [
+    { titulo: "Geral", itens: ABAS.filter((t) => ["empresa", "navegacao", "conta"].includes(t.value)) },
+    { titulo: "Contratos", itens: ABAS.filter((t) => ["modelos", "assinatura"].includes(t.value)) },
+    { titulo: "Financeiro", itens: ABAS.filter((t) => ["contas", "finalidades"].includes(t.value)) },
+    { titulo: "Comunicações", itens: ABAS.filter((t) => ["aniversarios"].includes(t.value)) },
+    { titulo: "Operação", itens: ABAS.filter((t) => ["disponibilidade", "fidelidade"].includes(t.value)) },
+    { titulo: "Suprimentos", itens: ABAS.filter((t) => ["categorias", "veiculos", "fornecedores", "frete"].includes(t.value)) },
+    { titulo: "Usuários", itens: ABAS.filter((t) => ["usuarios"].includes(t.value)) },
+  ];
+
   return (
     <div className="space-y-4">
       <PageHeader title="Configurações" subtitle="Dados da empresa, modelos, usuários e permissões" />
-      <Link href="/notificacoes/preferencias" className="inline-block text-sm text-marca-600 underline">Notificações: dispositivos, funções operacionais e antecedentes</Link>
       {erro && <Alerta tone="vermelho">{erro}</Alerta>}
       {user.role !== "admin" && aba !== "conta" && (
         <Alerta tone="ambar">
@@ -89,7 +105,95 @@ export default async function ConfiguracoesPage({
         </Alerta>
       )}
 
-      <Tabs items={ABAS} current={aba} base="/configuracoes" />
+      {/* Abas: no admin, agrupadas por contexto (o chip segue apontando para
+          /configuracoes?aba=... como sempre); sem admin, a lista simples de
+          sempre. O link de preferencias de notificacoes entrou na aba
+          Navegação, deixando de ser texto solto no topo. */}
+      {user.role === "admin" ? (
+        <div className="space-y-1.5">
+          {GRUPOS_ABAS.filter((g) => g.itens.length > 0).map((g) => (
+            <div key={g.titulo} className="scroll-x -mx-3 flex items-center gap-2 px-3 sm:mx-0 sm:px-0">
+              <span className="w-28 shrink-0 text-[0.62rem] font-black uppercase tracking-widest text-stone-400">
+                {g.titulo}
+              </span>
+              {g.itens.map((t) => (
+                <Link
+                  key={t.value}
+                  href={`/configuracoes?aba=${t.value}&grupo=${encodeURIComponent(g.titulo)}`}
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                    aba === t.value
+                      ? "border-marca-600 bg-marca-600 text-white"
+                      : "border-nuvem-300 bg-white text-tinta-700 hover:bg-nuvem-50"
+                  }`}
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Tabs items={ABAS} current={aba} base="/configuracoes" />
+      )}
+
+      {aba === "navegacao" && (
+        <Section title="Layout de navegação">
+          {/* O link de preferencias de notificacoes segue visivel para todos:
+              era texto solto no topo desta pagina antes, aqui vira acesso da
+              aba — ninguem perde o caminho. */}
+          <p className="mb-3">
+            <Link href="/notificacoes/preferencias" className="text-sm text-marca-600 underline">
+              Notificações: dispositivos, funções operacionais e antecedentes
+            </Link>
+          </p>
+          {user.role === "admin" ? (
+            <>
+              <p className="text-sm text-stone-600">
+                Escolha como o menu principal é apresentado para toda a equipe. A troca é instantânea e pode ser
+                revertida a qualquer momento — nenhum acesso, cadastro ou dado é afetado.
+              </p>
+              <form action={saveNavLayout} className="mt-3 space-y-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-nuvem-300 bg-white px-3 py-3">
+                  <input
+                    type="radio"
+                    name="nav_layout"
+                    value="classico"
+                    defaultChecked={s.nav_layout !== "agrupado"}
+                    className="mt-1 h-4 w-4"
+                  />
+                  <span className="text-sm">
+                    <b>Clássico</b> — menu único, como sempre foi
+                    <span className="block text-xs text-stone-500">
+                      Lista simples de Dashboard a Configurações, igual à versão atual do sistema.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-nuvem-300 bg-white px-3 py-3">
+                  <input
+                    type="radio"
+                    name="nav_layout"
+                    value="agrupado"
+                    defaultChecked={s.nav_layout === "agrupado"}
+                    className="mt-1 h-4 w-4"
+                  />
+                  <span className="text-sm">
+                    <b>Agrupado</b> — menu organizado por contexto
+                    <span className="block text-xs text-stone-500">
+                      Mesmos destinos em grupos: Início, Operação (agenda, orçamentos, reservas, entregas, fretes),
+                      Comercial (clientes, contratos, promoções, fidelidade, aniversários), Estoque, Gestão
+                      (financeiro, relatórios, histórico) e Sistema. No celular, o menu "Mais" ganha as mesmas seções
+                      e o botão + deixa de ter o atalho Mensagens — o chat continua no sino do topo e no menu.
+                    </span>
+                  </span>
+                </label>
+                <SubmitButton>Salvar Layout</SubmitButton>
+              </form>
+            </>
+          ) : (
+            <Alerta tone="ambar">A escolha do layout de navegação é exclusiva do administrador.</Alerta>
+          )}
+        </Section>
+      )}
 
       {aba === "disponibilidade" && <Section title="Preparação após Devolução">
         <form action={saveStockSettings} className="space-y-3">

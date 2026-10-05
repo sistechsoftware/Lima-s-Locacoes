@@ -5,7 +5,17 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icons";
 import ChatBell from "./ChatBell";
 import Avatar from "./Avatar";
-import { EXTRA_NAV, MOBILE_NAV, NAV } from "@/lib/nav";
+import {
+  ACOES_AGRUPADO,
+  ACOES_CLASSICO,
+  ACOES_SHEET_AGRUPADO,
+  EXTRA_NAV,
+  MOBILE_NAV,
+  NAV,
+  NAV_GRUPOS,
+  type AcaoRapida,
+  type NavLayout,
+} from "@/lib/nav";
 import { pokeUnread } from "@/lib/chat-unread";
 import { useUnread } from "@/lib/use-unread";
 
@@ -16,7 +26,15 @@ const active = (pathname: string, href: string) =>
 
 /* --------------------------- barra lateral (desktop) --------------------------- */
 
-export function Sidebar({ company, logo }: { company: string; logo?: string }) {
+export function Sidebar({
+  company,
+  logo,
+  layout = "classico",
+}: {
+  company: string;
+  logo?: string;
+  layout?: NavLayout;
+}) {
   const pathname = usePathname();
   // No desktop a lateral fica fixa (sticky) com a altura da viewport: quando os
   // itens nao cabem, somente a area de navegacao rola, sem arrastar a pagina
@@ -39,23 +57,62 @@ export function Sidebar({ company, logo }: { company: string; logo?: string }) {
       </Link>
       {/* min-h-0: dentro do flex, permite a navegacao encolher ate a altura
           disponivel — sem isso o overflow-y-auto nunca ativa. */}
-      <nav className="navegacao-lateral min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
-        {NAV.map((n) => (
-          <Link
-            key={n.href}
-            href={n.href}
-            className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-              active(pathname, n.href)
-                ? "bg-marca-600 text-white"
-                : "text-tinta-700 hover:bg-nuvem-100"
-            }`}
-          >
-            <Icon name={n.icon} className="h-[18px] w-[18px] shrink-0" />
-            <span className="truncate">{n.label}</span>
-          </Link>
-        ))}
+      <nav className="navegacao-lateral min-h-0 flex-1 overflow-y-auto p-2">
+        {layout === "agrupado" ? <NavGrupos pathname={pathname} /> : <NavPlano pathname={pathname} />}
       </nav>
     </aside>
+  );
+}
+
+/** Modo Classico: a lista plana de sempre, item apos item. */
+function NavPlano({ pathname }: { pathname: string }) {
+  return (
+    <div className="space-y-0.5">
+      {NAV.map((n) => (
+        <Link
+          key={n.href}
+          href={n.href}
+          className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+            active(pathname, n.href) ? "bg-marca-600 text-white" : "text-tinta-700 hover:bg-nuvem-100"
+          }`}
+        >
+          <Icon name={n.icon} className="h-[18px] w-[18px] shrink-0" />
+          <span className="truncate">{n.label}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/** Modo Agrupado: mesmos destinos em grupos com subtitulo; grupos com um
+ *  unico item nem exibem o rotulo (Dashboard fala por si). */
+function NavGrupos({ pathname }: { pathname: string }) {
+  return (
+    <div className="space-y-1">
+      {NAV_GRUPOS.map((g) => (
+        <div key={g.titulo}>
+          {g.itens.length > 1 && (
+            <p className="px-3 pb-1 pt-3 text-[0.62rem] font-black uppercase tracking-widest text-stone-400">
+              {g.titulo}
+            </p>
+          )}
+          <div className="space-y-0.5">
+            {g.itens.map((n) => (
+              <Link
+                key={n.href}
+                href={n.href}
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                  active(pathname, n.href) ? "bg-marca-600 text-white" : "text-tinta-700 hover:bg-nuvem-100"
+                }`}
+              >
+                <Icon name={n.icon} className="h-[18px] w-[18px] shrink-0" />
+                <span className="truncate">{n.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -158,18 +215,21 @@ function GlobalSearch() {
 
 /* ------------------------------ barra inferior -------------------------------- */
 
-export function BottomNav() {
+export function BottomNav({ layout = "classico" }: { layout?: NavLayout }) {
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
   // Mesmo estado do sino do topo: uma unica fonte de verdade para o badge.
-  // Mensagens saiu da barra, mas o contador continua visivel: o sino do topo,
-  // o botao "Mais" (onde o chat agora vive) e o atalho no botao + leem tudo
-  // daqui, entao nunca divergem.
+  // Mensagens mora no "Mais" no modo Classico: o contador continua visivel —
+  // o sino do topo, o botao "Mais" (onde o chat vive) e o atalho no botao +
+  // leem tudo daqui, entao nunca divergem.
   const { unread } = useUnread();
 
   useEffect(() => setSheet(false), [pathname]);
 
-  const noMais = EXTRA_NAV.some((n) => active(pathname, n.href));
+  const noMais =
+    layout === "classico"
+      ? EXTRA_NAV.some((n) => active(pathname, n.href))
+      : NAV_GRUPOS.some((g) => g.itens.some((n) => !MOBILE_NAV.some((m) => m.href === n.href) && active(pathname, n.href)));
 
   return (
     <>
@@ -179,26 +239,11 @@ export function BottomNav() {
         <div className="fixed inset-0 z-50 md:hidden" onClick={() => setSheet(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <div
-            className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
+            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-nuvem-300" />
-            <div className="grid grid-cols-3 gap-2">
-              {EXTRA_NAV.map((n) => (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center text-[0.7rem] font-semibold ${
-                    active(pathname, n.href)
-                      ? "border-marca-200 bg-marca-50 text-marca-700"
-                      : "border-nuvem-200 text-tinta-700"
-                  }`}
-                >
-                  <Icon name={n.icon} className="h-5 w-5 text-marca-600" />
-                  <span className="leading-tight">{n.label}</span>
-                </Link>
-              ))}
-            </div>
+            {layout === "agrupado" ? <MaisAgrupado pathname={pathname} unread={unread} /> : <MaisClassico pathname={pathname} />}
           </div>
         </div>
       )}
@@ -248,8 +293,9 @@ export function BottomNav() {
               }`}
             >
               <Icon name="menu" className="h-[22px] w-[22px]" />
-              {/* Mensagens mora no "Mais" agora: o contador de nao lidas
-                  acompanhou, no mesmo padrao de antes da barra. */}
+              {/* Badge de nao lidas do chat: no Classico o Mensagens mora aqui
+                  dentro; no Agrupado o ladrilho Mensagens tambem le do mesmo
+                  estado — sempre a mesma fonte do sino do topo. */}
               {unread > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[0.58rem] font-bold leading-none text-white ring-2 ring-white">
                   {unread > 99 ? "99+" : unread}
@@ -268,30 +314,96 @@ export function BottomNav() {
   );
 }
 
+/** Sheet "Mais" no modo Classico: a grade unica de ladrilhos de sempre. */
+function MaisClassico({ pathname }: { pathname: string }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {EXTRA_NAV.map((n) => (
+        <Link
+          key={n.href}
+          href={n.href}
+          className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center text-[0.7rem] font-semibold ${
+            active(pathname, n.href) ? "border-marca-200 bg-marca-50 text-marca-700" : "border-nuvem-200 text-tinta-700"
+          }`}
+        >
+          <Icon name={n.icon} className="h-5 w-5 text-marca-600" />
+          <span className="leading-tight">{n.label}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/** Sheet "Mais" no modo Agrupado: acoes rapidas no topo e grupos rotulados
+ *  com os mesmos titulos da sidebar — a logica de organizacao e a mesma,
+ *  muda so a apresentacao. */
+function MaisAgrupado({ pathname, unread }: { pathname: string; unread: number }) {
+  // Itens diretos da barra inferior nao se repetem no sheet.
+  const naBarra = new Set(MOBILE_NAV.map((n) => n.href));
+  return (
+    <div>
+      <p className="mb-2 mt-1 text-[0.62rem] font-black uppercase tracking-widest text-stone-400">Ações rápidas</p>
+      <div className="grid grid-cols-3 gap-2">
+        {ACOES_SHEET_AGRUPADO.map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="flex flex-col items-center gap-1.5 rounded-xl border border-marca-600 bg-marca-600 px-2 py-3 text-center text-[0.7rem] font-semibold text-white"
+          >
+            <Icon name={a.icon} className="h-5 w-5" />
+            <span className="leading-tight">{a.label}</span>
+          </Link>
+        ))}
+      </div>
+      {NAV_GRUPOS.map((g) => {
+        const itens = g.itens.filter((n) => !naBarra.has(n.href));
+        if (itens.length === 0) return null;
+        return (
+          <div key={g.titulo}>
+            <p className="mb-2 mt-4 text-[0.62rem] font-black uppercase tracking-widest text-stone-400">{g.titulo}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {itens.map((n) => (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className={`relative flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center text-[0.7rem] font-semibold ${
+                    active(pathname, n.href)
+                      ? "border-marca-200 bg-marca-50 text-marca-700"
+                      : "border-nuvem-200 text-tinta-700"
+                  }`}
+                >
+                  <Icon name={n.icon} className="h-5 w-5 text-marca-600" />
+                  <span className="leading-tight">{n.label}</span>
+                  {n.href === "/chat" && unread > 0 && (
+                    <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[0.58rem] font-bold leading-none text-white">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ------------------------------ botao flutuante ------------------------------- */
 
-const ACOES = [
-  { href: "/chat", label: "Mensagens", icon: "chat" },
-  { href: "/reservas/nova", label: "Nova Reserva", icon: "reservas" },
-  { href: "/orcamentos/novo", label: "Novo Orçamento", icon: "orcamento" },
-  { href: "/clientes/novo", label: "Novo Cliente", icon: "clientes" },
-  { href: "/operacao/nova", label: "Nova Entrega", icon: "operacao" },
-  { href: "/fretes/novo", label: "Novo Frete", icon: "fretes" },
-  { href: "/compras/nova", label: "Nova Compra", icon: "estoque" },
-  { href: "/fretes/calculadora", label: "Calcular Frete", icon: "financeiro" },
-];
-
-export function FloatingAction() {
+export function FloatingAction({ layout = "classico" }: { layout?: NavLayout }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  // Mesmo estado do sino do topo: badge de nao lidas do atalho Mensagens.
+  // Mesmo estado do sino do topo: badge de nao lidas do atalho Mensagens
+  // (o atalho existe so no modo Classico — ver ACOES_CLASSICO/ACOES_AGRUPADO).
   const { unread } = useUnread();
   useEffect(() => setOpen(false), [pathname]);
 
+  const acoes: AcaoRapida[] = layout === "agrupado" ? ACOES_AGRUPADO : ACOES_CLASSICO;
+
   /* No chat a tela usa a altura inteira e o composer (anexo/mic/enviar) ocupa a
      base: o botao flutuante cobria o microfone e roubava toques. Fora do chat
-     ele continua igual, com as mesmas acoes de sempre — agora incluindo
-     Mensagens, que saiu da barra inferior e trocou de lugar com a Agenda. */
+     ele continua igual, com as acoes do modo escolhido. */
   if (pathname === "/chat") return null;
 
   return (
@@ -300,7 +412,7 @@ export function FloatingAction() {
       {/* Acima da barra inferior (cartao + margem), em qualquer aparelho. */}
       <div className="nao-imprimir fixed bottom-28 right-4 z-40 flex flex-col items-end gap-2 md:bottom-6">
         {open &&
-          ACOES.map((a) => (
+          acoes.map((a) => (
             <Link
               key={a.href}
               href={a.href}
@@ -321,8 +433,9 @@ export function FloatingAction() {
           className="relative flex h-14 w-14 items-center justify-center rounded-full bg-marca-600 text-white shadow-xl transition active:scale-95"
         >
           <Icon name={open ? "fechar" : "mais"} className="h-7 w-7" />
-          {/* Ponto discreto de nao lidas: da pra saber sem abrir o menu. */}
-          {!open && unread > 0 && (
+          {/* Ponto discreto de nao lidas: da pra saber sem abrir o menu. Vale
+              so no Classico, onde o + tem o atalho Mensagens. */}
+          {!open && layout === "classico" && unread > 0 && (
             <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
           )}
         </button>

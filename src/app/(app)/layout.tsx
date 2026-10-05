@@ -6,6 +6,7 @@ import { unreadCount } from "@/lib/notifications";
 import { unreadCounters } from "@/lib/chat";
 import { seedUnread } from "@/lib/chat-unread";
 import { BottomNav, FloatingAction, Sidebar, TopBar } from "@/components/Shell";
+import type { NavLayout } from "@/lib/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -27,16 +28,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     conversations: [],
   });
 
+  // Layout de navegacao escolhido (Configuracoes > Navegacao): "classico"
+  // preserva o menu de sempre; "agrupado" organiza os mesmos destinos em
+  // grupos. Valor fora da lista cai no classico.
+  const navLayout: NavLayout = settings.nav_layout === "agrupado" ? "agrupado" : "classico";
+
   return (
     <div className="flex min-h-screen">
       <PushRegistration />
-      <Sidebar company={settings.company_name} logo={settings.company_logo} />
+      <Sidebar company={settings.company_name} logo={settings.company_logo} layout={navLayout} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} company={settings.company_name} logo={settings.company_logo} />
         <main className="com-barra-inferior mx-auto w-full max-w-6xl flex-1 p-3 sm:p-5">{children}</main>
       </div>
-      <BottomNav />
-      <FloatingAction />
+      <BottomNav layout={navLayout} />
+      <FloatingAction layout={navLayout} />
     </div>
   );
 }
