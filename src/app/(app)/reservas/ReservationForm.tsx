@@ -31,6 +31,8 @@ export default function ReservationForm({
   submitLabel = "Salvar Reserva",
   preparationMinutes = 0,
   contas = [],
+  janela,
+  next,
 }: {
   action: Action;
   products: Product[];
@@ -45,12 +47,20 @@ export default function ReservationForm({
   preparationMinutes?: number;
   /** Contas financeiras ativas, para o adiantamento registrar onde o dinheiro entrou. */
   contas?: { id: number; name: string }[];
+  /** Janela sugerida pela Timeline (clique num espaco livre); ignora reservas ja existentes. */
+  janela?: { event_date: string; delivery_at: string; pickup_at: string };
+  /** Para onde voltar apos criar (vindo da timeline). Caminho interno validado na pagina. */
+  next?: string;
 }) {
   const [error, formAction] = useActionState(action, null);
   const [items, setItems] = useState<ItemRow[]>(initialItems);
   const [customerId, setCustomerId] = useState(String(reservation?.customer_id ?? defaultCustomerId ?? ""));
   const { eventDate, deliveryAt, pickupAt, bind } = useEventWindow(
-    janelaInicial(reservation?.event_date ?? "", reservation?.delivery_at ?? "", reservation?.pickup_at ?? ""),
+    janelaInicial(
+      reservation?.event_date ?? janela?.event_date ?? "",
+      reservation?.delivery_at ?? janela?.delivery_at ?? "",
+      reservation?.pickup_at ?? janela?.pickup_at ?? "",
+    ),
   );
   const [address, setAddress] = useState(reservation?.address ?? "");
   const [district, setDistrict] = useState(reservation?.district ?? "");
@@ -123,6 +133,7 @@ export default function ReservationForm({
   return (
     <form action={formAction} className="space-y-4">
       {reservation && <input type="hidden" name="id" value={reservation.id} />}
+      {next && <input type="hidden" name="next" value={next} />}
       <input type="hidden" name="items" value={JSON.stringify(items)} />
       <input type="hidden" name="override" value={override ? "1" : "0"} />
       <input type="hidden" name="freight" value={freight} />

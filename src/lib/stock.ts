@@ -212,8 +212,16 @@ async function loadHoldsInner(from: string, to: string, options: StockOptions = 
     ],
   );
   return rows.map((r) => {
-    const h = holdWindow(r);
-    timeWindow(h.from, h.to);
+    let h: { from: string; to: string };
+    try {
+      h = holdWindow(r);
+      timeWindow(h.from, h.to);
+    } catch {
+      // Janela inconsistente no cadastro (retirada antes da entrega, carimbo
+      // invalido): uma linha ruim nao pode derrubar TODAS as telas de
+      // disponibilidade — cai na regra de "sem horario": dia do evento inteiro.
+      h = { from: stamp(r.event_date, "00:00"), to: addMinutes(stamp(r.event_date), 1440) };
+    }
     return { ...r, qty: Number(r.qty), hold_start: h.from, hold_end: addMinutes(h.to, config.preparationMinutes) };
   }).filter((h) => h.hold_end > w.from && (w.from === w.to ? h.hold_start <= w.from : h.hold_start < w.to));
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createTestDb } from "./helpers/d1";
 import { criarReserva, montarCenario, resetSequencia } from "./helpers/fixtures";
 import { all, run, scalar } from "../src/lib/db";
-import { addMinutes, availabilityQuery, normalizeStamp, preparationValue, timeWindow } from "../src/lib/availability-time";
+import { addMinutes, availabilityQuery, normalizeStamp, parametroLista, preparationValue, timeWindow } from "../src/lib/availability-time";
 import { availabilityAll, availabilityAllWithKits, availabilityByCategory, availabilityFor, checkConflicts, checkReservationConflicts, holdsForProduct, scanConflicts, timelinesByProduct } from "../src/lib/stock";
 import { stockVersion, writeRental, STOCK_CHANGED, commitStockBatch } from "../src/lib/stock-write";
 import { setSettings } from "../src/lib/settings";
@@ -142,6 +142,34 @@ describe("mesma consulta em todos os consumidores", () => {
     assert.equal(off.considerPreparation,false);
     assert.deepEqual(availabilityQuery(Object.fromEntries(new URLSearchParams(off.queryString))),off);
     assert.equal(availabilityQuery({data:"2026-09-06"},at("15:00")).from,"2026-09-06T15:00");
+  });
+  it("parametro repetido na URL (array do Next) nao derruba a consulta", () => {
+    // ?inicio=A&inicio=B chega como string[]; antes estourava
+    // "value.trim is not a function" e a Timeline de disponibilidade derrubava
+    const q = availabilityQuery({
+      inicio: [at("08:00"), at("10:00")] as any,
+      fim: [at("18:00"), at("20:00")] as any,
+      preparo: ["1", "0"] as any,
+      consulta: ["1", "1"] as any,
+    }, at("15:00"));
+    assert.equal(q.from, "2026-09-07T08:00");
+    assert.equal(q.to, "2026-09-07T18:00");
+    assert.equal(q.considerPreparation, true);
+    // idem para data/ate legados
+    const legado = availabilityQuery({ data: ["2026-09-06", "2026-09-07"] as any, ate: ["2026-09-08", "2026-09-09"] as any }, at("15:00"));
+    assert.equal(legado.from, "2026-09-06T15:00");
+    assert.equal(legado.to, "2026-09-08T15:00");
+  });
+  it("lista de produtos aceita forma compacta, repetida e mista", () => {
+    // forma compacta montada pelos links internos (?produtos=1,2,3)
+    assert.deepEqual(parametroLista("1,2,3"), ["1", "2", "3"]);
+    // checkbox repetido no form GET (o Next entrega string[])
+    assert.deepEqual(parametroLista(["2", "7"]), ["2", "7"]);
+    // mista: vinda de URLs antigas ou editadas a mao
+    assert.deepEqual(parametroLista(["1,4", " 9 ", ""]), ["1", "4", "9"]);
+    // ausente ou vazia = sem restricao (todos os produtos)
+    assert.deepEqual(parametroLista(undefined), []);
+    assert.deepEqual(parametroLista(""), []);
   });
   it("alertas contam ocupacao iniciada ontem e excessos autorizados", async () => {
     const older = await reserve(5);

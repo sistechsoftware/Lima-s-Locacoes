@@ -54,10 +54,13 @@ describe("timeline de produto fisico", () => {
     const rows = await equipmentTimeline(`${DIA}T08:00`, `${DIA}T18:00`);
     const mesa = linhaDe(rows, c.mesaId);
 
-    // 2 unidades -> 2 pistas
-    assert.equal(mesa.lanesTotal, 2);
+    // 1 item comercial de 2 unidades -> 1 pista visual; as 2 unidades continuam
+    // refletidas no pico e na faixa de livres
+    assert.equal(mesa.lanesTotal, 1);
+    assert.equal(mesa.peak_used, 2);
     for (const lane of mesa.lanes) assert.equal(lane.blocks.length, 1);
     assert.equal(mesa.lanes[0].blocks[0].reservationId, id);
+    assert.equal(mesa.lanes[0].blocks[0].qty, 2);
 
     // faixa: 5 livres antes das 10, 3 livres entre 10 e 14, 5 depois
     const degraus = Object.fromEntries(mesa.faixa.map((f) => [f.from, f.available]));
@@ -125,10 +128,15 @@ describe("timeline de produto fisico", () => {
     await criarReserva(c.clienteId, [{ product_id: c.mesaId, qty: 2 }], "confirmada", janela("09:00", "11:00"));
     const mesa = linhaDe(await equipmentTimeline(`${DIA}T00:00`, `${DIA}T23:59`), c.mesaId);
 
-    // pico: 1 (08-10) + 2 (09-11) = 3 simultaneas
-    assert.equal(mesa.lanesTotal, 3);
+    // pico em UNIDADES: 1 (08-10) + 2 (09-11) = 3 simultaneas
     assert.equal(mesa.peak_used, 3);
-    assert.equal(mesa.lanes.length, 3); // limite de exibicao (4) nao corta
+    // 3 itens comerciais simultaneos no maximo; a das 12h reaproveita a pista
+    // da das 8h (sem sobreposicao), entao 2 pistas cobrem as 3 reservas
+    assert.equal(mesa.lanesTotal, 2);
+    assert.equal(mesa.lanes.length, 2);
+    // toda reserva desenhada: os 3 ids aparecem entre as pistas
+    const ids = new Set(mesa.lanes.flatMap((l) => l.blocks.map((b) => b.reservationId)));
+    assert.equal(ids.size, 3);
   });
 
   it("janela parcial: ocupacao que comeca antes da consulta e cortada na borda", async () => {
@@ -167,8 +175,10 @@ describe("timeline de kits", () => {
     const kit = linhaDe(await equipmentTimeline(`${DIA}T08:00`, `${DIA}T18:00`), c.kitId);
 
     assert.equal(kit.kind, "kit");
-    assert.equal(kit.lanesTotal, 2); // 2 kits contratados -> 2 pistas (uma por kit)
+    assert.equal(kit.lanesTotal, 1); // 1 item comercial (2 kits) -> 1 pista visual
+    assert.equal(kit.peak_used, 2); // pico em kits ocupados
     assert.equal(kit.lanes[0].blocks[0].reservationId, id);
+    assert.equal(kit.lanes[0].blocks[0].qty, 2);
 
     // capacidade estatica: min(floor(5/1), floor(20/4)) = 5
     assert.equal(kit.effective, 5);
@@ -184,9 +194,11 @@ describe("timeline de kits", () => {
     const kit = linhaDe(rows, c.kitId);
     const mesa = linhaDe(rows, c.mesaId);
 
-    assert.equal(kit.lanesTotal, 2); // 2 kits contratados
-    // mesas continuam mostrando o consumo fisico das 2 mesas
-    assert.equal(mesa.lanesTotal, 2);
+    assert.equal(kit.lanesTotal, 1); // uso comercial: 1 item de 2 kits, so na linha do kit
+    assert.equal(kit.peak_used, 2);
+    // mesas continuam mostrando o consumo fisico das 2 mesas (pico em unidades),
+    // sem nenhuma pista na linha do kit alem do uso comercial
+    assert.equal(mesa.lanesTotal, 1);
     assert.equal(mesa.peak_used, 2);
   });
 

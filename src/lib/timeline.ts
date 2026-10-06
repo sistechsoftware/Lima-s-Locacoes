@@ -54,7 +54,13 @@ export type Block = {
   qty: number;
 };
 
-/** Pista vertical: uma "unidade fisica" ficticia e seus blocos. */
+/**
+ * Pista vertical: uma faixa visual da linha e seus blocos.
+ *
+ * Cada pista e ocupada por um grupo comercial (uma reserva, ou uma linha
+ * item da reserva quando ela tem varios itens no mesmo produto). Blocos de
+ * grupos diferentes so dividem a mesma pista quando nao se sobrepoe no tempo.
+ */
 export type Lane = {
   index: number;
   blocks: Block[];
@@ -81,7 +87,7 @@ export type TimelineRow = {
   peak_used: number;
   faixa: Faixa[];
   lanes: Lane[];
-  /** Pistas paralelas reais (reservas simultaneas); lanes pode estar cortado por exibicao. */
+  /** Pistas paralelas reais (itens de reserva simultaneos). */
   lanesTotal: number;
 };
 
@@ -210,43 +216,86 @@ function blocosDaOcupacao(
 /* Distribuicao em pistas                                              */
 /* ------------------------------------------------------------------ */
 
+/** Um bloco ainda nao renderizado, com o grupo comercial ao qual pertence. */
+type PistaItem = {
+  inicio: string;
+  fim: string;
+  qty: number;
+  fase: TimelinePhase;
+  titulo: string;
+  reservationId: number;
+  /** Grupo: reserva + linha comercial. Blocos do mesmo grupo vao para a mesma pista. */
+  grupo: string;
+};
+
+/** Os dois blocos dividem o mesmo instante? Intervalos sao [from, to). */
+function sobrepoe(a: Block, b: Block): boolean {
+  return a.from < b.to && b.from < a.to;
+}
+
 /**
  * Empacota os blocos em pistas verticais, como no grafico de ocupacao de
- * hotelaria: cada pista e uma unidade fisica (1 mesa, 1 cadeira, 1 kit). Uma
- * ocupacao de qty unidades ocupa qty pistas no mesmo intervalo. Empacotamento
- * first-fit deterministico (ordenado por inicio): nao cria regra, apenas
- * desenha.
+ * hotelaria: cada pista e uma faixa visual da linha e cada BLOCO e um item
+ * comercial (uma reserva, ou uma linha da reserva).
+ *
+ * Empacotamento first-fit deterministico (ordenado por inicio), por GRUPO:
+ * todos os blocos de um mesmo grupo (fases de uma mesma reserva) entram juntos
+ * numa pista livre — pista so recebe o grupo se nenhum bloco ja la existente
+ * se sobrepuser ao dele.
+ *
+ * POR QUE NAO E UM BLOCO POR UNIDADE: empacotar uma reserva de 40 cadeiras em
+ * 40 pistas empurra a reserva seguinte para a pista 40 e ela nunca era
+ * desenhada (o corte de exibicao mostra as primeiras pistas). Um bloco por
+ * grupo garante que TODA reserva simultanea apareca; a quantidade de unidades
+ * continua visivel no titulo do bloco, no resumo da linha e na faixa de
+ * unidades livres do fundo.
  */
-function distribuirEmPistas(
-  itens: { inicio: string; fim: string; qty: number; fase: TimelinePhase; titulo: string; reservationId: number }[],
-): Lane[] {
-  const pistas: { fim: string; blocks: Block[] }[] = [];
-  const ordenados = [...itens].sort((a, b) =>
-    a.inicio === b.inicio ? (a.fim < b.fim ? -1 : 1) : a.inicio < b.inicio ? -1 : 1,
+function distribuirEmPistas(itens: PistaItem[]): Lane[] {
+  const porGrupo = new Map<string, PistaItem[]>();
+  for (const it of itens) {
+    if (it.fim <= it.inicio) continue;
+    const lista = porGrupo.get(it.grupo) ?? [];
+    lista.push(it);
+    porGrupo.set(it.grupo, lista);
+  }
+
+  const grupos = [...porGrupo.entries()].map(([grupo, blocks]) => ({
+    grupo,
+    blocks: blocks.map((b) => ({
+      from: b.inicio,
+      to: b.fim,
+      phase: b.fase,
+      title: b.titulo,
+      reservationId: b.reservationId,
+      qty: b.qty,
+    })),
+    inicio: blocks.reduce((m, b) => (b.inicio < m ? b.inicio : m), blocks[0].inicio),
+    fim: blocks.reduce((m, b) => (b.fim > m ? b.fim : m), blocks[0].fim),
+  }));
+  grupos.sort((a, b) =>
+    a.inicio === b.inicio ? (a.fim === b.fim ? (a.grupo < b.grupo ? -1 : 1) : a.fim < b.fim ? -1 : 1) : a.inicio < b.inicio ? -1 : 1,
   );
 
-  for (const it of ordenados) {
-    if (it.fim <= it.inicio) continue;
-    const q = Math.max(1, Math.min(it.qty, 500)); // protecao contra qty absurda
-    let start = 0;
-    for (;;) {
-      while (pistas.length < start + q) pistas.push({ fim: "", blocks: [] });
-      let livre = true;
-      for (let i = start; i < start + q; i++) {
-        if (pistas[i].fim > it.inicio) {
-          livre = false;
-          start = i + 1;
-          break;
-        }
+  const pistas: Block[][] = [];
+  for (const g of grupos) {
+    let destino: Block[] | null = null;
+    for (const pista of pistas) {
+      if (g.blocks.every((b) => pista.every((existente) => !sobrepoe(b, existente)))) {
+        destino = pista;
+        break;
       }
-      if (livre) break;
     }
-    for (let i = start; i < start + q; i++) {
-      pistas[i].blocks.push({ from: it.inicio, to: it.fim, phase: it.fase, title: it.titulo, reservationId: it.reservationId, qty: it.qty });
-      if (it.fim > pistas[i].fim) pistas[i].fim = it.fim;
+    if (!destino) {
+      destino = [];
+      pistas.push(destino);
     }
+    destino.push(...g.blocks);
   }
-  return pistas.map((p, i) => ({ index: i, blocks: p.blocks }));
+
+  return pistas.map((p, i) => ({
+    index: i,
+    blocks: [...p].sort((a, b) => (a.from === b.from ? (a.to < b.to ? -1 : 1) : a.from < b.from ? -1 : 1)),
+  }));
 }
 
 /* ------------------------------------------------------------------ */
@@ -422,13 +471,13 @@ export async function equipmentTimeline(
       const itens: Parameters<typeof distribuirEmPistas>[0] = [];
       for (const uso of kitUso.get(p.id) ?? []) {
         for (const b of blocosDaOcupacao(uso.hold, uso.qty, opsDe(uso.hold), from, to, config.preparationMinutes)) {
-          itens.push({ inicio: b.from, fim: b.to, qty: uso.qty, fase: b.phase, titulo: b.title, reservationId: b.reservationId });
+          itens.push({ inicio: b.from, fim: b.to, qty: uso.qty, fase: b.phase, titulo: b.title, reservationId: b.reservationId, grupo: uso.key });
         }
       }
       const lanes = distribuirEmPistas(itens);
       row = {
         product_id: p.id, code: p.code, name: p.name, kind: "kit", category: categorias.get(p.id) ?? null,
-        effective, peak_used, faixa, lanes: lanes.slice(0, 4), lanesTotal: lanes.length,
+        effective, peak_used, faixa, lanes, lanesTotal: lanes.length,
       };
     } else {
       const effective = fisico.get(p.id) ?? 0;
@@ -436,15 +485,18 @@ export async function equipmentTimeline(
       const faixa = faixaFisica(holdsProduto, effective, from, to);
       const peak_used = faixa.reduce((s, f) => Math.max(s, effective - f.available), 0);
       const itens: Parameters<typeof distribuirEmPistas>[0] = [];
+      let ordemItem = 0;
       for (const h of holdsProduto) {
+        const grupo = `${h.reservation_id}:${h.via_item_id ?? `h${ordemItem}`}`;
+        ordemItem++;
         for (const b of blocosDaOcupacao(h, h.qty, opsDe(h), from, to, config.preparationMinutes)) {
-          itens.push({ inicio: b.from, fim: b.to, qty: b.qty, fase: b.phase, titulo: b.title, reservationId: b.reservationId });
+          itens.push({ inicio: b.from, fim: b.to, qty: b.qty, fase: b.phase, titulo: b.title, reservationId: b.reservationId, grupo });
         }
       }
       const lanes = distribuirEmPistas(itens);
       row = {
         product_id: p.id, code: p.code, name: p.name, kind: "simples", category: categorias.get(p.id) ?? null,
-        effective, peak_used, faixa, lanes: lanes.slice(0, 4), lanesTotal: lanes.length,
+        effective, peak_used, faixa, lanes, lanesTotal: lanes.length,
       };
     }
 

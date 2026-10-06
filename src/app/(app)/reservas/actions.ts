@@ -117,7 +117,17 @@ export async function createReservation(_prev: string | null, fd: FormData): Pro
   }
 
   revalidatePath("/", "layout");
-  redirect(`/reservas/${id}${avisoAdiantamento ? `?aviso=${encodeURIComponent(avisoAdiantamento)}` : ""}`);
+  // Vindo da Timeline: volta para a janela consultada com a reserva ja criada
+  // (a timeline e force-dynamic e o revalidatePath acima garante o dado novo).
+  // Caminho interno apenas — nunca URL externa digitada na mao.
+  const next = String(fd.get("next") ?? "");
+  const deVolta = next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")
+    ? next
+    : `/reservas/${id}`;
+  const avisoUrl = avisoAdiantamento
+    ? `${deVolta.includes("?") ? "&" : "?"}aviso=${encodeURIComponent(avisoAdiantamento)}`
+    : "";
+  redirect(deVolta + avisoUrl);
 }
 
 export async function updateReservation(_prev: string | null, fd: FormData): Promise<string | null> {

@@ -149,6 +149,39 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
 }
+
+/*
+ * Timeline de disponibilidade no desktop: usa tambem a largura que o
+ * max-w-6xl deixava livre ao lado do menu lateral (em um monitor de 1920px
+ * sobravam ~500px de espaco morto). A pagina marca o proprio conteudo com
+ * .timeline-larga e so entao o container alarga — nas demais telas nada muda.
+ * Sem suporte a :has() o layout continua no max-w-6xl, sem quebrar nada.
+ */
+@media (min-width: 1024px) {
+  main.com-barra-inferior:has(.timeline-larga) {
+    max-width: 1680px;
+  }
+}
+
+/*
+ * Altura da pista da Timeline de Disponibilidade. Declarada aqui (e nao como
+ * utilitario arbitrario) para ser a unica fonte da medida responsiva: celular
+ * mantem as 16px de sempre, desktop ganha pistas mais altas para leitura.
+ * Os blocos e o container leem var(--lane-h) no calculo de altura da linha.
+ */
+.painel-timeline {
+  --lane-h: 16px;
+}
+@media (min-width: 640px) {
+  .painel-timeline {
+    --lane-h: 18px;
+  }
+}
+@media (min-width: 1024px) {
+  .painel-timeline {
+    --lane-h: 22px;
+  }
+}
 .scroll-x::-webkit-scrollbar {
   display: none;
 }
