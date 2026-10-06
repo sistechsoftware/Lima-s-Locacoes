@@ -1,9 +1,15 @@
 import { dateTimeBR, nowLocal, toISODateTime } from "./format";
 
 /** All business timestamps are minute-precision wall clocks in America/Sao_Paulo. */
-export function normalizeStamp(value: string | null | undefined, fallbackTime = "00:00"): string {
+export function normalizeStamp(value: string | string[] | null | undefined, fallbackTime = "00:00"): string {
   if (!value) return "";
-  let input = value.trim().replace(" ", "T");
+  // URL com o mesmo parametro repetido chega como array no App Router.
+  // Vale o ULTIMO valor: e o clique mais recente (presets de periodo antigos
+  // gravavam inicio/fim duplicados na URL). Sem isto, value.trim() quebrava
+  // com "trim is not a function" e derrubava a tela inteira.
+  const bruto = Array.isArray(value) ? value[value.length - 1] ?? "" : value;
+  if (!bruto) return "";
+  let input = bruto.trim().replace(" ", "T");
   if (/^\d{4}-\d{2}-\d{2}$/.test(input)) input += `T${fallbackTime}`;
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:\d{2})?$/.exec(input);
   if (!m || Number(m[2]) > 23 || Number(m[3]) > 59 || Number(m[4] || 0) !== 0 || Number(m[5] || 0) !== 0) {
@@ -27,7 +33,7 @@ export function addMinutes(value: string, minutes: number): string {
   return date.toISOString().slice(0, 16);
 }
 
-export function timeWindow(from: string, to: string, allowPoint = false) {
+export function timeWindow(from: string | string[], to: string | string[], allowPoint = false) {
   const start = normalizeStamp(from);
   const end = normalizeStamp(to);
   if (!start || !end) throw new Error("Informe a entrega e a retirada, com data e horario.");
@@ -45,15 +51,34 @@ export function preparationValue(value: unknown): number {
   return n;
 }
 
-export type AvailabilityParams = { inicio?: string; fim?: string; preparo?: string; consulta?: string; data?: string; ate?: string };
+export type AvailabilityParams = {
+  inicio?: string | string[];
+  fim?: string | string[];
+  preparo?: string | string[];
+  consulta?: string | string[];
+  data?: string | string[];
+  ate?: string | string[];
+};
 export type AvailabilityQuery = { from: string; to: string; considerPreparation: boolean; label: string; queryString: string };
+
+/** Ultimo valor quando a URL repete o parametro (o clique mais recente vence). */
+function ultimo(valor: string | string[] | undefined): string | undefined {
+  if (Array.isArray(valor)) return valor.length ? valor[valor.length - 1] : undefined;
+  return valor;
+}
 
 export function availabilityQuery(sp: AvailabilityParams = {}, now = nowLocal()): AvailabilityQuery {
   // Legacy date-only links now select an explicit time, not a hidden full day.
-  const from = normalizeStamp(sp.inicio || (sp.data ? `${sp.data}T${now.slice(11, 16)}` : now));
-  const to = normalizeStamp(sp.fim || (sp.ate ? `${sp.ate}T${from.slice(11, 16)}` : from));
+  const inicio = ultimo(sp.inicio);
+  const data = ultimo(sp.data);
+  const fim = ultimo(sp.fim);
+  const ate = ultimo(sp.ate);
+  const consulta = ultimo(sp.consulta);
+  const preparo = ultimo(sp.preparo);
+  const from = normalizeStamp(inicio || (data ? `${data}T${now.slice(11, 16)}` : now));
+  const to = normalizeStamp(fim || (ate ? `${ate}T${from.slice(11, 16)}` : from));
   timeWindow(from, to, true);
-  const considerPreparation = sp.consulta === "1" ? sp.preparo === "1" : sp.preparo !== "0";
+  const considerPreparation = consulta === "1" ? preparo === "1" : preparo !== "0";
   const qs = new URLSearchParams({ inicio: from, fim: to === from ? "" : to, preparo: considerPreparation ? "1" : "0", consulta: "1" });
   return { from, to, considerPreparation, label: from === to ? `Disponibilidade em ${dateTimeBR(from)}` : `Disponibilidade garantida de ${dateTimeBR(from)} até ${dateTimeBR(to)}`, queryString: qs.toString() };
 }

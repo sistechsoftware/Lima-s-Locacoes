@@ -13,6 +13,8 @@ import {
   MOBILE_NAV,
   NAV,
   NAV_GRUPOS,
+  gruposVisiveis,
+  visiveis,
   type AcaoRapida,
   type NavLayout,
 } from "@/lib/nav";
@@ -30,10 +32,12 @@ export function Sidebar({
   company,
   logo,
   layout = "classico",
+  admin,
 }: {
   company: string;
   logo?: string;
   layout?: NavLayout;
+  admin: boolean;
 }) {
   const pathname = usePathname();
   // No desktop a lateral fica fixa (sticky) com a altura da viewport: quando os
@@ -58,17 +62,17 @@ export function Sidebar({
       {/* min-h-0: dentro do flex, permite a navegacao encolher ate a altura
           disponivel — sem isso o overflow-y-auto nunca ativa. */}
       <nav className="navegacao-lateral min-h-0 flex-1 overflow-y-auto p-2">
-        {layout === "agrupado" ? <NavGrupos pathname={pathname} /> : <NavPlano pathname={pathname} />}
+        {layout === "agrupado" ? <NavGrupos pathname={pathname} admin={admin} /> : <NavPlano pathname={pathname} admin={admin} />}
       </nav>
     </aside>
   );
 }
 
 /** Modo Classico: a lista plana de sempre, item apos item. */
-function NavPlano({ pathname }: { pathname: string }) {
+function NavPlano({ pathname, admin }: { pathname: string; admin: boolean }) {
   return (
     <div className="space-y-0.5">
-      {NAV.map((n) => (
+      {visiveis(NAV, admin).map((n) => (
         <Link
           key={n.href}
           href={n.href}
@@ -86,10 +90,10 @@ function NavPlano({ pathname }: { pathname: string }) {
 
 /** Modo Agrupado: mesmos destinos em grupos com subtitulo; grupos com um
  *  unico item nem exibem o rotulo (Dashboard fala por si). */
-function NavGrupos({ pathname }: { pathname: string }) {
+function NavGrupos({ pathname, admin }: { pathname: string; admin: boolean }) {
   return (
     <div className="space-y-1">
-      {NAV_GRUPOS.map((g) => (
+      {gruposVisiveis(NAV_GRUPOS, admin).map((g) => (
         <div key={g.titulo}>
           {g.itens.length > 1 && (
             <p className="px-3 pb-1 pt-3 text-[0.62rem] font-black uppercase tracking-widest text-stone-400">
@@ -215,7 +219,7 @@ function GlobalSearch() {
 
 /* ------------------------------ barra inferior -------------------------------- */
 
-export function BottomNav({ layout = "classico" }: { layout?: NavLayout }) {
+export function BottomNav({ layout = "classico", admin }: { layout?: NavLayout; admin: boolean }) {
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
   // Mesmo estado do sino do topo: uma unica fonte de verdade para o badge.
@@ -228,8 +232,8 @@ export function BottomNav({ layout = "classico" }: { layout?: NavLayout }) {
 
   const noMais =
     layout === "classico"
-      ? EXTRA_NAV.some((n) => active(pathname, n.href))
-      : NAV_GRUPOS.some((g) => g.itens.some((n) => !MOBILE_NAV.some((m) => m.href === n.href) && active(pathname, n.href)));
+      ? visiveis(EXTRA_NAV, admin).some((n) => active(pathname, n.href))
+      : gruposVisiveis(NAV_GRUPOS, admin).some((g) => g.itens.some((n) => !MOBILE_NAV.some((m) => m.href === n.href) && active(pathname, n.href)));
 
   return (
     <>
@@ -243,7 +247,7 @@ export function BottomNav({ layout = "classico" }: { layout?: NavLayout }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-nuvem-300" />
-            {layout === "agrupado" ? <MaisAgrupado pathname={pathname} unread={unread} /> : <MaisClassico pathname={pathname} />}
+            {layout === "agrupado" ? <MaisAgrupado pathname={pathname} unread={unread} admin={admin} /> : <MaisClassico pathname={pathname} admin={admin} />}
           </div>
         </div>
       )}
@@ -258,7 +262,7 @@ export function BottomNav({ layout = "classico" }: { layout?: NavLayout }) {
             largura — nunca quebra mesmo se MOBILE_NAV crescer (o slice
             protege o invariante). */}
         <div className="mx-2 mb-2 flex items-stretch rounded-2xl border border-nuvem-300 bg-white shadow-lg shadow-tinta-900/5">
-          {MOBILE_NAV.slice(0, 4).map((n) => {
+          {visiveis(MOBILE_NAV, admin).slice(0, 4).map((n) => {
             const isActive = active(pathname, n.href);
             return (
               <Link
@@ -315,10 +319,10 @@ export function BottomNav({ layout = "classico" }: { layout?: NavLayout }) {
 }
 
 /** Sheet "Mais" no modo Classico: a grade unica de ladrilhos de sempre. */
-function MaisClassico({ pathname }: { pathname: string }) {
+function MaisClassico({ pathname, admin }: { pathname: string; admin: boolean }) {
   return (
     <div className="grid grid-cols-3 gap-2">
-      {EXTRA_NAV.map((n) => (
+      {visiveis(EXTRA_NAV, admin).map((n) => (
         <Link
           key={n.href}
           href={n.href}
@@ -337,7 +341,7 @@ function MaisClassico({ pathname }: { pathname: string }) {
 /** Sheet "Mais" no modo Agrupado: acoes rapidas no topo e grupos rotulados
  *  com os mesmos titulos da sidebar — a logica de organizacao e a mesma,
  *  muda so a apresentacao. */
-function MaisAgrupado({ pathname, unread }: { pathname: string; unread: number }) {
+function MaisAgrupado({ pathname, unread, admin }: { pathname: string; unread: number; admin: boolean }) {
   // Itens diretos da barra inferior nao se repetem no sheet.
   const naBarra = new Set(MOBILE_NAV.map((n) => n.href));
   return (
@@ -355,7 +359,7 @@ function MaisAgrupado({ pathname, unread }: { pathname: string; unread: number }
           </Link>
         ))}
       </div>
-      {NAV_GRUPOS.map((g) => {
+      {gruposVisiveis(NAV_GRUPOS, admin).map((g) => {
         const itens = g.itens.filter((n) => !naBarra.has(n.href));
         if (itens.length === 0) return null;
         return (

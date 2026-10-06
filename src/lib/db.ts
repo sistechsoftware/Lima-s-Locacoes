@@ -24,13 +24,29 @@ declare global {
  */
 let dbDoAgendador: D1Database | undefined;
 
+/**
+ * Quantas execucoes de runWithDb estao ativas AGORA, somando as concorrentes.
+ *
+ * O cron dispara varias rotinas ao mesmo tempo (notificacoes, fidelidade,
+ * aniversarios e a poda do diario). Sem este contador, a primeira rotina a
+ * terminar restaurava `anterior` e APAGAVA o binding enquanto as demais ainda
+ * estavam rodando — o proximo getDb() caia em getCloudflareContext(), que nao
+ * existe fora de uma requisicao, e a rotina morria com esse erro. Era exatamente
+ * o erro do Diario de Erros em cron/aniversarios e cron/fidelidade.
+ */
+let execucoesAtivas = 0;
+
 export async function runWithDb<T>(db: D1Database, fn: () => Promise<T>): Promise<T> {
-  const anterior = dbDoAgendador;
   dbDoAgendador = db;
+  execucoesAtivas++;
   try {
     return await fn();
   } finally {
-    dbDoAgendador = anterior;
+    execucoesAtivas--;
+    // O binding so sai quando TODAS as execucoes concorrentes terminaram.
+    // Enquanto houver alguma ativa, ela continua usando o ultimo db passado
+    // (por contrato todas usam o mesmo env.DB do Worker).
+    if (execucoesAtivas === 0) dbDoAgendador = undefined;
   }
 }
 
