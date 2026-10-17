@@ -284,3 +284,87 @@ aplicada **para não inventar causa**. Os 2 registros permanecem no Diário como
   mapping de skew protection (desabilitado → `undefined`).
 - Deploy manual equivalente executado: `OPEN_NEXT_DEPLOY=true npx wrangler deploy` → mesmo
   resultado (worker + assets + triggers).
+
+---
+
+## Problema D — Exclusão de pagamento em LIMA-014 (16/10) — STATUS: **CORRIGIDO EM CÓDIGO (migration pendente de deploy)**
+
+### Erro
+
+Dentro da reserva **LIMA-014** (`reservation_id = 15`), clicar em **Remover** no pagamento de
+**R$ 48,00** (payment id `34`, pix, pago em 25/09) devolvia erro **em toda tentativa**.
+
+Registro no Diário (fonte `api/log-erro`, boundary do navegador):
+
+| id | Quando (UTC) | url | digest |
+| --- | --- | --- | --- |
+| 17 | 17/10 02:12:51 | `/reservas/15` | 2370375800 |
+| 18 | 17/10 02:13:22 | `/reservas/15` | 2370375800 |
+
+(16/10 23:12–23:13 BRT — duas tentativas, mesmo digest, mesmo iPhone/iOS 18.7.) Não há linha
+de `onRequestError` com esse digest: a falha acontece dentro da server action e só o boundary
+do cliente registra.
+
+### Causa raiz
+
+A tabela `receipts` (migrations 0020/0024) declara `payment_id INTEGER REFERENCES payments(id)
+ON DELETE SET NULL` **e** um `CHECK` que exige `source_type = 'payment' ⇒ payment_id IS NOT
+NULL`.
+
+O SQLite avalia o `CHECK` também na atualização disparada pela chave estrangeira: apagar o
+pagamento 34 vira `UPDATE receipts SET payment_id = NULL` na linha do recibo **RCB-015**
+(já emitido pelo usuário), que viola o `CHECK` → `CHECK constraint failed ...` → o
+`DELETE FROM payments` inteiro falha e **nada é apagado**.
+
+Isso contradiz o próprio design documentado na 0020: o `ON DELETE SET NULL` existia justamente
+para o recibo sobreviver apontando para nada ("o recibo fica sem alvo e a pagina mostra que o
+lancamento nao existe mais"), e `obterRecibo` **já** trata `payment_id` nulo
+(`lancamentoExiste = false`). O `CHECK` tornava esse cenário inalcançável.
+
+**Alcance da mesma trava (não é caso isolado):**
+
+- excluir um pagamento com recibo emitido → sempre falha (o incidente relatado);
+- excluir a **reserva inteira** → `payments` e `deposits` caem em `CASCADE` → mesmo `CHECK`
+  falha se existir qualquer recibo emitido (bloquearia `deleteReservation`);
+- excluir uma **caução** com recibo → falha igual.
+
+Pagamento sem recibo nunca falhou — por isso o problema só apareceu neste (RCB-015).
+
+**Verificação da causa:** o `DELETE` foi reproduzido com o schema real (SQLite core) falhando
+com exatamente esse `CHECK`, antes de qualquer correção; em produção `receipts` está idêntica à
+0024 e as únicas tabelas que referenciam `payments` são `receipts` e a própria `payments`
+(autoreferência dos `transfer_counterpart_id`).
+
+### Correção (branch `fix/exclusao-pagamento-recibo`)
+
+- `migrations/0028_recibos_alvo_apagado.sql` — única alteração de schema: recria `receipts`
+  (padrão idempotente da 0024: renomear → criar → copiar linha a linha → dropar a antiga) com
+  o `CHECK` **relaxado só o necessário**: o alvo (`payment_id`/`deposit_id`) pode ficar nulo
+  quando o lançamento de origem foi apagado. Continua proibido misturar alvos (recibo de
+  pagamento nunca tem caução e vice-versa) e quitação continua exigindo obrigação +
+  `payment_ids` congelados; os índices UNIQUE foram recriados com as **mesmas** definições.
+  Nenhum dado é alterado na cópia.
+- `tests/exclusao-pagamento.test.ts` (novo, 4 testes): apagar pagamento com recibo (o SQL
+  exato da `deletePayment`), apagar a reserva inteira em cascade, apagar caução com recibo, e
+  guardas do `CHECK` (mistura de alvos / quitação incompleta).
+
+### Testes
+
+- **Validação de que o teste pega o bug:** com a migration temporariamente removida, os 3 primeiros
+  testes falham com `CHECK constraint failed: (source_type = 'payment' AND payment_id IS NOT
+  NULL ...)` — a mesma mensagem de produção; com a migration, 4/4 verdes.
+- Suíte completa: **966 testes, 964 pass / 2 fail** — os 2 (`tests/manual-pagar.test.ts`:
+  "aparece na listagem de A pagar com as duas datas" e "pagamento parcial deixa a conta
+  parcial, nao quitada") **falham também no `main` limpo**, em worktree isolado: são
+  pré-existentes, dependentes de data, sem relação com recibos.
+- `tsc --noEmit` limpo.
+
+### Pendências (nenhuma ação destrutiva foi executada)
+
+1. **Nenhum commit, push ou deploy** — branch `fix/exclusao-pagamento-recibo` com as alterações
+   pendentes na árvore de trabalho.
+2. A correção só passa a valer em produção depois de `npm run db:migrate`
+   (`wrangler d1 migrations apply limas-locacoes --remote`), que roda no fluxo de deploy.
+   Hoje a 0028 é a **única** migration pendente.
+3. O pagamento 34 continua na base (a exclusão continua falhando até a migration rodar).
+4. Os ids 17 e 18 do Diário podem ser marcados como resolvidos **após** o deploy.
